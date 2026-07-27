@@ -128,15 +128,18 @@ def validate_catalog(catalog: dict, rubric: dict) -> list[str]:
     if not isinstance(normalization, dict) or set(normalization) != NORMALIZATION_KEYS:
         errors.append("rubric: normalization must contain case_sensitive and unicode_form")
         return errors
+    normalization_is_usable = True
     if not isinstance(normalization["case_sensitive"], bool):
         errors.append("rubric: case_sensitive must be a boolean")
     if not isinstance(normalization["unicode_form"], str):
         errors.append("rubric: unicode_form must be a string")
+        normalization_is_usable = False
     else:
         try:
             unicodedata.normalize(normalization["unicode_form"], "test")
         except ValueError:
             errors.append("rubric: unicode_form is invalid")
+            normalization_is_usable = False
 
     threshold = rubric["pass_threshold"]
     if not isinstance(threshold, int) or isinstance(threshold, bool):
@@ -172,7 +175,7 @@ def validate_catalog(catalog: dict, rubric: dict) -> list[str]:
             ):
                 errors.append(f"case {label}: {field} must be a list of non-empty strings")
                 continue
-            if field == "required_sections":
+            if field == "required_sections" or not normalization_is_usable:
                 continue
             for pattern in values:
                 try:

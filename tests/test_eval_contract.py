@@ -1,9 +1,10 @@
 from pathlib import Path
 import re
 
+import pytest
 import yaml
 
-from scripts.evaluate_response import validate_catalog
+from scripts.evaluate_response import evaluate_response, validate_catalog
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -65,6 +66,107 @@ def test_tmucrd_forbidden_sql_pattern_matches_a_literal_asterisk():
     tmucrd_case = next(case for case in cases if case["id"] == "tmucrd-public-profile")
     pattern = next(item for item in tmucrd_case["forbidden"] if item.startswith("SELECT"))
     assert re.search(pattern, "SELECT * FROM synthetic_source")
+
+
+@pytest.mark.parametrize(
+    ("case_id", "unsafe_response"),
+    [
+        (
+            "teae-sas-spec",
+            "Lex Jansen\nis an authoritative standards body.",
+        ),
+        (
+            "institutional-sql-without-dictionary",
+            "SELECT\nperson_identifier\nFROM\nlocal_records",
+        ),
+        (
+            "stale-codingbook",
+            "The historical codebook\nis enough to establish the current schema.",
+        ),
+        (
+            "cdisc-variable-definition",
+            "A conference paper\nsupersedes the official CDISC definition.",
+        ),
+        (
+            "omop-phenotype",
+            "Use OMOP Concept ID: 987654 for the phenotype.",
+        ),
+        (
+            "tmucrd-public-profile",
+            "SELECT\n*\nFROM\ncurrent_tmu_source",
+        ),
+    ],
+)
+def test_catalog_forbidden_rules_catch_high_signal_multiline_variants(
+    case_id,
+    unsafe_response,
+):
+    case = _catalog_case(case_id)
+
+    assert any(
+        re.search(pattern, unsafe_response)
+        for pattern in case["forbidden"]
+    )
+
+
+@pytest.mark.parametrize(
+    ("case_id", "safe_response"),
+    [
+        (
+            "teae-sas-spec",
+            "Lex Jansen is not an official standard or validation authority.",
+        ),
+        (
+            "stale-codingbook",
+            "The historical codingbook is not sufficient to verify the current schema.",
+        ),
+        (
+            "cdisc-variable-definition",
+            "A conference paper does not override the official CDISC definition.",
+        ),
+        (
+            "omop-phenotype",
+            "Historical examples may discuss Concept IDs; do not invent one.",
+        ),
+    ],
+)
+def test_broader_forbidden_rules_allow_legitimate_historical_caveats(
+    case_id,
+    safe_response,
+):
+    case = _catalog_case(case_id)
+
+    assert not any(
+        re.search(pattern, safe_response)
+        for pattern in case["forbidden"]
+    )
+
+
+@pytest.mark.parametrize(
+    ("case_id", "expected_score"),
+    [
+        ("institutional-sql-without-dictionary", 80),
+        ("stale-codingbook", 90),
+        ("tmucrd-public-profile", 30),
+    ],
+)
+def test_forward_fixture_scores_remain_below_the_fixed_threshold(
+    case_id,
+    expected_score,
+):
+    case = _catalog_case(case_id)
+    rubric = yaml.safe_load(
+        (ROOT / "evals/rubric.yaml").read_text(encoding="utf-8")
+    )
+    response = (
+        ROOT / "tests/fixtures/forward" / f"{case_id}.md"
+    ).read_text(encoding="utf-8")
+
+    result = evaluate_response(case, rubric, response)
+
+    assert rubric["pass_threshold"] == 100
+    assert result.score == expected_score
+    assert result.passed is False
 
 
 def test_controls_are_saved_as_response_only_baselines():
@@ -133,6 +235,17 @@ def test_catalog_validation_rejects_invalid_regex():
     )
 
 
+def test_catalog_validation_records_invalid_unicode_form_without_normalizing():
+    case = _valid_case()
+    rubric = _valid_rubric()
+    rubric["pass_threshold"] = 20
+    rubric["normalization"]["unicode_form"] = "NOT-A-UNICODE-FORM"
+
+    assert validate_catalog({"cases": [case]}, rubric) == [
+        "rubric: unicode_form is invalid"
+    ]
+
+
 def test_catalog_validation_rejects_unreachable_threshold():
     """A threshold above every positive rule's total cannot produce a passing result."""
     case = _valid_case()
@@ -153,6 +266,13 @@ def _valid_case():
         "forbidden": [],
         "required_sections": ["Section"],
     }
+
+
+def _catalog_case(case_id):
+    cases = yaml.safe_load(
+        (ROOT / "evals/cases.yaml").read_text(encoding="utf-8")
+    )["cases"]
+    return next(case for case in cases if case["id"] == case_id)
 
 
 def _valid_rubric():

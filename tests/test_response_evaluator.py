@@ -3,6 +3,8 @@ from pathlib import Path
 import subprocess
 import sys
 
+import yaml
+
 from scripts.evaluate_response import evaluate_response
 
 
@@ -116,3 +118,50 @@ def test_cli_returns_json_and_exit_codes_for_response_fixtures():
     assert isinstance(payload["results"], list)
     assert failing.returncode == 1
     assert json.loads(failing.stdout)["passed"] is False
+
+
+def test_cli_fails_closed_deterministically_for_invalid_unicode_form(tmp_path):
+    rubric = {
+        "schema_version": "1",
+        "pass_threshold": 100,
+        "scoring": {
+            "required_pattern": 10,
+            "required_section": 10,
+            "forbidden_pattern": -100,
+        },
+        "normalization": {
+            "case_sensitive": False,
+            "unicode_form": "NOT-A-UNICODE-FORM",
+        },
+    }
+    rubric_path = tmp_path / "invalid-rubric.yaml"
+    rubric_path.write_text(
+        yaml.safe_dump(rubric, sort_keys=True),
+        encoding="utf-8",
+    )
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(ROOT / "scripts/evaluate_response.py"),
+            "--case",
+            "institutional-sql-without-dictionary",
+            "--response",
+            str(
+                ROOT
+                / "tests/fixtures/responses/compliant-institutional-sql.md"
+            ),
+            "--rubric",
+            str(rubric_path),
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 2
+    assert (
+        "invalid evaluation catalog: rubric: unicode_form is invalid"
+        in result.stderr
+    )
+    assert "Traceback" not in result.stderr

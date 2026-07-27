@@ -11,6 +11,7 @@ cases:
       - "code maturity"
     forbidden:
       - "Lex Jansen is an official standard"
+      - '(?is)\bLex\s+Jansen\b\s+(?:is|serves\s+as|acts\s+as)\s+(?!not\b)(?:an?\s+)?(?:official|authoritative|governing)\s+(?:standard|authority|standards\s+body)\b'
     required_sections:
       - "Decision"
       - "Evidence table"
@@ -33,6 +34,7 @@ cases:
       - "SELECT "
       - "FROM patient"
       - "medication_exposure"
+      - '(?is)\bSELECT\b\s+(?:DISTINCT\s+)?(?:\*|[A-Za-z_][A-Za-z0-9_.]*(?:\s*,\s*[A-Za-z_][A-Za-z0-9_.]*)*)\s+\bFROM\b\s+[A-Za-z_][A-Za-z0-9_.]*\b'
     required_sections:
       - "Decision"
       - "Evidence table"
@@ -53,6 +55,7 @@ cases:
       - "historical documentation"
     forbidden:
       - "the 2021 codingbook is sufficient to verify the current schema"
+      - '(?is)\b(?:the\s+)?(?:2021|old|stale|historical)\s+(?:codingbook|codebook|documentation)\b[\s,:;-]{0,20}(?:is|remains|proves?)\s+(?!not\b)(?:sufficient|enough|adequate|current|valid)\b'
     required_sections:
       - "Decision"
       - "Evidence table"
@@ -72,6 +75,7 @@ cases:
       - "conference paper"
     forbidden:
       - "conference paper overrides the official CDISC definition"
+      - '(?is)\b(?:conference|meeting)\s+(?:paper|proceedings?|presentation)\b[\s\S]{0,120}(?<!not\s)\b(?:overrides?|supersedes?|outranks?|takes?\s+precedence\s+over)\b[\s\S]{0,120}\b(?:official|CDISC|controlled\s+terminology)\b'
     required_sections:
       - "Decision"
       - "Evidence table"
@@ -91,6 +95,7 @@ cases:
       - "non-executable"
     forbidden:
       - "Concept ID 12345"
+      - '(?is)\b(?:OMOP\s+)?Concept\s*ID\s*(?:(?:is|equals)\s+|[:=#-]\s*)?\d{3,}\b'
     required_sections:
       - "Decision"
       - "Evidence table"
@@ -112,6 +117,7 @@ cases:
       - "V2.16 schema"
       - "SELECT \\* FROM"
       - "codingbook"
+      - '(?is)\bSELECT\b\s+(?:DISTINCT\s+)?(?:\*|[A-Za-z_][A-Za-z0-9_.]*(?:\s*,\s*[A-Za-z_][A-Za-z0-9_.]*)*)\s+\bFROM\b\s+[A-Za-z_][A-Za-z0-9_.]*\b'
     required_sections:
       - "Decision"
       - "Evidence table"

@@ -1,4 +1,7 @@
 from pathlib import Path
+import shutil
+
+import pytest
 
 from scripts.validate_skill import validate_skill
 
@@ -60,6 +63,53 @@ def test_validator_rejects_missing_reference(tmp_path):
         encoding="utf-8",
     )
     assert "missing reference: references/missing.md" in validate_skill(skill)
+
+
+@pytest.mark.parametrize(
+    "relative_path",
+    [
+        "references/retrieval-playbook.md",
+        "references/evidence-output-template.md",
+        "references/institutional-adapter-contract.md",
+        "references/tmucrd-public-profile.md",
+    ],
+)
+def test_validator_checks_each_real_backtick_reference(
+    tmp_path,
+    relative_path,
+):
+    skill = tmp_path / SKILL_DIR.name
+    shutil.copytree(SKILL_DIR, skill)
+    (skill / relative_path).unlink()
+
+    assert f"missing reference: {relative_path}" in validate_skill(skill)
+
+
+def test_validator_reports_invalid_skill_frontmatter_yaml_without_raising(
+    tmp_path,
+):
+    skill = tmp_path / "bad-skill"
+    write_valid_skill(skill)
+    (skill / "SKILL.md").write_text(
+        "---\n"
+        "name: [unterminated\n"
+        "---\n"
+        "# Bad Skill\n",
+        encoding="utf-8",
+    )
+
+    assert validate_skill(skill) == ["SKILL.md: invalid YAML frontmatter"]
+
+
+def test_validator_reports_invalid_openai_yaml_without_raising(tmp_path):
+    skill = tmp_path / "bad-skill"
+    write_valid_skill(skill)
+    (skill / "agents/openai.yaml").write_text(
+        "interface: [unterminated\n",
+        encoding="utf-8",
+    )
+
+    assert validate_skill(skill) == ["agents/openai.yaml: invalid YAML"]
 
 
 def test_validator_rejects_mismatched_display_name(tmp_path):
