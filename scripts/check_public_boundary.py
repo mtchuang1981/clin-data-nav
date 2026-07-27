@@ -26,7 +26,8 @@ SECRET_PATTERNS = (
     re.compile(r"\bsk-[A-Za-z0-9_-]{16,}\b"),
 )
 TEXT_SUFFIXES = {".md", ".txt", ".yaml", ".yml", ".json", ".py", ".toml"}
-SKIP_DIRECTORIES = {".git", ".pytest_cache", ".superpowers", "__pycache__", "dist"}
+SKIP_DIRECTORIES = {".git", ".pytest_cache", "__pycache__", "dist"}
+SDD_SCRATCH_DIRECTORY = Path(".superpowers/sdd")
 LARGE_TEXT_ALLOWLIST = {
     "skills/clinical-data-research-navigator/references/tmucrd-public-profile.md"
 }
@@ -42,10 +43,14 @@ def scan_repository(root: Path, max_text_bytes: int = 200_000) -> list[Finding]:
     root = root.resolve()
 
     for directory, child_directories, filenames in os.walk(root):
-        child_directories[:] = sorted(
-            name for name in child_directories if name not in SKIP_DIRECTORIES
-        )
         directory_path = Path(directory)
+        relative_directory = directory_path.relative_to(root)
+        child_directories[:] = sorted(
+            name
+            for name in child_directories
+            if name not in SKIP_DIRECTORIES
+            and relative_directory / name != SDD_SCRATCH_DIRECTORY
+        )
         for filename in sorted(filenames):
             path = directory_path / filename
             relative_path = path.relative_to(root).as_posix()

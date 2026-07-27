@@ -71,6 +71,20 @@ def test_scanner_skips_ignored_build_and_sdd_scratch(tmp_path):
     assert scan_repository(tmp_path) == []
 
 
+def test_scanner_scans_non_sdd_superpowers_content(tmp_path):
+    directory = tmp_path / ".superpowers" / "not-sdd"
+    directory.mkdir(parents=True)
+    (directory / "private.pdf").write_bytes(b"synthetic")
+    (directory / "notes.md").write_text("sk-" + ("x" * 24), encoding="utf-8")
+
+    findings = scan_repository(tmp_path)
+
+    assert [(item.path, item.rule) for item in findings] == [
+        (".superpowers/not-sdd/notes.md", "possible-secret"),
+        (".superpowers/not-sdd/private.pdf", "pdf-file"),
+    ]
+
+
 def test_scanner_skips_git_and_python_cache_directories(tmp_path):
     for directory in (".git", ".pytest_cache", "__pycache__"):
         path = tmp_path / directory / "archive.pdf"
