@@ -1,11 +1,27 @@
+## Decision
+
 **SPECIFICATION ONLY — NOT EXECUTABLE**
 
-## Execution gate
+## Evidence table
 
-An approved versioned data dictionary, live metadata verification, and passing
-fixtures are required before any executable implementation.
+The request has no approved institutional Adapter, source mappings, or
+fixtures.
 
-## Mapping checklist
+## Data contract
 
-Confirm the governed source objects, stable person key, approved linkage path,
-adult definition, medication value set, timing rules, and output controls.
+An approved versioned data dictionary is required before implementation.
+
+## Code maturity
+
+The proposed work remains conceptual until governed evidence is supplied.
+
+## Validation gaps
+
+Live metadata verification and passing fixtures are required before any
+executable implementation.
+
+## Sources
+
+The mapping checklist must confirm governed source objects, stable person keys,
+approved linkage paths, adult definitions, medication value sets, timing rules,
+and output controls.

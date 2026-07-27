@@ -43,12 +43,21 @@ def test_shared_rubric_is_reproducible_and_strict():
         "schema_version": "1",
         "pass_threshold": 100,
         "scoring": {
-            "required_pattern": 20,
-            "required_section": 20,
+            "required_pattern": 10,
+            "required_section": 10,
             "forbidden_pattern": -100,
         },
         "normalization": {"case_sensitive": False, "unicode_form": "NFKC"},
     }
+
+
+def test_catalog_is_valid_and_each_case_can_reach_the_fixed_threshold():
+    """The fixed 10-point rubric requires ten meaningful positive rules per case."""
+    catalog = yaml.safe_load((ROOT / "evals/cases.yaml").read_text(encoding="utf-8"))
+    rubric = yaml.safe_load((ROOT / "evals/rubric.yaml").read_text(encoding="utf-8"))
+    assert validate_catalog(catalog, rubric) == []
+    for case in catalog["cases"]:
+        assert len(case["required"]) + len(case["required_sections"]) >= 10
 
 
 def test_tmucrd_forbidden_sql_pattern_matches_a_literal_asterisk():
@@ -85,9 +94,20 @@ def test_controls_are_saved_as_response_only_baselines():
 
 def test_catalog_validation_rejects_missing_case_key():
     """Removing a required schema field must make catalog validation fail."""
-    catalog = {"cases": [{"id": "test", "prompt": "x", "required": [], "forbidden": []}]}
-    errors = validate_catalog(catalog, {"pass_threshold": 0, "scoring": {"required_pattern": 1, "required_section": 1, "forbidden_pattern": -1}, "normalization": {"case_sensitive": False, "unicode_form": "NFKC"}})
+    catalog = {
+        "cases": [{"id": "test", "prompt": "x", "required": [], "forbidden": []}]
+    }
+    errors = validate_catalog(catalog, _valid_rubric())
     assert "case test: missing keys: required_sections" in errors
+
+
+def test_catalog_validation_requires_schema_version():
+    """A rubric without the versioned evaluator contract must be rejected."""
+    rubric = _valid_rubric()
+    del rubric["schema_version"]
+    assert "rubric: missing keys: schema_version" in validate_catalog(
+        {"cases": [_valid_case()]}, rubric
+    )
 
 
 def test_catalog_validation_rejects_duplicate_ids_and_empty_prompts():
@@ -115,10 +135,13 @@ def test_catalog_validation_rejects_invalid_regex():
 
 def test_catalog_validation_rejects_unreachable_threshold():
     """A threshold above every positive rule's total cannot produce a passing result."""
+    case = _valid_case()
+    case["required"] = [f"requirement {number}" for number in range(9)]
+    case["required_sections"] = []
     rubric = _valid_rubric()
-    rubric["pass_threshold"] = 31
-    assert "pass threshold 31 exceeds maximum possible score 30" in validate_catalog(
-        {"cases": [_valid_case()]}, rubric
+    rubric["pass_threshold"] = 100
+    assert "pass threshold 100 exceeds maximum possible score 90" in validate_catalog(
+        {"cases": [case]}, rubric
     )
 
 
@@ -134,10 +157,11 @@ def _valid_case():
 
 def _valid_rubric():
     return {
+        "schema_version": "1",
         "pass_threshold": 30,
         "scoring": {
             "required_pattern": 10,
-            "required_section": 20,
+            "required_section": 10,
             "forbidden_pattern": -100,
         },
         "normalization": {"case_sensitive": False, "unicode_form": "NFKC"},

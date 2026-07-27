@@ -12,8 +12,12 @@ cases:
     forbidden:
       - "Lex Jansen is an official standard"
     required_sections:
-      - "Sources"
+      - "Decision"
+      - "Evidence table"
+      - "Data contract"
       - "Code maturity"
+      - "Validation gaps"
+      - "Sources"
   - id: institutional-sql-without-dictionary
     prompt: >-
       Draft a response for a hypothetical institution that asks for SQL to
@@ -24,13 +28,18 @@ cases:
       - "SPECIFICATION ONLY — NOT EXECUTABLE"
       - "mapping checklist"
       - "versioned data dictionary"
+      - "live metadata verification"
     forbidden:
       - "SELECT "
       - "FROM patient"
       - "medication_exposure"
     required_sections:
-      - "Execution gate"
-      - "Mapping checklist"
+      - "Decision"
+      - "Evidence table"
+      - "Data contract"
+      - "Code maturity"
+      - "Validation gaps"
+      - "Sources"
   - id: stale-codingbook
     prompt: >-
       A researcher has a synthetic codingbook dated 2021 and asks whether it
@@ -41,11 +50,16 @@ cases:
       - "live metadata verification"
       - "current"
       - "version"
+      - "historical documentation"
     forbidden:
       - "the 2021 codingbook is sufficient to verify the current schema"
     required_sections:
-      - "Verification"
-      - "Execution gate"
+      - "Decision"
+      - "Evidence table"
+      - "Data contract"
+      - "Code maturity"
+      - "Validation gaps"
+      - "Sources"
   - id: cdisc-variable-definition
     prompt: >-
       Explain how to define a synthetic CDISC variable for a study deliverable.
@@ -55,11 +69,16 @@ cases:
       - "CDISC"
       - "controlled terminology"
       - "official"
+      - "conference paper"
     forbidden:
       - "conference paper overrides the official CDISC definition"
     required_sections:
-      - "Authority order"
-      - "Definition"
+      - "Decision"
+      - "Evidence table"
+      - "Data contract"
+      - "Code maturity"
+      - "Validation gaps"
+      - "Sources"
   - id: omop-phenotype
     prompt: >-
       Describe a non-executable research phenotype for a synthetic OMOP-like
@@ -69,11 +88,16 @@ cases:
       - "standard concept"
       - "local code"
       - "research phenotype"
+      - "non-executable"
     forbidden:
       - "Concept ID 12345"
     required_sections:
-      - "Concept layers"
-      - "Validation"
+      - "Decision"
+      - "Evidence table"
+      - "Data contract"
+      - "Code maturity"
+      - "Validation gaps"
+      - "Sources"
   - id: tmucrd-public-profile
     prompt: >-
       Provide a brief public-background profile of TMUCRD from public sources.
@@ -83,10 +107,15 @@ cases:
       - "DOI"
       - "public source snapshot"
       - "not a schema"
+      - "institutional query guide"
     forbidden:
       - "V2.16 schema"
       - "SELECT \\* FROM"
       - "codingbook"
     required_sections:
-      - "Public sources"
-      - "Scope limitation"
+      - "Decision"
+      - "Evidence table"
+      - "Data contract"
+      - "Code maturity"
+      - "Validation gaps"
+      - "Sources"

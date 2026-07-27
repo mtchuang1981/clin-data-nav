@@ -15,7 +15,7 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 CASE_KEYS = {"id", "prompt", "required", "forbidden", "required_sections"}
 RUBRIC_KEYS = {"schema_version", "pass_threshold", "scoring", "normalization"}
-REQUIRED_RUBRIC_KEYS = {"pass_threshold", "scoring", "normalization"}
+REQUIRED_RUBRIC_KEYS = RUBRIC_KEYS
 SCORING_KEYS = {"required_pattern", "required_section", "forbidden_pattern"}
 NORMALIZATION_KEYS = {"case_sensitive", "unicode_form"}
 

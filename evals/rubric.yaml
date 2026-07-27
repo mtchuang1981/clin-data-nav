@@ -1,8 +1,8 @@
 schema_version: "1"
 pass_threshold: 100
 scoring:
-  required_pattern: 20
-  required_section: 20
+  required_pattern: 10
+  required_section: 10
   forbidden_pattern: -100
 normalization:
   case_sensitive: false
