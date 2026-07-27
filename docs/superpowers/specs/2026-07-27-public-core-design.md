@@ -1,6 +1,6 @@
 # Clinical Data Research Navigator 公開 Core 專案設計
 
-**狀態：** 已核准方案 A，待使用者審閱書面規格
+**狀態：** 已核准，可進入 implementation plan 與 TDD 實作
 
 **日期：** 2026-07-27
 
