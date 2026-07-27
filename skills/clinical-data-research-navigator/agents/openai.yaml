@@ -1,0 +1,4 @@
+interface:
+  display_name: "Clinical Data Research Navigator"
+  short_description: "Navigate clinical-data standards, evidence, and implementation contracts"
+  default_prompt: "Use $clinical-data-research-navigator to route a clinical-data question to authoritative sources and produce a verifiable implementation specification."
