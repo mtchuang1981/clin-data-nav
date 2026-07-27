@@ -298,6 +298,74 @@ def test_unicode_normalized_member_collision_is_rejected_before_write(
 
 
 @pytest.mark.parametrize(
+    "member_names",
+    [
+        ("assets", "assets/child.txt"),
+        ("assets/child.txt", "assets"),
+        ("Assets", "assets/child.txt"),
+        ("assets/child.txt", "Assets"),
+    ],
+    ids=[
+        "exact-ancestor-first",
+        "exact-descendant-first",
+        "casefolded-ancestor-first",
+        "casefolded-descendant-first",
+    ],
+)
+def test_portable_file_ancestor_conflict_is_rejected_before_staging(
+    tmp_path,
+    monkeypatch,
+    member_names,
+):
+    package = _build_test_package(tmp_path)
+    for member_name in member_names:
+        _append_declared_member(
+            package,
+            member_name,
+            member_name.encode("utf-8"),
+        )
+    destination = tmp_path / "selected-skills"
+    staging_started = False
+    real_temporary_directory = (
+        install_local_module.tempfile.TemporaryDirectory
+    )
+
+    def track_staging(*args, **kwargs):
+        nonlocal staging_started
+        staging_started = True
+        return real_temporary_directory(*args, **kwargs)
+
+    monkeypatch.setattr(
+        install_local_module.tempfile,
+        "TemporaryDirectory",
+        track_staging,
+    )
+
+    with pytest.raises(ValueError, match="portable path ancestor conflict"):
+        install_package(package.archive, destination)
+
+    assert not staging_started
+    assert not (
+        destination / "clinical-data-research-navigator"
+    ).exists()
+    assert not list(
+        tmp_path.glob(".clinical-data-research-navigator-*")
+    )
+
+
+def test_portable_sibling_members_with_common_directory_install(tmp_path):
+    package = _build_test_package(tmp_path)
+    _append_declared_member(package, "assets/a.txt", b"a")
+    _append_declared_member(package, "assets/b.txt", b"b")
+    destination = tmp_path / "selected-skills"
+
+    installed = install_package(package.archive, destination)
+
+    assert (installed / "assets/a.txt").read_bytes() == b"a"
+    assert (installed / "assets/b.txt").read_bytes() == b"b"
+
+
+@pytest.mark.parametrize(
     "member_name",
     [
         "assets/trailing-dot.",

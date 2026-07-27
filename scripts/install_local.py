@@ -127,6 +127,15 @@ def install_package(
                     f"manifest hash mismatch for {info.filename}"
                 )
             verified_files[info.filename] = data
+        for portable_key, name in portable_names.items():
+            for component_count in range(1, len(portable_key)):
+                ancestor_key = portable_key[:component_count]
+                ancestor_name = portable_names.get(ancestor_key)
+                if ancestor_name is not None:
+                    raise ValueError(
+                        "portable path ancestor conflict: "
+                        f"{ancestor_name} and {name}"
+                    )
         if (
             len(member_names) != len(set(member_names))
             or set(member_names) != set(records)
