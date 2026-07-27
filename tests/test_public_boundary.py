@@ -2,11 +2,33 @@ from pathlib import Path
 import subprocess
 import sys
 
+import pytest
+
 from scripts.check_public_boundary import scan_repository
 
 
 ROOT = Path(__file__).resolve().parents[1]
 PROFILE = ROOT / "skills/clinical-data-research-navigator/references/tmucrd-public-profile.md"
+
+
+def _initialize_git_repository(root: Path) -> None:
+    subprocess.run(
+        ["git", "init", "-q"],
+        cwd=root,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+
+def _force_track(root: Path, relative_path: str) -> None:
+    subprocess.run(
+        ["git", "add", "-f", "--", relative_path],
+        cwd=root,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
 
 
 def test_scanner_blocks_private_dictionary_filename(tmp_path):
@@ -49,6 +71,41 @@ def test_scanner_flags_text_larger_than_limit(tmp_path):
     ]
 
 
+@pytest.mark.parametrize("filename", [".env", ".env.production"])
+def test_scanner_unconditionally_rejects_force_tracked_env_files(
+    tmp_path,
+    filename,
+):
+    _initialize_git_repository(tmp_path)
+    path = tmp_path / filename
+    path.write_text("SERVICE_TOKEN=synthetic-secret-value", encoding="utf-8")
+    _force_track(tmp_path, filename)
+
+    findings = scan_repository(tmp_path)
+
+    assert [(item.path, item.rule) for item in findings] == [
+        (filename, "environment-file")
+    ]
+
+
+@pytest.mark.parametrize(
+    "filename",
+    ["private-dictionary.csv", "cohort.parquet"],
+)
+def test_scanner_rejects_non_allowlisted_data_artifacts(
+    tmp_path,
+    filename,
+):
+    path = tmp_path / filename
+    path.write_bytes(b"synthetic data-shaped payload")
+
+    findings = scan_repository(tmp_path)
+
+    assert [(item.path, item.rule) for item in findings] == [
+        (filename, "data-artifact")
+    ]
+
+
 def test_scanner_allows_fixed_large_public_profile_path(tmp_path):
     path = (
         tmp_path
@@ -60,6 +117,18 @@ def test_scanner_allows_fixed_large_public_profile_path(tmp_path):
 
 
 def test_scanner_skips_ignored_build_and_sdd_scratch(tmp_path):
+    _initialize_git_repository(tmp_path)
+    (tmp_path / ".gitignore").write_text(
+        ".superpowers/sdd/\ndist/\n",
+        encoding="utf-8",
+    )
+    subprocess.run(
+        ["git", "add", "--", ".gitignore"],
+        cwd=tmp_path,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
     ignored = tmp_path / ".superpowers" / "sdd"
     ignored.mkdir(parents=True)
     (ignored / "tmucrd-v2.16-dictionary.txt").write_text(
@@ -69,6 +138,20 @@ def test_scanner_skips_ignored_build_and_sdd_scratch(tmp_path):
     (tmp_path / "dist").mkdir()
     (tmp_path / "dist" / "archive.pdf").write_bytes(b"synthetic")
     assert scan_repository(tmp_path) == []
+
+
+def test_scanner_does_not_skip_force_tracked_sdd_private_content(tmp_path):
+    _initialize_git_repository(tmp_path)
+    path = tmp_path / ".superpowers/sdd/notes.md"
+    path.parent.mkdir(parents=True)
+    path.write_text("sk-" + ("x" * 24), encoding="utf-8")
+    _force_track(tmp_path, ".superpowers/sdd/notes.md")
+
+    findings = scan_repository(tmp_path)
+
+    assert [(item.path, item.rule) for item in findings] == [
+        (".superpowers/sdd/notes.md", "possible-secret")
+    ]
 
 
 def test_scanner_scans_non_sdd_superpowers_content(tmp_path):

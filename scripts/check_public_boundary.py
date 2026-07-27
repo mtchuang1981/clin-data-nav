@@ -7,6 +7,7 @@ from dataclasses import dataclass
 import os
 from pathlib import Path
 import re
+import subprocess
 
 
 @dataclass(frozen=True)
@@ -26,6 +27,24 @@ SECRET_PATTERNS = (
     re.compile(r"\bsk-[A-Za-z0-9_-]{16,}\b"),
 )
 TEXT_SUFFIXES = {".md", ".txt", ".yaml", ".yml", ".json", ".py", ".toml"}
+DATA_SUFFIXES = {
+    ".arrow",
+    ".csv",
+    ".db",
+    ".dta",
+    ".feather",
+    ".parquet",
+    ".rdata",
+    ".rds",
+    ".sas7bdat",
+    ".sav",
+    ".sqlite",
+    ".tsv",
+    ".xls",
+    ".xlsx",
+    ".xpt",
+}
+DATA_ARTIFACT_ALLOWLIST: set[str] = set()
 SKIP_DIRECTORIES = {".git", ".pytest_cache", "__pycache__", "dist"}
 SDD_SCRATCH_DIRECTORY = Path(".superpowers/sdd")
 LARGE_TEXT_ALLOWLIST = {
@@ -37,24 +56,65 @@ SYNTHETIC_EVAL_FIXTURES = {
 }
 
 
+def _tracked_paths(root: Path) -> set[str] | None:
+    if not (root / ".git").exists():
+        return None
+    result = subprocess.run(
+        ["git", "ls-files", "-z"],
+        cwd=root,
+        check=False,
+        capture_output=True,
+    )
+    if result.returncode != 0:
+        return None
+    return {
+        item.decode("utf-8", errors="surrogateescape")
+        for item in result.stdout.split(b"\0")
+        if item
+    }
+
+
+def _is_sdd_scratch_path(relative_path: Path) -> bool:
+    return (
+        relative_path == SDD_SCRATCH_DIRECTORY
+        or SDD_SCRATCH_DIRECTORY in relative_path.parents
+    )
+
+
 def scan_repository(root: Path, max_text_bytes: int = 200_000) -> list[Finding]:
     """Return deterministic public-boundary findings below *root*."""
     findings: list[Finding] = []
     root = root.resolve()
+    tracked_paths = _tracked_paths(root)
 
     for directory, child_directories, filenames in os.walk(root):
         directory_path = Path(directory)
-        relative_directory = directory_path.relative_to(root)
         child_directories[:] = sorted(
             name
             for name in child_directories
             if name not in SKIP_DIRECTORIES
-            and relative_directory / name != SDD_SCRATCH_DIRECTORY
         )
         for filename in sorted(filenames):
             path = directory_path / filename
-            relative_path = path.relative_to(root).as_posix()
+            relative = path.relative_to(root)
+            relative_path = relative.as_posix()
+            if (
+                _is_sdd_scratch_path(relative)
+                and tracked_paths is not None
+                and relative_path not in tracked_paths
+            ):
+                continue
             lowercase_name = filename.lower()
+
+            if lowercase_name == ".env" or lowercase_name.startswith(".env."):
+                findings.append(
+                    Finding(
+                        relative_path,
+                        "environment-file",
+                        "environment files are not permitted",
+                    )
+                )
+                continue
 
             has_private_name = lowercase_name in PRIVATE_NAMES or any(
                 part in lowercase_name for part in PRIVATE_PARTS
@@ -71,6 +131,19 @@ def scan_repository(root: Path, max_text_bytes: int = 200_000) -> list[Finding]:
             if path.suffix.lower() == ".pdf":
                 findings.append(
                     Finding(relative_path, "pdf-file", "PDF files are not permitted"))
+                continue
+
+            if (
+                path.suffix.lower() in DATA_SUFFIXES
+                and relative_path not in DATA_ARTIFACT_ALLOWLIST
+            ):
+                findings.append(
+                    Finding(
+                        relative_path,
+                        "data-artifact",
+                        "data artifacts require an explicit public allowlist entry",
+                    )
+                )
                 continue
 
             if path.suffix.lower() not in TEXT_SUFFIXES:
