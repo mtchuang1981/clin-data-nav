@@ -3,6 +3,8 @@ import re
 
 import yaml
 
+from scripts.evaluate_response import validate_catalog
+
 
 ROOT = Path(__file__).resolve().parents[1]
 CASE_IDS = {
@@ -41,8 +43,8 @@ def test_shared_rubric_is_reproducible_and_strict():
         "schema_version": "1",
         "pass_threshold": 100,
         "scoring": {
-            "required_pattern": 10,
-            "required_section": 10,
+            "required_pattern": 20,
+            "required_section": 20,
             "forbidden_pattern": -100,
         },
         "normalization": {"case_sensitive": False, "unicode_form": "NFKC"},
@@ -79,3 +81,64 @@ def test_controls_are_saved_as_response_only_baselines():
         ):
             assert marker not in lowered
         assert not lowered.startswith("public-background text (safe to reuse):")
+
+
+def test_catalog_validation_rejects_missing_case_key():
+    """Removing a required schema field must make catalog validation fail."""
+    catalog = {"cases": [{"id": "test", "prompt": "x", "required": [], "forbidden": []}]}
+    errors = validate_catalog(catalog, {"pass_threshold": 0, "scoring": {"required_pattern": 1, "required_section": 1, "forbidden_pattern": -1}, "normalization": {"case_sensitive": False, "unicode_form": "NFKC"}})
+    assert "case test: missing keys: required_sections" in errors
+
+
+def test_catalog_validation_rejects_duplicate_ids_and_empty_prompts():
+    """Duplicate IDs or whitespace-only prompts must not enter the offline catalog."""
+    case = {
+        "id": "duplicate",
+        "prompt": " ",
+        "required": [],
+        "forbidden": [],
+        "required_sections": [],
+    }
+    errors = validate_catalog({"cases": [case, {**case, "prompt": "valid"}]}, _valid_rubric())
+    assert "duplicate case id: duplicate" in errors
+    assert "case duplicate: prompt must not be empty" in errors
+
+
+def test_catalog_validation_rejects_invalid_regex():
+    """An uncompileable rule must fail validation rather than crash evaluation later."""
+    case = _valid_case()
+    case["required"] = ["["]
+    assert "case test: invalid required regex: [" in validate_catalog(
+        {"cases": [case]}, _valid_rubric()
+    )
+
+
+def test_catalog_validation_rejects_unreachable_threshold():
+    """A threshold above every positive rule's total cannot produce a passing result."""
+    rubric = _valid_rubric()
+    rubric["pass_threshold"] = 31
+    assert "pass threshold 31 exceeds maximum possible score 30" in validate_catalog(
+        {"cases": [_valid_case()]}, rubric
+    )
+
+
+def _valid_case():
+    return {
+        "id": "test",
+        "prompt": "valid prompt",
+        "required": ["required"],
+        "forbidden": [],
+        "required_sections": ["Section"],
+    }
+
+
+def _valid_rubric():
+    return {
+        "pass_threshold": 30,
+        "scoring": {
+            "required_pattern": 10,
+            "required_section": 20,
+            "forbidden_pattern": -100,
+        },
+        "normalization": {"case_sensitive": False, "unicode_form": "NFKC"},
+    }
