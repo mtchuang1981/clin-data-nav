@@ -35,6 +35,17 @@ def initialize_repository(path: Path, branch: str = "main") -> None:
 
 
 def default_branch_is_main(root: Path) -> bool:
+    head = subprocess.run(
+        ["git", "symbolic-ref", "--quiet", "--short", "HEAD"],
+        cwd=root,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if head.returncode == 0:
+        return head.stdout.strip() == "main"
+    if head.returncode != 1:
+        return False
     result = subprocess.run(
         ["git", "show-ref", "--verify", "--quiet", "refs/heads/main"],
         cwd=root,
@@ -48,6 +59,20 @@ def default_branch_is_main(root: Path) -> bool:
     if github_base_ref:
         return github_base_ref == "main"
     return os.environ.get("GITHUB_REF") == "refs/heads/main"
+
+
+def test_attached_feature_with_local_main_ref_is_rejected(tmp_path, monkeypatch):
+    repository = tmp_path / "repository"
+    initialize_repository(repository)
+    subprocess.run(
+        ["git", "checkout", "-q", "-b", "feature"],
+        cwd=repository,
+        check=True,
+    )
+    monkeypatch.delenv("GITHUB_BASE_REF", raising=False)
+    monkeypatch.delenv("GITHUB_REF", raising=False)
+
+    assert not default_branch_is_main(repository)
 
 
 def test_detached_checkout_with_local_main_ref_is_accepted(tmp_path):
