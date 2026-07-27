@@ -1,0 +1,50 @@
+from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parents[1]
+SKILL = ROOT / "skills/clinical-data-research-navigator"
+
+
+def test_skill_routes_all_four_references():
+    text = (SKILL / "SKILL.md").read_text(encoding="utf-8")
+    for name in (
+        "retrieval-playbook.md",
+        "evidence-output-template.md",
+        "institutional-adapter-contract.md",
+        "tmucrd-public-profile.md",
+    ):
+        assert f"references/{name}" in text
+
+
+def test_build_rwe_sap_is_optional():
+    text = (SKILL / "SKILL.md").read_text(encoding="utf-8").lower()
+    assert "optional" in text
+    assert "build-rwe-sap" in text
+    assert "must install build-rwe-sap" not in text
+
+
+def test_skill_forbids_placeholder_sql_without_metadata():
+    text = (SKILL / "SKILL.md").read_text(encoding="utf-8")
+    assert "Do not provide even placeholder SQL" in text
+
+
+def test_skill_forbids_schema_like_placeholder_names_without_metadata():
+    text = (SKILL / "SKILL.md").read_text(encoding="utf-8")
+    assert "Do not create snake_case placeholder identifiers" in text
+
+
+def test_tmucrd_profile_is_public_snapshot_not_schema():
+    text = (
+        SKILL / "references/tmucrd-public-profile.md"
+    ).read_text(encoding="utf-8")
+    assert "public source snapshot" in text
+    assert "not a data dictionary" in text
+    assert "10.1136/bmjhci-2023-100890" in text
+    assert "V2.16" not in text
+
+
+def test_examples_use_only_synthetic_institutional_names():
+    for path in (ROOT / "examples").glob("*.md"):
+        text = path.read_text(encoding="utf-8")
+        assert "SYNTH_" in text
+        assert "TMUCRD" not in text
