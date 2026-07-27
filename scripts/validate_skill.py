@@ -58,6 +58,17 @@ def validate_skill(skill_dir: Path) -> list[str]:
         errors.append(
             "default prompt must mention $clinical-data-research-navigator"
         )
+    if isinstance(default_prompt, str) and len(default_prompt) > 200:
+        errors.append("default prompt must not exceed 200 Unicode code points")
+    if (
+        not isinstance(default_prompt, str)
+        or not default_prompt.endswith((".", "!", "?"))
+        or not default_prompt[:-1].strip()
+        or any(terminator in default_prompt[:-1] for terminator in ".!?")
+    ):
+        errors.append(
+            "default prompt must be exactly one non-empty sentence ending in '.', '!', or '?'"
+        )
     return errors
 
 

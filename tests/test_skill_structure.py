@@ -86,3 +86,45 @@ def test_validator_requires_skill_invocation_in_default_prompt(tmp_path):
         encoding="utf-8",
     )
     assert "default prompt must mention $clinical-data-research-navigator" in validate_skill(skill)
+
+
+def test_validator_accepts_a_single_short_default_prompt(tmp_path):
+    skill = tmp_path / "valid-skill"
+    write_valid_skill(skill)
+
+    assert validate_skill(skill) == []
+
+
+def test_validator_rejects_a_multi_sentence_default_prompt(tmp_path):
+    skill = tmp_path / "bad-skill"
+    write_valid_skill(skill)
+    (skill / "agents/openai.yaml").write_text(
+        "interface:\n"
+        '  display_name: "Clinical Data Research Navigator"\n'
+        '  short_description: "A valid test description"\n'
+        '  default_prompt: "Use $clinical-data-research-navigator for a clinical-data question. Then continue."\n',
+        encoding="utf-8",
+    )
+
+    assert (
+        "default prompt must be exactly one non-empty sentence ending in '.', '!', or '?'"
+        in validate_skill(skill)
+    )
+
+
+def test_validator_rejects_an_overlong_default_prompt(tmp_path):
+    skill = tmp_path / "bad-skill"
+    write_valid_skill(skill)
+    prefix = "Use $clinical-data-research-navigator for a clinical-data question "
+    default_prompt = prefix + "x" * (201 - len(prefix) - 1) + "."
+    (skill / "agents/openai.yaml").write_text(
+        "interface:\n"
+        '  display_name: "Clinical Data Research Navigator"\n'
+        '  short_description: "A valid test description"\n'
+        f'  default_prompt: "{default_prompt}"\n',
+        encoding="utf-8",
+    )
+
+    assert "default prompt must not exceed 200 Unicode code points" in validate_skill(
+        skill
+    )
