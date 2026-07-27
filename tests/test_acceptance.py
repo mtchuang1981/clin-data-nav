@@ -1,5 +1,8 @@
+import os
 from pathlib import Path
 import subprocess
+
+import pytest
 
 from scripts.check_public_boundary import scan_repository
 from scripts.validate_skill import validate_skill
@@ -9,15 +12,91 @@ ROOT = Path(__file__).resolve().parents[1]
 SKILL = ROOT / "skills/clinical-data-research-navigator"
 
 
-def default_branch_is_main() -> bool:
-    result = subprocess.run(
-        ["git", "branch", "--show-current"],
-        cwd=ROOT,
+def initialize_repository(path: Path, branch: str = "main") -> None:
+    subprocess.run(
+        ["git", "init", "-q", "-b", branch, path],
         check=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "Acceptance Test"],
+        cwd=path,
+        check=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.email", "acceptance@example.invalid"],
+        cwd=path,
+        check=True,
+    )
+    subprocess.run(
+        ["git", "commit", "-q", "--allow-empty", "-m", "baseline"],
+        cwd=path,
+        check=True,
+    )
+
+
+def default_branch_is_main(root: Path) -> bool:
+    result = subprocess.run(
+        ["git", "show-ref", "--verify", "--quiet", "refs/heads/main"],
+        cwd=root,
+        check=False,
         capture_output=True,
         text=True,
     )
-    return result.stdout.strip() == "main"
+    if result.returncode == 0:
+        return True
+    github_base_ref = os.environ.get("GITHUB_BASE_REF")
+    if github_base_ref:
+        return github_base_ref == "main"
+    return os.environ.get("GITHUB_REF") == "refs/heads/main"
+
+
+def test_detached_checkout_with_local_main_ref_is_accepted(tmp_path):
+    repository = tmp_path / "repository"
+    initialize_repository(repository)
+    subprocess.run(
+        ["git", "checkout", "-q", "--detach", "HEAD"],
+        cwd=repository,
+        check=True,
+    )
+
+    assert default_branch_is_main(repository)
+
+
+@pytest.mark.parametrize(
+    ("base_ref", "ref"),
+    [
+        ("main", "refs/pull/123/merge"),
+        ("", "refs/heads/main"),
+    ],
+)
+def test_detached_checkout_uses_github_main_target(
+    tmp_path, monkeypatch, base_ref, ref
+):
+    repository = tmp_path / "repository"
+    initialize_repository(repository, branch="feature")
+    subprocess.run(
+        ["git", "checkout", "-q", "--detach", "HEAD"],
+        cwd=repository,
+        check=True,
+    )
+    monkeypatch.setenv("GITHUB_BASE_REF", base_ref)
+    monkeypatch.setenv("GITHUB_REF", ref)
+
+    assert default_branch_is_main(repository)
+
+
+def test_detached_checkout_rejects_non_main_github_target(tmp_path, monkeypatch):
+    repository = tmp_path / "repository"
+    initialize_repository(repository, branch="feature")
+    subprocess.run(
+        ["git", "checkout", "-q", "--detach", "HEAD"],
+        cwd=repository,
+        check=True,
+    )
+    monkeypatch.setenv("GITHUB_BASE_REF", "release")
+    monkeypatch.setenv("GITHUB_REF", "refs/pull/123/merge")
+
+    assert not default_branch_is_main(repository)
 
 
 def six_eval_cases_exist() -> bool:
@@ -52,7 +131,7 @@ def required_repository_policy_exists() -> bool:
 
 
 def test_v010_acceptance_contract():
-    assert default_branch_is_main()
+    assert default_branch_is_main(ROOT)
     assert validate_skill(SKILL) == []
     assert scan_repository(ROOT) == []
     assert six_eval_cases_exist()
