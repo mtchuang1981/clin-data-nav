@@ -224,6 +224,16 @@ def test_public_profile_has_required_public_source_guards():
     assert "10.1136/bmjhci-2023-100890" in text
 
 
+def test_public_profile_uses_formal_article_title_and_web_access_date():
+    text = PROFILE.read_text(encoding="utf-8")
+    assert (
+        "Taipei Medical University Clinical Research Database: A collaborative "
+        "hospital EHR database aligned with international common data standards"
+        in text
+    )
+    assert "Accessed 2026-07-27." in text
+
+
 def test_public_profile_rejects_version_like_private_schema_claim():
     assert "V2.16" not in PROFILE.read_text(encoding="utf-8")
 

@@ -14,6 +14,16 @@ def test_agents_policy_contains_public_boundary_and_release_stop():
     assert "python scripts/check_public_boundary.py" in text
 
 
+def test_agents_policy_requires_skill_sync_and_final_diff_review():
+    text = (ROOT / "AGENTS.md").read_text(encoding="utf-8")
+
+    assert (
+        "When modifying SKILL.md, also review agents/openai.yaml, Evals, and references."
+        in text
+    )
+    assert "Before completion, review git diff." in text
+
+
 def test_eval_catalog_has_six_unique_cases():
     data = yaml.safe_load((ROOT / "evals/cases.yaml").read_text(encoding="utf-8"))
     cases = data["cases"]

@@ -12,6 +12,8 @@ version-specific metadata into this repository.
 Add or update a failing test before changing behavior. Use only synthetic
 institutional examples. Keep the installable skill under
 skills/clinical-data-research-navigator/.
+When modifying SKILL.md, also review agents/openai.yaml, Evals, and references.
+Before completion, review git diff.
 
 ## Required Verification
 Run python -m pytest -q, python scripts/validate_skill.py,

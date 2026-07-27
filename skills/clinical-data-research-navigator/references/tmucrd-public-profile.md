@@ -40,11 +40,11 @@ does not classify fields or authorize data access.
 
 ## Public sources
 
-- Nguyen PA et al. *Taipei Medical University Clinical Research Database: a
-  collaborative hospital database*. BMJ Health & Care Informatics (2024).
+- Nguyen PA et al. *Taipei Medical University Clinical Research Database: A collaborative hospital EHR database aligned with international common data standards*. BMJ Health & Care Informatics (2024).
   DOI: [10.1136/bmjhci-2023-100890](https://doi.org/10.1136/bmjhci-2023-100890).
 - Taipei Medical University public data-center page, current web source:
   [TMU data center](https://ods.tmu.edu.tw/portal_c3_cnt.php?button_num=c3&folder_id=4354&owner_num=c3_75328&search_b1=Go&search_type=1).
+  Accessed 2026-07-27.
 
 Record the access date whenever using the changing web page. Attribute
 historical scale and coverage statements to the 2024 publication.

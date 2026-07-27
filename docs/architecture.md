@@ -38,6 +38,8 @@ validates the Skill and creates a deterministic archive plus manifest.
 Producing a ZIP does not imply that the boundary scan or evaluator passed; run
 those gates separately before accepting or distributing an artifact.
 
-CI is offline and credential-free so it cannot access institutional systems,
-download protected documents, call an external LLM, or expose repository
-secrets. Its read-only token is sufficient for checkout and validation only.
+CI is credential-free. Dependency acquisition can use public package and
+GitHub services to check out source, configure Python, and install the declared
+dependencies. After dependency acquisition, validation makes no institutional
+or external LLM network calls. The read-only repository token is sufficient
+for checkout and validation; the workflow receives no project secrets.

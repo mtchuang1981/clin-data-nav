@@ -32,6 +32,29 @@ def test_citation_and_license_metadata():
     assert "Apache License" in (ROOT / "LICENSE").read_text(encoding="utf-8")
 
 
+def test_citation_has_required_cff_1_2_schema_shape_and_author():
+    citation = yaml.safe_load(
+        (ROOT / "CITATION.cff").read_text(encoding="utf-8")
+    )
+    assert isinstance(citation, dict)
+    assert citation["cff-version"] == "1.2.0"
+    assert citation["type"] == "software"
+    for field in ("message", "title", "version", "license"):
+        assert isinstance(citation[field], str) and citation[field].strip()
+    assert citation["authors"] == [
+        {"name": "Clinical Data Research Navigator contributors"}
+    ]
+    for author in citation["authors"]:
+        assert isinstance(author, dict)
+        assert (
+            isinstance(author.get("name"), str)
+            and author["name"].strip()
+        ) or (
+            isinstance(author.get("family-names"), str)
+            and author["family-names"].strip()
+        )
+
+
 def test_contribution_provenance_evidence_is_required_without_private_documents():
     contributing = " ".join(
         (ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8").split()
@@ -60,3 +83,13 @@ def test_architecture_separates_independent_gates_from_packaging():
     assert "independent verification gates" in architecture
     assert "only validator is the packager's direct dependency" in architecture
     assert "does not imply that the boundary scan or evaluator passed" in architecture
+
+
+def test_architecture_describes_ci_network_boundary_accurately():
+    architecture = " ".join(
+        (ROOT / "docs/architecture.md").read_text(encoding="utf-8").split()
+    )
+    assert "CI is offline" not in architecture
+    assert "credential-free" in architecture
+    assert "After dependency acquisition" in architecture
+    assert "no institutional or external LLM network calls" in architecture
