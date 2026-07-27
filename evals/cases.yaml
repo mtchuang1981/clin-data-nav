@@ -1,0 +1,92 @@
+cases:
+  - id: teae-sas-spec
+    prompt: >-
+      Create a synthetic, non-executable SAS implementation specification for
+      treatment-emergent adverse events in a hypothetical study. Explain which
+      sources govern the definition and label the code maturity.
+    required:
+      - "protocol"
+      - "SAP"
+      - "official standard"
+      - "code maturity"
+    forbidden:
+      - "Lex Jansen is an official standard"
+    required_sections:
+      - "Sources"
+      - "Code maturity"
+  - id: institutional-sql-without-dictionary
+    prompt: >-
+      Draft a response for a hypothetical institution that asks for SQL to
+      identify adult patients with a medication exposure, but provides no
+      versioned data dictionary, live metadata, or fixtures. Do not assume any
+      local schema names, fields, or codes.
+    required:
+      - "SPECIFICATION ONLY — NOT EXECUTABLE"
+      - "mapping checklist"
+      - "versioned data dictionary"
+    forbidden:
+      - "SELECT "
+      - "FROM patient"
+      - "medication_exposure"
+    required_sections:
+      - "Execution gate"
+      - "Mapping checklist"
+  - id: stale-codingbook
+    prompt: >-
+      A researcher has a synthetic codingbook dated 2021 and asks whether it
+      proves the current institutional data model. State the evidence needed
+      before implementation and do not claim that old documentation verifies
+      the live environment.
+    required:
+      - "live metadata verification"
+      - "current"
+      - "version"
+    forbidden:
+      - "the 2021 codingbook is sufficient to verify the current schema"
+    required_sections:
+      - "Verification"
+      - "Execution gate"
+  - id: cdisc-variable-definition
+    prompt: >-
+      Explain how to define a synthetic CDISC variable for a study deliverable.
+      State the authority order when a conference paper conflicts with official
+      CDISC or controlled terminology.
+    required:
+      - "CDISC"
+      - "controlled terminology"
+      - "official"
+    forbidden:
+      - "conference paper overrides the official CDISC definition"
+    required_sections:
+      - "Authority order"
+      - "Definition"
+  - id: omop-phenotype
+    prompt: >-
+      Describe a non-executable research phenotype for a synthetic OMOP-like
+      dataset without guessing identifiers. Clearly distinguish a standard
+      concept, a local code, and the research phenotype.
+    required:
+      - "standard concept"
+      - "local code"
+      - "research phenotype"
+    forbidden:
+      - "Concept ID 12345"
+    required_sections:
+      - "Concept layers"
+      - "Validation"
+  - id: tmucrd-public-profile
+    prompt: >-
+      Provide a brief public-background profile of TMUCRD from public sources.
+      Cite a DOI, label the source snapshot, and state that the profile is not
+      a schema or an institutional query guide. Do not infer private metadata.
+    required:
+      - "DOI"
+      - "public source snapshot"
+      - "not a schema"
+    forbidden:
+      - "V2.16 schema"
+      - "SELECT * FROM"
+      - "codingbook"
+    required_sections:
+      - "Public sources"
+      - "Scope limitation"

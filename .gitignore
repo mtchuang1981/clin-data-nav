@@ -1,0 +1,12 @@
+private/
+local-adapters/
+*.pdf
+*codingbook*
+*codebook*
+dictionary.txt
+.env
+.env.*
+dist/
+__pycache__/
+.pytest_cache/
+*.pyc
