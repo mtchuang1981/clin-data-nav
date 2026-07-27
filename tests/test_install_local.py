@@ -55,6 +55,16 @@ def _refresh_archive_hash(package) -> None:
     )
 
 
+def _set_first_declared_uncompressed_size(package, size: int) -> None:
+    archive_bytes = bytearray(package.archive.read_bytes())
+    central_directory = archive_bytes.index(b"PK\x01\x02")
+    archive_bytes[central_directory + 24 : central_directory + 28] = (
+        size.to_bytes(4, "little")
+    )
+    package.archive.write_bytes(archive_bytes)
+    _refresh_archive_hash(package)
+
+
 def _replace_archive_member(package, member_name: str, data: bytes) -> None:
     with ZipFile(package.archive) as zip_file:
         entries = [
@@ -151,6 +161,41 @@ def test_existing_installation_is_refused_without_overwrite(tmp_path):
     assert marker.read_text(encoding="utf-8") == "existing"
 
 
+@pytest.mark.parametrize("with_victim", [False, True], ids=["empty", "with-victim"])
+def test_no_overwrite_race_never_replaces_a_competing_target(
+    tmp_path,
+    monkeypatch,
+    with_victim,
+):
+    package = _build_test_package(tmp_path)
+    destination = tmp_path / "selected-skills"
+    installed = destination / "clinical-data-research-navigator"
+    victim = installed / "victim.txt"
+    victim_bytes = b"competitor-owned bytes"
+    real_temporary_directory = install_local_module.tempfile.TemporaryDirectory
+
+    def create_competing_target_after_initial_check(*args, **kwargs):
+        installed.mkdir(parents=True)
+        if with_victim:
+            victim.write_bytes(victim_bytes)
+        return real_temporary_directory(*args, **kwargs)
+
+    monkeypatch.setattr(
+        install_local_module.tempfile,
+        "TemporaryDirectory",
+        create_competing_target_after_initial_check,
+    )
+
+    with pytest.raises(FileExistsError, match="installation already exists"):
+        install_package(package.archive, destination)
+
+    assert installed.is_dir()
+    if with_victim:
+        assert victim.read_bytes() == victim_bytes
+    else:
+        assert list(installed.iterdir()) == []
+
+
 def test_overwrite_replaces_only_exact_skill_and_preserves_siblings(tmp_path):
     package = _build_test_package(tmp_path)
     destination = tmp_path / "selected-skills"
@@ -171,6 +216,19 @@ def test_overwrite_replaces_only_exact_skill_and_preserves_siblings(tmp_path):
     assert not list(
         tmp_path.glob(".clinical-data-research-navigator-backup-*")
     )
+
+
+def test_overwrite_option_also_installs_when_target_is_absent(tmp_path):
+    package = _build_test_package(tmp_path)
+    destination = tmp_path / "selected-skills"
+
+    installed = install_package(
+        package.archive,
+        destination,
+        overwrite=True,
+    )
+
+    assert (installed / "SKILL.md").is_file()
 
 
 @pytest.mark.parametrize("member_name", ["../outside.txt", "/outside.txt"])
@@ -580,6 +638,135 @@ def test_manifest_size_mismatch_is_rejected_before_extraction(tmp_path):
     assert not (
         destination / "clinical-data-research-navigator"
     ).exists()
+
+
+def test_manifest_size_limit_is_enforced_before_json_loading(
+    tmp_path,
+    monkeypatch,
+):
+    package = _build_test_package(tmp_path)
+    monkeypatch.setattr(
+        install_local_module,
+        "MAX_MANIFEST_BYTES",
+        package.manifest.stat().st_size - 1,
+    )
+
+    with pytest.raises(ValueError, match="manifest size limit exceeded"):
+        install_package(package.archive, tmp_path / "selected-skills")
+
+
+def test_archive_size_limit_is_enforced_before_hashing(tmp_path, monkeypatch):
+    package = _build_test_package(tmp_path)
+    monkeypatch.setattr(
+        install_local_module,
+        "MAX_ARCHIVE_BYTES",
+        package.archive.stat().st_size - 1,
+    )
+
+    with pytest.raises(ValueError, match="archive size limit exceeded"):
+        install_package(package.archive, tmp_path / "selected-skills")
+
+
+def test_archive_member_count_limit_is_enforced_before_staging(
+    tmp_path,
+    monkeypatch,
+):
+    package = _build_test_package(tmp_path)
+    monkeypatch.setattr(install_local_module, "MAX_MEMBER_COUNT", 1)
+
+    with pytest.raises(ValueError, match="archive member count limit exceeded"):
+        install_package(package.archive, tmp_path / "selected-skills")
+
+
+def test_manifest_member_count_limit_is_enforced_before_archive_open(
+    tmp_path,
+    monkeypatch,
+):
+    package = _build_test_package(tmp_path)
+    monkeypatch.setattr(install_local_module, "MAX_MANIFEST_FILE_COUNT", 1)
+
+    with pytest.raises(ValueError, match="manifest member count limit exceeded"):
+        install_package(package.archive, tmp_path / "selected-skills")
+
+
+@pytest.mark.parametrize(
+    ("limit_name", "message"),
+    [
+        ("MAX_MEMBER_COMPRESSED_BYTES", "ZIP member compressed size limit exceeded"),
+        (
+            "MAX_MEMBER_UNCOMPRESSED_BYTES",
+            "ZIP member uncompressed size limit exceeded",
+        ),
+    ],
+)
+def test_archive_member_size_limits_are_enforced_from_zipinfo(
+    tmp_path,
+    monkeypatch,
+    limit_name,
+    message,
+):
+    package = _build_test_package(tmp_path)
+    monkeypatch.setattr(install_local_module, limit_name, 1)
+
+    with pytest.raises(ValueError, match=message):
+        install_package(package.archive, tmp_path / "selected-skills")
+
+
+def test_zip_bomb_style_declared_size_is_rejected_before_member_read(tmp_path):
+    package = _build_test_package(tmp_path)
+    _set_first_declared_uncompressed_size(
+        package,
+        install_local_module.MAX_MEMBER_UNCOMPRESSED_BYTES + 1,
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="ZIP member uncompressed size limit exceeded",
+    ):
+        install_package(package.archive, tmp_path / "selected-skills")
+
+
+@pytest.mark.parametrize(
+    ("limit_name", "message"),
+    [
+        ("MAX_TOTAL_COMPRESSED_BYTES", "ZIP aggregate compressed size limit exceeded"),
+        (
+            "MAX_TOTAL_UNCOMPRESSED_BYTES",
+            "ZIP aggregate uncompressed size limit exceeded",
+        ),
+    ],
+)
+def test_archive_aggregate_size_limits_are_enforced_before_staging(
+    tmp_path,
+    monkeypatch,
+    limit_name,
+    message,
+):
+    package = _build_test_package(tmp_path)
+    monkeypatch.setattr(install_local_module, limit_name, 1)
+
+    with pytest.raises(ValueError, match=message):
+        install_package(package.archive, tmp_path / "selected-skills")
+
+
+def test_installer_streams_archive_hashing_and_member_extraction(
+    tmp_path,
+    monkeypatch,
+):
+    package = _build_test_package(tmp_path)
+
+    def reject_full_file_read(*_args, **_kwargs):
+        raise AssertionError("installer attempted a full-file read")
+
+    monkeypatch.setattr(Path, "read_bytes", reject_full_file_read)
+    monkeypatch.setattr(ZipFile, "read", reject_full_file_read)
+
+    installed = install_package(
+        package.archive,
+        tmp_path / "selected-skills",
+    )
+
+    assert (installed / "SKILL.md").is_file()
 
 
 @pytest.mark.parametrize("existing_target", [False, True])
