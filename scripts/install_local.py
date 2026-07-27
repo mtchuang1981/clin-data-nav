@@ -10,6 +10,7 @@ from pathlib import Path, PurePosixPath, PureWindowsPath
 import shutil
 import stat
 import tempfile
+import unicodedata
 from zipfile import ZipFile, ZipInfo
 
 try:
@@ -53,11 +54,23 @@ def _validate_member(info: ZipInfo) -> None:
         or path.is_absolute()
         or windows_path.is_absolute()
         or any(component in {"", ".", ".."} for component in components)
+        or any(
+            component.endswith((".", " ")) or ":" in component
+            for component in components
+        )
         or path.as_posix() != name
         or info.is_dir()
+        or bool(info.external_attr & 0x10)
         or file_type not in {0, stat.S_IFREG}
     ):
         raise ValueError(f"unsafe ZIP member: {name}")
+
+
+def _portable_path_key(name: str) -> tuple[str, ...]:
+    return tuple(
+        unicodedata.normalize("NFC", component).casefold()
+        for component in name.split("/")
+    )
 
 
 def install_package(
@@ -85,8 +98,17 @@ def install_package(
     verified_files: dict[str, bytes] = {}
     with ZipFile(archive) as zip_file:
         member_names: list[str] = []
+        portable_names: dict[tuple[str, ...], str] = {}
         for info in zip_file.infolist():
             _validate_member(info)
+            portable_key = _portable_path_key(info.filename)
+            existing_name = portable_names.get(portable_key)
+            if existing_name is not None and existing_name != info.filename:
+                raise ValueError(
+                    "portable path collision: "
+                    f"{existing_name} and {info.filename}"
+                )
+            portable_names[portable_key] = info.filename
             member_names.append(info.filename)
             record = records.get(info.filename)
             if record is None:

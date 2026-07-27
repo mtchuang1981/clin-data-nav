@@ -208,6 +208,13 @@ def _symlink_zip_info() -> ZipInfo:
     return info
 
 
+def _dos_directory_zip_info() -> ZipInfo:
+    info = ZipInfo("assets")
+    info.create_system = 0
+    info.external_attr = 0x10
+    return info
+
+
 @pytest.mark.parametrize(
     ("member", "data"),
     [
@@ -239,6 +246,77 @@ def test_noncanonical_or_nonregular_member_is_rejected_before_write(
         install_package(package.archive, destination)
 
     assert not outside.exists()
+    assert not (
+        destination / "clinical-data-research-navigator"
+    ).exists()
+
+
+def test_dos_directory_attribute_is_rejected_before_write(tmp_path):
+    package = _build_test_package(tmp_path)
+    _append_declared_member(package, _dos_directory_zip_info(), b"")
+    destination = tmp_path / "selected-skills"
+
+    with pytest.raises(ValueError, match="unsafe ZIP member"):
+        install_package(package.archive, destination)
+
+    assert not (
+        destination / "clinical-data-research-navigator"
+    ).exists()
+
+
+def test_casefolded_member_collision_is_rejected_before_write(tmp_path):
+    package = _build_test_package(tmp_path)
+    _append_declared_member(package, "skill.md", b"case alias")
+    destination = tmp_path / "selected-skills"
+
+    with pytest.raises(ValueError, match="portable path collision"):
+        install_package(package.archive, destination)
+
+    assert not (
+        destination / "clinical-data-research-navigator"
+    ).exists()
+
+
+def test_unicode_normalized_member_collision_is_rejected_before_write(
+    tmp_path,
+):
+    package = _build_test_package(tmp_path)
+    _append_declared_member(package, "assets/caf\u00e9.txt", b"composed")
+    _append_declared_member(
+        package,
+        "assets/cafe\u0301.txt",
+        b"decomposed",
+    )
+    destination = tmp_path / "selected-skills"
+
+    with pytest.raises(ValueError, match="portable path collision"):
+        install_package(package.archive, destination)
+
+    assert not (
+        destination / "clinical-data-research-navigator"
+    ).exists()
+
+
+@pytest.mark.parametrize(
+    "member_name",
+    [
+        "assets/trailing-dot.",
+        "assets/trailing-space ",
+        "assets/file.txt:stream",
+    ],
+    ids=["trailing-dot", "trailing-space", "ads-colon"],
+)
+def test_platform_ambiguous_component_is_rejected_before_write(
+    tmp_path,
+    member_name,
+):
+    package = _build_test_package(tmp_path)
+    _append_declared_member(package, member_name, b"ambiguous")
+    destination = tmp_path / "selected-skills"
+
+    with pytest.raises(ValueError, match="unsafe ZIP member"):
+        install_package(package.archive, destination)
+
     assert not (
         destination / "clinical-data-research-navigator"
     ).exists()
