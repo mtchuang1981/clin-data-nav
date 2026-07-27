@@ -1,10 +1,12 @@
 import hashlib
 import json
 from pathlib import Path
-from zipfile import ZipFile
+import stat
+from zipfile import ZipFile, ZipInfo
 
 import pytest
 
+import scripts.install_local as install_local_module
 from scripts.install_local import install_package, main
 from scripts.package_skill import build_package
 
@@ -86,6 +88,37 @@ def _replace_archive_member(package, member_name: str, data: bytes) -> None:
     )
 
 
+def _append_declared_member(
+    package,
+    member: str | ZipInfo,
+    data: bytes,
+) -> None:
+    name = member.filename if isinstance(member, ZipInfo) else member
+    with ZipFile(package.archive, "a") as zip_file:
+        zip_file.writestr(member, data)
+
+    manifest = json.loads(package.manifest.read_text(encoding="utf-8"))
+    manifest["files"].append(
+        {
+            "path": name,
+            "sha256": hashlib.sha256(data).hexdigest(),
+            "size": len(data),
+        }
+    )
+    manifest["archive_sha256"] = hashlib.sha256(
+        package.archive.read_bytes()
+    ).hexdigest()
+    package.manifest.write_text(
+        json.dumps(
+            manifest,
+            ensure_ascii=False,
+            separators=(",", ":"),
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+
+
 def test_valid_package_installs_under_requested_destination(tmp_path):
     package = _build_test_package(tmp_path)
     destination = tmp_path / "selected-skills"
@@ -135,6 +168,9 @@ def test_overwrite_replaces_only_exact_skill_and_preserves_siblings(tmp_path):
     assert result == installed.resolve()
     assert not stale.exists()
     assert sibling_marker.read_text(encoding="utf-8") == "keep me"
+    assert not list(
+        tmp_path.glob(".clinical-data-research-navigator-backup-*")
+    )
 
 
 @pytest.mark.parametrize("member_name", ["../outside.txt", "/outside.txt"])
@@ -148,6 +184,56 @@ def test_parent_or_absolute_zip_member_is_rejected_before_extraction(
     _refresh_archive_hash(package)
     destination = tmp_path / "selected-skills"
     outside = tmp_path / "outside.txt"
+
+    with pytest.raises(ValueError, match="unsafe ZIP member"):
+        install_package(package.archive, destination)
+
+    assert not outside.exists()
+    assert not (
+        destination / "clinical-data-research-navigator"
+    ).exists()
+
+
+def _directory_zip_info() -> ZipInfo:
+    info = ZipInfo("assets/")
+    info.create_system = 3
+    info.external_attr = (stat.S_IFDIR | 0o755) << 16
+    return info
+
+
+def _symlink_zip_info() -> ZipInfo:
+    info = ZipInfo("assets/link")
+    info.create_system = 3
+    info.external_attr = (stat.S_IFLNK | 0o777) << 16
+    return info
+
+
+@pytest.mark.parametrize(
+    ("member", "data"),
+    [
+        ("D:../payload", b"drive relative"),
+        ("./SKILL.md", b"dot alias"),
+        ("agents//openai.yaml", b"separator alias"),
+        (_directory_zip_info(), b""),
+        (_symlink_zip_info(), b"SKILL.md"),
+    ],
+    ids=[
+        "windows-drive-relative",
+        "dot-alias",
+        "repeated-separator",
+        "directory-entry",
+        "symlink-entry",
+    ],
+)
+def test_noncanonical_or_nonregular_member_is_rejected_before_write(
+    tmp_path,
+    member,
+    data,
+):
+    package = _build_test_package(tmp_path)
+    _append_declared_member(package, member, data)
+    destination = tmp_path / "selected-skills"
+    outside = tmp_path / "payload"
 
     with pytest.raises(ValueError, match="unsafe ZIP member"):
         install_package(package.archive, destination)
@@ -379,6 +465,76 @@ def test_invalid_extracted_skill_leaves_no_partial_replacement(
         assert marker.read_text(encoding="utf-8") == "preserve"
     else:
         assert not installed.exists()
+
+
+def test_failed_replacement_rolls_original_installation_back(
+    tmp_path,
+    monkeypatch,
+):
+    package = _build_test_package(tmp_path)
+    destination = tmp_path / "selected-skills"
+    installed = destination / "clinical-data-research-navigator"
+    installed.mkdir(parents=True)
+    marker = installed / "existing.txt"
+    marker.write_bytes(b"original bytes")
+    real_replace = install_local_module.os.replace
+    calls = 0
+
+    def fail_commit(source, target):
+        nonlocal calls
+        calls += 1
+        if calls == 2:
+            raise OSError("commit replacement failed")
+        return real_replace(source, target)
+
+    monkeypatch.setattr(install_local_module.os, "replace", fail_commit)
+
+    with pytest.raises(OSError, match="commit replacement failed"):
+        install_package(package.archive, destination, overwrite=True)
+
+    assert marker.read_bytes() == b"original bytes"
+    assert not list(
+        tmp_path.glob(".clinical-data-research-navigator-backup-*")
+    )
+
+
+def test_failed_replacement_and_rollback_preserve_reported_backup(
+    tmp_path,
+    monkeypatch,
+):
+    package = _build_test_package(tmp_path)
+    destination = tmp_path / "selected-skills"
+    installed = destination / "clinical-data-research-navigator"
+    installed.mkdir(parents=True)
+    marker = installed / "existing.txt"
+    marker.write_bytes(b"recoverable original")
+    real_replace = install_local_module.os.replace
+    calls = 0
+
+    def fail_commit_and_rollback(source, target):
+        nonlocal calls
+        calls += 1
+        if calls in {2, 3}:
+            raise OSError(f"replacement failure {calls}")
+        return real_replace(source, target)
+
+    monkeypatch.setattr(
+        install_local_module.os,
+        "replace",
+        fail_commit_and_rollback,
+    )
+
+    with pytest.raises(
+        RuntimeError,
+        match="recovery backup preserved at",
+    ) as raised:
+        install_package(package.archive, destination, overwrite=True)
+
+    recovery_path = Path(raised.value.recovery_path)
+    assert recovery_path.parent.parent == tmp_path
+    assert (recovery_path / "existing.txt").read_bytes() == (
+        b"recoverable original"
+    )
 
 
 def test_install_cli_requires_and_uses_selected_destination(

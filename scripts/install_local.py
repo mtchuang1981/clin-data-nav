@@ -7,8 +7,10 @@ import hashlib
 import json
 import os
 from pathlib import Path, PurePosixPath, PureWindowsPath
+import shutil
+import stat
 import tempfile
-from zipfile import ZipFile
+from zipfile import ZipFile, ZipInfo
 
 try:
     from scripts.validate_skill import validate_skill
@@ -20,15 +22,40 @@ SKILL_NAME = "clinical-data-research-navigator"
 PACKAGE_VERSION = "0.1.0"
 
 
-def _validate_member_name(name: str) -> None:
+class InstallRollbackError(RuntimeError):
+    """Report where an original installation remains after rollback failure."""
+
+    def __init__(
+        self,
+        recovery_path: Path,
+        install_error: BaseException,
+        rollback_error: BaseException,
+    ) -> None:
+        self.recovery_path = recovery_path
+        super().__init__(
+            f"installation replacement failed ({install_error}); "
+            f"rollback failed ({rollback_error}); "
+            f"recovery backup preserved at {recovery_path}"
+        )
+
+
+def _validate_member(info: ZipInfo) -> None:
+    name = info.filename
     path = PurePosixPath(name)
     windows_path = PureWindowsPath(name)
+    components = name.split("/")
+    unix_mode = (info.external_attr >> 16) & 0xFFFF
+    file_type = stat.S_IFMT(unix_mode)
     if (
         not name
         or "\\" in name
+        or windows_path.drive
         or path.is_absolute()
         or windows_path.is_absolute()
-        or ".." in path.parts
+        or any(component in {"", ".", ".."} for component in components)
+        or path.as_posix() != name
+        or info.is_dir()
+        or file_type not in {0, stat.S_IFREG}
     ):
         raise ValueError(f"unsafe ZIP member: {name}")
 
@@ -59,7 +86,7 @@ def install_package(
     with ZipFile(archive) as zip_file:
         member_names: list[str] = []
         for info in zip_file.infolist():
-            _validate_member_name(info.filename)
+            _validate_member(info)
             member_names.append(info.filename)
             record = records.get(info.filename)
             if record is None:
@@ -95,8 +122,23 @@ def install_package(
         temporary_root = Path(temporary_name)
         staged = temporary_root / SKILL_NAME
         staged.mkdir()
+        staged_root = staged.resolve()
+        planned_outputs: list[tuple[Path, bytes]] = []
+        resolved_outputs: set[Path] = set()
         for relative_name, data in verified_files.items():
             output = staged.joinpath(*PurePosixPath(relative_name).parts)
+            resolved_output = output.resolve(strict=False)
+            if (
+                not resolved_output.is_relative_to(staged_root)
+                or resolved_output in resolved_outputs
+            ):
+                raise ValueError(
+                    f"unsafe ZIP member output: {relative_name}"
+                )
+            resolved_outputs.add(resolved_output)
+            planned_outputs.append((output, data))
+
+        for output, data in planned_outputs:
             output.parent.mkdir(parents=True, exist_ok=True)
             output.write_bytes(data)
 
@@ -108,13 +150,32 @@ def install_package(
 
         destination.mkdir(parents=True, exist_ok=True)
         if os.path.lexists(installed):
-            backup = temporary_root / "previous-installation"
-            os.replace(installed, backup)
+            backup_root = Path(
+                tempfile.mkdtemp(
+                    prefix=".clinical-data-research-navigator-backup-",
+                    dir=destination.parent,
+                )
+            )
+            backup = backup_root / SKILL_NAME
+            try:
+                os.replace(installed, backup)
+            except BaseException:
+                backup_root.rmdir()
+                raise
             try:
                 os.replace(staged, installed)
-            except BaseException:
-                os.replace(backup, installed)
+            except BaseException as install_error:
+                try:
+                    os.replace(backup, installed)
+                except BaseException as rollback_error:
+                    raise InstallRollbackError(
+                        backup,
+                        install_error,
+                        rollback_error,
+                    ) from rollback_error
+                backup_root.rmdir()
                 raise
+            shutil.rmtree(backup_root)
         else:
             os.replace(staged, installed)
     return installed
