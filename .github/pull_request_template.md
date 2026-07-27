@@ -4,6 +4,10 @@
 - [ ] If this changes `SKILL.md`, I reviewed the related Evals, UI metadata,
       and references.
 - [ ] Any institutional schema or values added are synthetic only.
+- [ ] I provided auditable provenance and license-right evidence for submitted
+      material: a source URL or identifier plus the applicable license,
+      permission, or attestation. I do not submit private or login-gated
+      documents as evidence.
 - [ ] I ran all four commands: `python -m pytest -q`,
       `python scripts/validate_skill.py`,
       `python scripts/check_public_boundary.py`, and

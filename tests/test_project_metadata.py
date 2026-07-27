@@ -30,3 +30,33 @@ def test_citation_and_license_metadata():
     assert citation["version"] == "0.1.0"
     assert citation["license"] == "Apache-2.0"
     assert "Apache License" in (ROOT / "LICENSE").read_text(encoding="utf-8")
+
+
+def test_contribution_provenance_evidence_is_required_without_private_documents():
+    contributing = " ".join(
+        (ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8").split()
+    )
+    pr_template = " ".join(
+        (ROOT / ".github/pull_request_template.md").read_text(
+            encoding="utf-8"
+        ).split()
+    )
+    for text in (contributing, pr_template):
+        assert "auditable provenance" in text
+        assert "source URL or identifier" in text
+        assert "license, permission, or attestation" in text
+        assert (
+            "do not submit private or login-gated documents as evidence"
+            in text.lower()
+        )
+
+
+def test_architecture_separates_independent_gates_from_packaging():
+    architecture = " ".join(
+        (ROOT / "docs/architecture.md").read_text(encoding="utf-8").split()
+    )
+    assert "Scanner --> Packager" not in architecture
+    assert "Evaluator --> Packager" not in architecture
+    assert "independent verification gates" in architecture
+    assert "only validator is the packager's direct dependency" in architecture
+    assert "does not imply that the boundary scan or evaluator passed" in architecture

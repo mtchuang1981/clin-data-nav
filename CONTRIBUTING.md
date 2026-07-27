@@ -7,6 +7,10 @@ institutions.
 
 - Use synthetic institutional schemas, values, and examples only.
 - Submit only content that you are entitled to license for Apache-2.0 use.
+- For each contribution, provide auditable provenance and license-right
+  evidence appropriate to the material: a source URL or identifier plus the
+  applicable license, permission, or attestation. Do not submit private or
+  login-gated documents as evidence.
 - Do not include a private Adapter, credentials, institutional data, or a
   login-gated document.
 - Add or update a failing test before changing behavior, then make it pass.

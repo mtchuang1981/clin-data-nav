@@ -23,18 +23,20 @@ result remains `SPECIFICATION ONLY — NOT EXECUTABLE`.
 ```mermaid
 flowchart TD
     Source["Public Core source"] --> Validator["Static validator"]
+    Validator --> Packager["Deterministic packager"]
+    Packager --> Archive["Installable Skill ZIP + manifest"]
     Source --> Scanner["Boundary scanner"]
     Source --> Evaluator["Offline evaluator"]
-    Validator --> Packager["Deterministic packager"]
-    Scanner --> Packager
-    Evaluator --> Packager
-    Packager --> Archive["Installable Skill ZIP + manifest"]
 ```
 
-The static validator checks Skill structure and metadata. The boundary scanner
-checks the repository for prohibited private material and likely secrets. The
-evaluator applies the repository's offline rubric to supplied responses. The
-packager validates the Skill and creates a deterministic archive plus manifest.
+The static validator, boundary scanner, and evaluator are independent verification gates.
+The static validator checks Skill structure and metadata; the boundary scanner
+checks the repository for prohibited private material and likely secrets; and
+the evaluator applies the repository's offline rubric to supplied responses.
+For packaging, only validator is the packager's direct dependency: the packager
+validates the Skill and creates a deterministic archive plus manifest.
+Producing a ZIP does not imply that the boundary scan or evaluator passed; run
+those gates separately before accepting or distributing an artifact.
 
 CI is offline and credential-free so it cannot access institutional systems,
 download protected documents, call an external LLM, or expose repository
