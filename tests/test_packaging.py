@@ -1,0 +1,47 @@
+from pathlib import Path
+
+from scripts.package_skill import build_package
+
+
+def _write_minimal_skill(skill: Path) -> None:
+    skill.mkdir()
+    (skill / "SKILL.md").write_text(
+        "---\n"
+        "name: clinical-data-research-navigator\n"
+        "description: Use when testing packaging.\n"
+        "---\n"
+        "# Skill\n",
+        encoding="utf-8",
+    )
+    agents = skill / "agents"
+    agents.mkdir()
+    (agents / "openai.yaml").write_text(
+        "interface:\n"
+        "  display_name: Clinical Data Research Navigator\n"
+        "  short_description: Test navigation.\n"
+        "  default_prompt: Use $clinical-data-research-navigator for clinical-data research.\n",
+        encoding="utf-8",
+    )
+
+
+def test_same_skill_produces_identical_archive_bytes(tmp_path):
+    skill = tmp_path / "clinical-data-research-navigator"
+    _write_minimal_skill(skill)
+
+    first = build_package(skill, tmp_path / "first")
+    second = build_package(skill, tmp_path / "second")
+
+    assert first.archive.read_bytes() == second.archive.read_bytes()
+    assert first.manifest.read_bytes() == second.manifest.read_bytes()
+
+
+def test_package_excludes_repository_files(tmp_path):
+    result = build_package(
+        Path("skills/clinical-data-research-navigator"),
+        tmp_path,
+    )
+
+    assert all(
+        not name.startswith(("tests/", "docs/", ".git/"))
+        for name in result.files
+    )
