@@ -85,7 +85,7 @@ cases:
       - "not a schema"
     forbidden:
       - "V2.16 schema"
-      - "SELECT * FROM"
+      - "SELECT \\* FROM"
       - "codingbook"
     required_sections:
       - "Public sources"

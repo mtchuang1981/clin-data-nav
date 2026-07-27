@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 
 import yaml
 
@@ -48,6 +49,13 @@ def test_shared_rubric_is_reproducible_and_strict():
     }
 
 
+def test_tmucrd_forbidden_sql_pattern_matches_a_literal_asterisk():
+    cases = yaml.safe_load((ROOT / "evals/cases.yaml").read_text(encoding="utf-8"))["cases"]
+    tmucrd_case = next(case for case in cases if case["id"] == "tmucrd-public-profile")
+    pattern = next(item for item in tmucrd_case["forbidden"] if item.startswith("SELECT"))
+    assert re.search(pattern, "SELECT * FROM synthetic_source")
+
+
 def test_controls_are_saved_as_response_only_baselines():
     fixture_dir = ROOT / "tests/fixtures/baseline"
     fixture_ids = {
@@ -59,5 +67,15 @@ def test_controls_are_saved_as_response_only_baselines():
     for fixture_id in fixture_ids:
         text = (fixture_dir / f"{fixture_id}.md").read_text(encoding="utf-8")
         assert text.strip()
-        assert "System prompt" not in text
-        assert "hidden reasoning" not in text.lower()
+        lowered = text.lower()
+        for marker in (
+            "prompt:",
+            "rubric:",
+            "expected answer:",
+            "private dictionary:",
+            "existing skill:",
+            "system prompt",
+            "hidden reasoning",
+        ):
+            assert marker not in lowered
+        assert not lowered.startswith("public-background text (safe to reuse):")
