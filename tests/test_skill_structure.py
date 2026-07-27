@@ -128,3 +128,20 @@ def test_validator_rejects_an_overlong_default_prompt(tmp_path):
     assert "default prompt must not exceed 200 Unicode code points" in validate_skill(
         skill
     )
+
+
+def test_validator_accepts_an_exactly_200_code_point_default_prompt(tmp_path):
+    skill = tmp_path / "valid-skill"
+    write_valid_skill(skill)
+    prefix = "Use $clinical-data-research-navigator for a clinical-data question "
+    default_prompt = prefix + "x" * (200 - len(prefix) - 1) + "."
+    assert len(default_prompt) == 200
+    (skill / "agents/openai.yaml").write_text(
+        "interface:\n"
+        '  display_name: "Clinical Data Research Navigator"\n'
+        '  short_description: "A valid test description"\n'
+        f'  default_prompt: "{default_prompt}"\n',
+        encoding="utf-8",
+    )
+
+    assert validate_skill(skill) == []
