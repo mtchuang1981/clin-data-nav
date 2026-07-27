@@ -4,14 +4,14 @@
 
 **日期：** 2026-07-27
 
-**預定儲存庫：** `clinical-data-research-navigator`
+**預定儲存庫：** `clin-data-nav`
 
 **預定授權：** Apache License 2.0
 
 ## 1. 決策摘要
 
 建立一個全新的公開 Git 儲存庫，作為
-`clinical-data-research-navigator` 的唯一來源專案（source of truth）。
+`clin-data-nav` 的唯一來源專案（source of truth）。
 現有個人 Skill 僅作為行為需求與測試基準，不沿用其 Git 歷史，也不直接複製
 TMUCRD 私有參考檔。
 
@@ -93,7 +93,7 @@ TMUCRD 私有 Adapter 暫留既有受管制環境，不在本階段建立第二�
 ## 4. 專案架構
 
 ```text
-clinical-data-research-navigator/
+clin-data-nav/
 ├── AGENTS.md
 ├── README.md
 ├── LICENSE
