@@ -161,3 +161,117 @@ cases:
       - "Code maturity"
       - "Validation gaps"
       - "Sources"
+  - id: descriptive-rwd-no-tte
+    prompt: >-
+      Frame a descriptive study of health-care utilisation using a synthetic
+      RWD source. Distinguish RWD from RWE, assess provenance and fitness for
+      purpose, and explain why target trial emulation is not the default for
+      this non-causal question.
+    required:
+      - "descriptive"
+      - "RWD"
+      - "RWE"
+      - "provenance"
+      - "(?:fitness|fit-for-purpose)"
+      - "not applicable"
+      - "not automatically RWE"
+    forbidden:
+      - "TTE is the default for every RWD question"
+      - '(?is)\b(?:target trial emulation|TTE)\b[\s\S]{0,80}\b(?:required|mandatory|default)\b[\s\S]{0,80}\b(?:every|all)\s+RWD\b'
+      - '(?is)\b(?:validated|proven)\s+causal\s+(?:effect|conclusion)\b'
+    required_sections:
+      - "Decision"
+      - "Research question and study-design routing"
+      - "Evidence table"
+      - "Data contract"
+      - "Code maturity"
+      - "Validation gaps"
+      - "Sources"
+  - id: causal-rwd-tte-handoff
+    prompt: >-
+      Frame a synthetic causal comparative effectiveness question using RWD.
+      Describe the target-trial readiness components and the confirmed fields
+      that may be handed to an optional compatible build-rwe-sap Skill without
+      inventing institutional metadata.
+    required:
+      - "causal-comparative"
+      - "eligibility"
+      - "strategies"
+      - "assignment"
+      - "time zero"
+      - "follow-up"
+      - "outcome"
+      - "estimand"
+      - "analysis plan"
+      - "data limitations"
+      - "validation gaps"
+      - "build-rwe-sap"
+      - "(?:available|unavailable|incompatible)"
+    forbidden:
+      - "the name alone proves compatibility"
+      - '(?is)\b(?:invent|assume)\b[\s\S]{0,80}\b(?:table|column|Concept ID|local mapping)\b'
+      - '(?is)\b(?:SAP|TTE|target-trial)\b[\s\S]{0,80}\bautomatically\s+(?:makes?|promotes?)\b[\s\S]{0,80}\b(?:executable|validated)\b'
+    required_sections:
+      - "Decision"
+      - "Research question and study-design routing"
+      - "Evidence table"
+      - "Data contract"
+      - "Code maturity"
+      - "Validation gaps"
+      - "Sources"
+  - id: causal-rwd-incomplete-readiness
+    prompt: >-
+      Respond to a synthetic causal RWD request that does not define a
+      comparator or time zero and provides no confounding information. Apply
+      the TTE readiness and execution gates without inventing the missing
+      design.
+    required:
+      - "causal-comparative"
+      - "conceptual"
+      - "SPECIFICATION ONLY — NOT EXECUTABLE"
+      - "missing comparator"
+      - "missing time zero"
+      - "missing confounding"
+      - "validation gap"
+      - "no causal conclusion"
+    forbidden:
+      - '(?is)\b(?:causal conclusion|causal effect)\b[\s\S]{0,80}\b(?:validated|executable)\b'
+      - '(?is)\bcode maturity\b[\s:=-]{0,20}\bexecutable\b'
+      - '(?is)\b(?:invent|assume)\b[\s\S]{0,80}\b(?:comparator|time zero|confounder)\b'
+    required_sections:
+      - "Decision"
+      - "Research question and study-design routing"
+      - "Evidence table"
+      - "Data contract"
+      - "Code maturity"
+      - "Validation gaps"
+      - "Sources"
+  - id: build-rwe-sap-unavailable
+    prompt: >-
+      Explain how clin-data-nav responds to a causal RWD question when
+      build-rwe-sap is unavailable. State the optional dependency boundary,
+      continue safe Core work, and do not claim that a complete SAP was
+      delivered.
+    required:
+      - "optional"
+      - "not bundled"
+      - "not automatically installed"
+      - "unavailable"
+      - "continue"
+      - "Core"
+      - "evidence navigation"
+      - "data contract"
+      - "complete SAP"
+      - "not delivered"
+    forbidden:
+      - "must install build-rwe-sap"
+      - '(?is)\bbuild-rwe-sap\b[\s\S]{0,80}\b(?:required|mandatory)\b[\s\S]{0,80}\b(?:Core|clin-data-nav)\b'
+      - '(?is)\bcomplete SAP\b[\s\S]{0,80}\b(?:was|is|has been)\s+(?:delivered|completed)\b'
+    required_sections:
+      - "Decision"
+      - "Research question and study-design routing"
+      - "Evidence table"
+      - "Data contract"
+      - "Code maturity"
+      - "Validation gaps"
+      - "Sources"

@@ -129,12 +129,14 @@ def test_validator_rejects_unsafe_backtick_path_syntax(tmp_path, relative):
         "references/evidence-output-template.md",
         "references/institutional-adapter-contract.md",
         "references/tmucrd-public-profile.md",
+        "references/rwe-question-routing.md",
     ],
 )
 def test_validator_checks_each_real_backtick_reference(
     tmp_path,
     relative_path,
 ):
+    assert (SKILL_DIR / relative_path).is_file()
     skill = tmp_path / SKILL_DIR.name
     shutil.copytree(SKILL_DIR, skill)
     (skill / relative_path).unlink()

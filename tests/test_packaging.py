@@ -48,6 +48,16 @@ def test_package_excludes_repository_files(tmp_path):
     )
 
 
+def test_package_contains_rwe_routing_reference_but_no_second_skill(tmp_path):
+    result = build_package(
+        Path("skills/clinical-data-research-navigator"),
+        tmp_path,
+    )
+
+    assert "references/rwe-question-routing.md" in result.files
+    assert all("build-rwe-sap/" not in name for name in result.files)
+
+
 def test_v011_package_and_manifest_names_match_release_version(tmp_path):
     result = build_package(
         Path("skills/clinical-data-research-navigator"),

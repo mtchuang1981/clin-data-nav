@@ -8,6 +8,15 @@ specifications.
 State the answer, governing authority, execution outcome, and the single code
 maturity label. Distinguish confirmed facts from assumptions.
 
+## Research question and study-design routing
+
+State the primary intent. For intervention or exposure questions, record the
+population, intervention or exposure, comparator, outcomes, time zero,
+follow-up, setting, data source, intended use, and target estimand when causal.
+Distinguish RWD from RWE, report TTE readiness only for causal comparative
+questions, and state optional `build-rwe-sap` status as
+available, unavailable, or incompatible.
+
 ## Evidence table
 
 | Claim | Source | Authority level | Publication date | Version or snapshot | Applicability | Limitations |

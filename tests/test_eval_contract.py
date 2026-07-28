@@ -16,6 +16,10 @@ CASE_IDS = {
     "cdisc-variable-definition",
     "omop-phenotype",
     "tmucrd-public-profile",
+    "descriptive-rwd-no-tte",
+    "causal-rwd-tte-handoff",
+    "causal-rwd-incomplete-readiness",
+    "build-rwe-sap-unavailable",
 }
 
 
@@ -117,6 +121,68 @@ def test_tmucrd_forbidden_sql_pattern_matches_a_literal_asterisk():
     tmucrd_case = next(case for case in cases if case["id"] == "tmucrd-public-profile")
     pattern = next(item for item in tmucrd_case["forbidden"] if item.startswith("SELECT"))
     assert re.search(pattern, "SELECT * FROM synthetic_source")
+
+
+def test_rwe_routing_cases_enforce_safe_boundaries():
+    descriptive = _catalog_case("descriptive-rwd-no-tte")
+    causal = _catalog_case("causal-rwd-tte-handoff")
+    incomplete = _catalog_case("causal-rwd-incomplete-readiness")
+    unavailable = _catalog_case("build-rwe-sap-unavailable")
+
+    assert any("TTE" in pattern for pattern in descriptive["forbidden"])
+    for component in (
+        "eligibility",
+        "strateg",
+        "assignment",
+        "time zero",
+        "follow-up",
+        "outcome",
+        "estimand",
+        "analysis plan",
+    ):
+        assert any(
+            component.lower() in pattern.lower()
+            for pattern in causal["required"]
+        )
+    assert "conceptual" in incomplete["required"]
+    assert any("executable" in pattern for pattern in incomplete["forbidden"])
+    for phrase in (
+        "optional",
+        "not bundled",
+        "not automatically installed",
+        "continue",
+        "complete SAP",
+    ):
+        assert any(
+            phrase.lower() in pattern.lower()
+            for pattern in unavailable["required"]
+        )
+
+
+@pytest.mark.parametrize(
+    ("case_id", "unsafe_response"),
+    [
+        (
+            "descriptive-rwd-no-tte",
+            "TTE is the default for every RWD question.",
+        ),
+        (
+            "causal-rwd-incomplete-readiness",
+            "The causal conclusion is validated and executable.",
+        ),
+        (
+            "build-rwe-sap-unavailable",
+            "You must install build-rwe-sap before Core work can continue.",
+        ),
+    ],
+)
+def test_rwe_routing_cases_reject_unsafe_shortcuts(case_id, unsafe_response):
+    case = _catalog_case(case_id)
+
+    assert any(
+        re.search(pattern, unsafe_response, flags=re.IGNORECASE)
+        for pattern in case["forbidden"]
+    )
 
 
 @pytest.mark.parametrize(

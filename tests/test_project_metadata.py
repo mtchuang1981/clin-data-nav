@@ -103,6 +103,24 @@ def test_readmes_explain_cdisc_models_and_python_runtime_boundary():
     assert "python -c" not in chinese_posix
 
 
+def test_readmes_explain_rwe_routing_and_optional_build_rwe_sap():
+    english = (ROOT / "README.md").read_text(encoding="utf-8")
+    traditional_chinese = (ROOT / "README.zh-TW.md").read_text(encoding="utf-8")
+
+    assert "## Real-world evidence and causal-study routing" in english
+    assert "## 真實世界證據與因果研究路由" in traditional_chinese
+    assert "RWD is not automatically RWE." in english
+    assert "RWD 不會自動成為 RWE。" in traditional_chinese
+    assert "causal-comparative" in english
+    assert "因果比較" in traditional_chinese
+    assert "`build-rwe-sap` is optional and is not bundled" in english
+    assert "`build-rwe-sap` 是選配項目，並未內附" in traditional_chinese
+    assert "never installs it automatically" in english
+    assert "不會自動安裝" in traditional_chinese
+    assert "Normal Core use does not require `build-rwe-sap`" in english
+    assert "一般 Core 功能不需要 `build-rwe-sap`" in traditional_chinese
+
+
 def test_citation_has_required_cff_1_2_schema_shape_and_author():
     citation = yaml.safe_load(
         (ROOT / "CITATION.cff").read_text(encoding="utf-8")
