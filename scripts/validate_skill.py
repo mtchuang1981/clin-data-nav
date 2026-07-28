@@ -1,19 +1,34 @@
-from pathlib import Path, PurePosixPath
+from pathlib import Path, PurePosixPath, PureWindowsPath
 import re
 
 import yaml
 
 
 REFERENCE_RE = re.compile(r"\[[^\]]+\]\((?!https?://)([^)#]+)")
-BACKTICK_REFERENCE_RE = re.compile(
-    r"`((?:agents|assets|references|scripts)/[A-Za-z0-9._/-]+)`"
-)
+BACKTICK_CODE_RE = re.compile(r"`([^`\r\n]+)`")
+REFERENCE_ROOTS = {"agents", "assets", "references", "scripts"}
+
+
+def _is_backtick_reference(value: str) -> bool:
+    posix_path = PurePosixPath(value)
+    windows_path = PureWindowsPath(value)
+    normalized_parts = value.replace("\\", "/").split("/")
+    return (
+        posix_path.is_absolute()
+        or windows_path.is_absolute()
+        or bool(windows_path.drive)
+        or value.startswith(("./", ".\\", "../", "..\\"))
+        or normalized_parts[0] in REFERENCE_ROOTS
+    )
 
 
 def _reference_path_error(skill_dir: Path, relative: str) -> str | None:
     path = PurePosixPath(relative)
+    windows_path = PureWindowsPath(relative)
     if (
         path.is_absolute()
+        or windows_path.is_absolute()
+        or bool(windows_path.drive)
         or "\\" in relative
         or any(part in {"", ".", ".."} for part in relative.split("/"))
         or path.as_posix() != relative
@@ -52,9 +67,13 @@ def validate_skill(skill_dir: Path) -> list[str]:
         errors.append("description must start with 'Use when'")
     if len(text.splitlines()) > 500:
         errors.append("SKILL.md exceeds 500 lines")
+    backtick_references = [
+        value
+        for value in BACKTICK_CODE_RE.findall(parts[2])
+        if _is_backtick_reference(value)
+    ]
     references = dict.fromkeys(
-        REFERENCE_RE.findall(parts[2])
-        + BACKTICK_REFERENCE_RE.findall(parts[2])
+        REFERENCE_RE.findall(parts[2]) + backtick_references
     )
     for relative in references:
         reference_error = _reference_path_error(skill_dir, relative)

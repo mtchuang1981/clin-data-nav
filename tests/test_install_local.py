@@ -1,3 +1,4 @@
+import errno
 import hashlib
 import json
 from pathlib import Path
@@ -232,6 +233,109 @@ def test_identity_check_path_swap_never_mutates_competing_directory(
         assert victim.read_bytes() == victim_bytes
     else:
         assert (installed / "SKILL.md").is_file()
+
+
+def test_competitor_winning_at_atomic_publish_is_preserved(
+    tmp_path,
+    monkeypatch,
+):
+    package = _build_test_package(tmp_path)
+    destination = tmp_path / "selected-skills"
+    installed = destination / "clinical-data-research-navigator"
+    real_rename_no_replace = install_local_module._rename_no_replace
+    competing_identity = None
+
+    def competitor_wins_before_native_publish(source, target):
+        nonlocal competing_identity
+        target.mkdir()
+        target_stat = target.stat(follow_symlinks=False)
+        competing_identity = (target_stat.st_dev, target_stat.st_ino)
+        return real_rename_no_replace(source, target)
+
+    monkeypatch.setattr(
+        install_local_module,
+        "_rename_no_replace",
+        competitor_wins_before_native_publish,
+    )
+
+    with pytest.raises(FileExistsError, match="installation already exists"):
+        install_package(package.archive, destination)
+
+    installed_stat = installed.stat(follow_symlinks=False)
+    assert competing_identity is not None
+    assert (installed_stat.st_dev, installed_stat.st_ino) == competing_identity
+    assert list(installed.iterdir()) == []
+
+
+def test_darwin_uses_atomic_exclusive_rename(tmp_path, monkeypatch):
+    calls = []
+
+    class FakeRename:
+        argtypes = None
+        restype = None
+
+        def __call__(self, *args):
+            calls.append(args)
+            return 0
+
+    class FakeLibc:
+        renamex_np = FakeRename()
+
+    source = tmp_path / "staged"
+    target = tmp_path / "installed"
+    monkeypatch.setattr(install_local_module.sys, "platform", "darwin")
+    monkeypatch.setattr(
+        install_local_module.ctypes,
+        "CDLL",
+        lambda *_args, **_kwargs: FakeLibc(),
+    )
+
+    install_local_module._rename_no_replace(source, target)
+
+    assert calls == [
+        (
+            bytes(source),
+            bytes(target),
+            install_local_module.DARWIN_RENAME_EXCL,
+        )
+    ]
+
+
+@pytest.mark.parametrize("platform", ["linux", "darwin"])
+def test_missing_native_no_replace_primitive_fails_closed(
+    tmp_path,
+    monkeypatch,
+    platform,
+):
+    class FakeLibc:
+        pass
+
+    monkeypatch.setattr(install_local_module.sys, "platform", platform)
+    monkeypatch.setattr(
+        install_local_module.ctypes,
+        "CDLL",
+        lambda *_args, **_kwargs: FakeLibc(),
+    )
+
+    with pytest.raises(OSError) as raised:
+        install_local_module._rename_no_replace(
+            tmp_path / "staged",
+            tmp_path / "installed",
+        )
+
+    assert raised.value.errno == errno.ENOTSUP
+
+
+def test_unsupported_platform_fails_closed(tmp_path, monkeypatch):
+    monkeypatch.setattr(install_local_module.sys, "platform", "freebsd14")
+
+    with pytest.raises(OSError) as raised:
+        install_local_module._rename_no_replace(
+            tmp_path / "staged",
+            tmp_path / "installed",
+        )
+
+    assert raised.value.errno == errno.ENOTSUP
 
 
 def test_overwrite_replaces_only_exact_skill_and_preserves_siblings(tmp_path):

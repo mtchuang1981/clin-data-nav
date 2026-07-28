@@ -87,6 +87,36 @@ def test_validator_rejects_backtick_reference_that_escapes_skill_root(
 
 
 @pytest.mark.parametrize(
+    "relative",
+    [
+        r"references\..\..\outside.md",
+        r"references/..\..\outside.md",
+        "/tmp/outside.md",
+        r"C:\outside.md",
+        "./references/../../outside.md",
+    ],
+    ids=[
+        "windows-separators",
+        "mixed-separators",
+        "posix-absolute",
+        "windows-drive",
+        "dot-prefixed",
+    ],
+)
+def test_validator_rejects_unsafe_backtick_path_syntax(tmp_path, relative):
+    skill = tmp_path / "bad-skill"
+    write_valid_skill(skill)
+    skill_file = skill / "SKILL.md"
+    skill_file.write_text(
+        skill_file.read_text(encoding="utf-8")
+        + f"\nRead `{relative}`.\n",
+        encoding="utf-8",
+    )
+
+    assert f"unsafe reference path: {relative}" in validate_skill(skill)
+
+
+@pytest.mark.parametrize(
     "relative_path",
     [
         "references/retrieval-playbook.md",

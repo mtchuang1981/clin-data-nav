@@ -35,6 +35,7 @@ MAX_TOTAL_COMPRESSED_BYTES = 20 * 1024 * 1024
 MAX_TOTAL_UNCOMPRESSED_BYTES = 40 * 1024 * 1024
 AT_FDCWD = -100
 RENAME_NOREPLACE = 1
+DARWIN_RENAME_EXCL = 0x00000004
 
 
 class InstallRollbackError(RuntimeError):
@@ -256,40 +257,23 @@ def _stream_members(
             raise ValueError(f"manifest hash mismatch for {info.filename}")
 
 
-def _rename_no_replace(source: Path, target: Path) -> None:
-    if os.name == "nt":
-        os.rename(source, target)
-        return
-    if not sys.platform.startswith("linux"):
-        raise OSError(
-            errno.ENOTSUP,
-            "atomic no-replace directory installation is unsupported",
-            target,
-        )
-
+def _call_native_rename(
+    function_name: str,
+    argument_types: tuple,
+    arguments: tuple,
+    target: Path,
+) -> None:
     libc = ctypes.CDLL(None, use_errno=True)
-    renameat2 = getattr(libc, "renameat2", None)
-    if renameat2 is None:
+    rename_function = getattr(libc, function_name, None)
+    if rename_function is None:
         raise OSError(
             errno.ENOTSUP,
             "atomic no-replace directory installation is unsupported",
             target,
         )
-    renameat2.argtypes = (
-        ctypes.c_int,
-        ctypes.c_char_p,
-        ctypes.c_int,
-        ctypes.c_char_p,
-        ctypes.c_uint,
-    )
-    renameat2.restype = ctypes.c_int
-    result = renameat2(
-        AT_FDCWD,
-        os.fsencode(source),
-        AT_FDCWD,
-        os.fsencode(target),
-        RENAME_NOREPLACE,
-    )
+    rename_function.argtypes = argument_types
+    rename_function.restype = ctypes.c_int
+    result = rename_function(*arguments)
     if result != 0:
         error_number = ctypes.get_errno()
         raise OSError(
@@ -297,6 +281,53 @@ def _rename_no_replace(source: Path, target: Path) -> None:
             os.strerror(error_number),
             target,
         )
+
+
+def _rename_no_replace(source: Path, target: Path) -> None:
+    if os.name == "nt":
+        os.rename(source, target)
+        return
+    if sys.platform.startswith("linux"):
+        _call_native_rename(
+            "renameat2",
+            (
+                ctypes.c_int,
+                ctypes.c_char_p,
+                ctypes.c_int,
+                ctypes.c_char_p,
+                ctypes.c_uint,
+            ),
+            (
+                AT_FDCWD,
+                os.fsencode(source),
+                AT_FDCWD,
+                os.fsencode(target),
+                RENAME_NOREPLACE,
+            ),
+            target,
+        )
+        return
+    if sys.platform == "darwin":
+        _call_native_rename(
+            "renamex_np",
+            (
+                ctypes.c_char_p,
+                ctypes.c_char_p,
+                ctypes.c_uint,
+            ),
+            (
+                os.fsencode(source),
+                os.fsencode(target),
+                DARWIN_RENAME_EXCL,
+            ),
+            target,
+        )
+        return
+    raise OSError(
+        errno.ENOTSUP,
+        "atomic no-replace directory installation is unsupported",
+        target,
+    )
 
 
 def _install_without_overwrite(staged: Path, installed: Path) -> None:
