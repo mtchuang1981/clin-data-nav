@@ -110,12 +110,12 @@ python scripts/package_skill.py --check-reproducible
 
 ## 從 GitHub Release 安裝
 
-Codex 會從 `$HOME/.agents/skills` 載入個人 Skill。請從同一個 Release 下載 ZIP 與 manifest，先用 manifest 核對 ZIP，再解壓縮到獨立的 Skill 目錄。以下範例會安裝 `v0.1.1`；遇到既有安裝時會停止，不會直接覆寫。
+Codex 會從 `$HOME/.agents/skills` 載入個人 Skill。請從同一個 Release 下載 ZIP 與 manifest，先用 manifest 核對 ZIP，再解壓縮到獨立的 Skill 目錄。以下範例會安裝 `v0.2.0`；遇到既有安裝時會停止，不會直接覆寫。
 
 PowerShell：
 
 ```powershell
-$releaseVersion = "0.1.1"
+$releaseVersion = "0.2.0"
 $assetName = "clinical-data-research-navigator-$releaseVersion"
 $releaseBase = "https://github.com/mtchuang1981/clin-data-nav/releases/download/v$releaseVersion"
 Invoke-WebRequest "$releaseBase/$assetName.zip" -OutFile "$assetName.zip"
@@ -133,7 +133,7 @@ Test-Path (Join-Path $skillDirectory "SKILL.md")
 POSIX shell：
 
 ```bash
-release_version="0.1.1"
+release_version="0.2.0"
 asset_name="clinical-data-research-navigator-$release_version"
 release_base="https://github.com/mtchuang1981/clin-data-nav/releases/download/v$release_version"
 curl -fLO "$release_base/$asset_name.zip"
@@ -165,7 +165,7 @@ Codex 會自動偵測 Skill 變更；若 Skill 沒有出現，請重新啟動 Co
 ```bash
 python scripts/package_skill.py --output-dir /absolute/path/you/select/skill-package
 python scripts/install_local.py \
-  /absolute/path/you/select/skill-package/clinical-data-research-navigator-0.1.1.zip \
+  /absolute/path/you/select/skill-package/clinical-data-research-navigator-0.2.0.zip \
   --destination "$HOME/.agents/skills"
 ```
 
