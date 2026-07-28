@@ -1,5 +1,7 @@
 # Clinical Data Research Navigator
 
+English | [繁體中文](README.zh-TW.md)
+
 Clinical Data Research Navigator helps researchers turn clinical-data questions
 into source-ranked evidence, a safe data contract, and an explicit execution
 maturity assessment.
@@ -26,6 +28,14 @@ Use the Skill for clinical-data questions involving:
 
 Without a versioned Adapter, live metadata, and fixtures, the Skill returns a
 specification rather than executable institutional code.
+
+For SAS optimization, refactoring, debugging, review, or derivation requests,
+the Skill searches official SAS documentation first. When implementation
+evidence is still needed and network tools are available, it runs a targeted
+`site:lexjansen.com` search and reviews the specific paper. It records source
+and code provenance, checks reuse terms, and requires target-environment
+measurement before claiming a performance improvement. If the paper cannot be
+reviewed, that limitation is reported as a validation gap.
 
 ## Repository and installed Skill layout
 

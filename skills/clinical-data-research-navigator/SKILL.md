@@ -41,6 +41,17 @@ Treat Lex Jansen as an index of implementation literature, not a standards
 body or validation authority. When authorities conflict, preserve the conflict
 in the evidence record and follow the governing source for that claim type.
 
+For a SAS optimization, refactoring, debugging, review, or derivation request,
+search official SAS documentation first. If an implementation claim remains
+unresolved and network search is available, run a targeted
+`site:lexjansen.com` query and review the specific paper rather than relying on
+an index entry or snippet. Record paper-level provenance and reuse terms before
+discussing code. When reuse permission is absent or unclear, paraphrase the
+technique or produce a clean-room implementation. Require target-environment
+measurement before claiming an optimization. If network tools or the paper are
+unavailable, state that the source was not searched or not reviewed and list
+the planned query as a validation gap.
+
 ## Build the Evidence Record
 
 Capture one record per material claim. Record the claim, source,

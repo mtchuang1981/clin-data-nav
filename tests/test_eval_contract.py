@@ -10,6 +10,7 @@ from scripts.evaluate_response import evaluate_response, validate_catalog
 ROOT = Path(__file__).resolve().parents[1]
 CASE_IDS = {
     "teae-sas-spec",
+    "sas-optimization-lexjansen",
     "institutional-sql-without-dictionary",
     "stale-codingbook",
     "cdisc-variable-definition",
@@ -61,6 +62,56 @@ def test_catalog_is_valid_and_each_case_can_reach_the_fixed_threshold():
         assert len(case["required"]) + len(case["required_sections"]) >= 10
 
 
+def test_sas_optimization_case_requires_traceable_paper_level_evidence():
+    case = _catalog_case("sas-optimization-lexjansen")
+    rubric = yaml.safe_load((ROOT / "evals/rubric.yaml").read_text(encoding="utf-8"))
+    complete_response = """
+# Decision
+Search site:lexjansen.com for the specific SAS technique, then review the
+specific paper. Treat it as secondary implementation evidence.
+
+# Evidence table
+Record the title, authors, conference, publication year, stable URL, and
+access date, together with applicability and platform caveats.
+
+# Data contract
+Record code provenance and copyright, license, or reuse terms. Use a
+clean-room implementation when permission is unclear.
+
+# Code maturity
+Keep the execution gate; a historical example cannot make code executable.
+
+# Validation gaps
+If network access is unavailable, state that the paper was not reviewed.
+Require performance validation in the target environment.
+
+# Sources
+Cite the specific reviewed paper rather than a search snippet.
+"""
+    incomplete_response = """
+# Decision
+Use Lex Jansen examples to optimize the SAS program.
+
+# Evidence table
+Lex Jansen has many useful papers.
+
+# Data contract
+Apply the example to the program.
+
+# Code maturity
+The code is optimized.
+
+# Validation gaps
+None.
+
+# Sources
+Lex Jansen.
+"""
+
+    assert evaluate_response(case, rubric, complete_response).passed is True
+    assert evaluate_response(case, rubric, incomplete_response).passed is False
+
+
 def test_tmucrd_forbidden_sql_pattern_matches_a_literal_asterisk():
     cases = yaml.safe_load((ROOT / "evals/cases.yaml").read_text(encoding="utf-8"))["cases"]
     tmucrd_case = next(case for case in cases if case["id"] == "tmucrd-public-profile")
@@ -74,6 +125,10 @@ def test_tmucrd_forbidden_sql_pattern_matches_a_literal_asterisk():
         (
             "teae-sas-spec",
             "Lex Jansen\nis an authoritative standards body.",
+        ),
+        (
+            "sas-optimization-lexjansen",
+            "Copy the historical SAS code without checking its license.",
         ),
         (
             "institutional-sql-without-dictionary",
@@ -115,6 +170,10 @@ def test_catalog_forbidden_rules_catch_high_signal_multiline_variants(
         (
             "teae-sas-spec",
             "Lex Jansen is not an official standard or validation authority.",
+        ),
+        (
+            "sas-optimization-lexjansen",
+            "Do not copy SAS code without checking provenance and license terms.",
         ),
         (
             "stale-codingbook",

@@ -124,11 +124,11 @@ def test_detached_checkout_rejects_non_main_github_target(tmp_path, monkeypatch)
     assert not default_branch_is_main(repository)
 
 
-def six_eval_cases_exist() -> bool:
+def seven_eval_cases_exist() -> bool:
     import yaml
 
     data = yaml.safe_load((ROOT / "evals/cases.yaml").read_text(encoding="utf-8"))
-    return len(data["cases"]) == 6
+    return len(data["cases"]) == 7
 
 
 def build_rwe_sap_is_optional() -> bool:
@@ -159,7 +159,7 @@ def test_v010_acceptance_contract():
     assert default_branch_is_main(ROOT)
     assert validate_skill(SKILL) == []
     assert scan_repository(ROOT) == []
-    assert six_eval_cases_exist()
+    assert seven_eval_cases_exist()
     assert build_rwe_sap_is_optional()
     assert tmucrd_profile_is_public_snapshot()
     assert required_repository_policy_exists()

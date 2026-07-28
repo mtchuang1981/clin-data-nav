@@ -19,6 +19,42 @@ cases:
       - "Code maturity"
       - "Validation gaps"
       - "Sources"
+  - id: sas-optimization-lexjansen
+    prompt: >-
+      Review a synthetic legacy SAS implementation for a clinical-trial TEAE
+      derivation and propose evidence-backed optimization steps. Show how
+      Lex Jansen implementation literature would be searched and reviewed,
+      preserve source and code provenance, address reuse terms, and state what
+      happens when network access or target-environment validation is missing.
+    required:
+      - 'site:lexjansen\.com'
+      - "specific paper"
+      - "title"
+      - "authors?"
+      - "conference"
+      - "publication year"
+      - "stable URL"
+      - "access date"
+      - "provenance"
+      - '(?:copyright|license|reuse terms)'
+      - "clean-room implementation"
+      - "secondary implementation evidence"
+      - "network access"
+      - "not reviewed"
+      - "performance validation"
+    forbidden:
+      - "Lex Jansen is an official standard"
+      - '(?is)\bLex\s+Jansen\b\s+(?:is|serves\s+as|acts\s+as)\s+(?!not\b)(?:an?\s+)?(?:official|authoritative|governing)\s+(?:standard|authority|standards\s+body)\b'
+      - "Copy the historical SAS code without checking its license\\."
+      - '(?is)(?<!not )\b(?:copy|paste|reuse)\b[\s\S]{0,120}\bwithout\b[\s\S]{0,80}\b(?:checking|recording|confirming)\b[\s\S]{0,80}\b(?:provenance|license|permission|reuse\s+terms)\b'
+      - '(?is)\b(?:faster|optimized|best-performing)\b[\s\S]{0,80}\bwithout\b[\s\S]{0,80}\b(?:measurement|benchmark|performance\s+validation)\b'
+    required_sections:
+      - "Decision"
+      - "Evidence table"
+      - "Data contract"
+      - "Code maturity"
+      - "Validation gaps"
+      - "Sources"
   - id: institutional-sql-without-dictionary
     prompt: >-
       Draft a response for a hypothetical institution that asks for SQL to

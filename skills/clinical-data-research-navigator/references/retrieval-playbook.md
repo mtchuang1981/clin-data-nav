@@ -32,6 +32,36 @@ Treat Lex Jansen as an implementation-literature index. It is not a
 standards-setting organization, regulator, or validation authority. Verify the
 paper itself and preserve its conference year and scope.
 
+## Search Lex Jansen for SAS implementation evidence
+
+Use this contract when a request asks to optimize, refactor, debug, review, or
+derive SAS implementation logic and official sources do not resolve the
+implementation claim.
+
+When network search is available:
+
+1. Run at least one targeted query in this form:
+   `site:lexjansen.com <deliverable-or-domain> <technique> SAS`.
+2. Open the specific paper from `https://www.lexjansen.com/` or its linked
+   original source. Do not treat an index record, result title, or snippet as a
+   reviewed paper.
+3. Record the actual query, search date, paper title, authors, conference,
+   publication year, stable paper URL, access date, relevant section or page,
+   applicability, SAS platform or version caveats, and limitations.
+4. For any code fragment, record its paper and page provenance, whether it is
+   quoted, adapted, or independently reimplemented, and the stated copyright,
+   license, or reuse terms.
+5. When permission to reuse code is absent or unclear, describe the technique
+   or create a clean-room implementation instead of copying the fragment.
+6. Compare the technique with governing definitions and with the target
+   program's fixtures, logs, benchmarks, and runtime constraints. Do not claim
+   that code is faster or optimized without target-environment measurement.
+
+When network search or the full paper is unavailable, write `not searched` or
+`not reviewed` in the evidence record, preserve the planned query, and list the
+missing review as a validation gap. Do not convert an unavailable search into a
+claim that no evidence exists.
+
 ## Build search units
 
 Create one search unit per unresolved claim. Combine:
