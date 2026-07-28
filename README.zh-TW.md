@@ -10,6 +10,27 @@ Clinical Data Research Navigator 協助研究人員將臨床資料問題整理�
 
 若要導入機構內部環境，請在本儲存庫外掛載經核准且具版本控管的私有 Adapter，並在受治理的環境中確認目前使用的中繼資料。
 
+## 第一次接觸臨床資料標準？
+
+不需要先熟悉 CDISC 才能使用這個 Skill。以下三個名詞分別處理標準化臨床試驗資料流程中的不同部分：
+
+| 名詞 | 白話說明 | 為什麼會在這裡出現 |
+|---|---|---|
+| [CDISC](https://www.cdisc.org/standards) | Clinical Data Interchange Standards Consortium，以及它所制定的臨床與非臨床研究資料標準體系。 | SDTM、ADaM、受控詞彙與相關實作指南都屬於這套標準體系。 |
+| [SDTM](https://www.cdisc.org/standards/foundational/sdtm) | Study Data Tabulation Model，用一致的方式整理及呈現收集或接收的研究資料，同時保留原始意義。 | 讓研究資料更容易交換、審查、彙整與提交主管機關。 |
+| [ADaM](https://www.cdisc.org/standards/foundational/adam) | Analysis Data Model，定義分析資料集及其詮釋資料，支援可重現的統計分析。 | 讓審查者能從分析結果追溯至分析資料，再回到 SDTM 來源。 |
+
+常見的臨床試驗資料流程，可以先用這個簡化模型理解：
+
+```text
+收集或接收的研究資料
+→ SDTM：標準化表列與審查
+→ ADaM：分析就緒資料與衍生規則
+→ 統計分析、表格、圖形與資料列表
+```
+
+這是入門用的心智模型，不是每一個臨床資料問題都必須遵循的固定流程。EHR、理賠資料、登錄資料、OMOP 與其他真實世界資料可能採用不同的來源模型。Skill 會先判斷實際適用的標準，再分開處理官方定義、研究特定規則、實作方法與機構內部對應關係。
+
 ## 支援的問題
 
 此 Skill 適合處理下列臨床資料問題：
@@ -36,9 +57,15 @@ clin-data-nav/
 
 封裝後的 ZIP 只包含可安裝的 Skill 檔案。本機安裝時，會將 `clinical-data-research-navigator/` 放在你指定的目的目錄下。
 
-## 設定 Python 3.11 環境
+## 使用 Skill 需要 Python 嗎？
 
-本專案第一版支援 Python 3.11。
+使用已安裝的 Skill 不需要 Python。Skill 本身由 Markdown、YAML 詮釋資料與參考文件組成，Codex 或 ChatGPT 會直接讀取。SAS、SQL、R 與 Python 可能是討論中的目標實作語言，但都不是呼叫 Skill 時必須安裝的執行環境。
+
+只有要執行本儲存庫的測試、可重現封裝工具或嚴格的原始碼安裝程式時，貢獻者才需要 Python 3.11。依照下方 PowerShell 或 POSIX 指令安裝已發布的 ZIP，不需要 Python。
+
+## 貢獻者環境（Python 3.11）
+
+本儲存庫的開發與發布工具支援 Python 3.11。
 
 ```bash
 python3.11 -m venv .venv
@@ -88,7 +115,17 @@ asset_name="clinical-data-research-navigator-$release_version"
 release_base="https://github.com/mtchuang1981/clin-data-nav/releases/download/v$release_version"
 curl -fLO "$release_base/$asset_name.zip"
 curl -fLO "$release_base/$asset_name.manifest.json"
-python -c "import hashlib,json,pathlib; z=pathlib.Path('$asset_name.zip'); m=json.loads(pathlib.Path('$asset_name.manifest.json').read_text()); assert hashlib.sha256(z.read_bytes()).hexdigest()==m['archive_sha256'], 'SHA-256 mismatch'; print('SHA-256 OK')"
+expected_hash="$(grep -o '"archive_sha256":"[0-9a-f]\{64\}"' "$asset_name.manifest.json" | cut -d '"' -f4)"
+if command -v sha256sum >/dev/null 2>&1; then
+  actual_hash="$(sha256sum "$asset_name.zip" | cut -d ' ' -f1)"
+elif command -v shasum >/dev/null 2>&1; then
+  actual_hash="$(shasum -a 256 "$asset_name.zip" | cut -d ' ' -f1)"
+else
+  echo "Install sha256sum or shasum to verify the archive." >&2
+  exit 1
+fi
+test "$actual_hash" = "$expected_hash" || { echo "SHA-256 mismatch" >&2; exit 1; }
+echo "SHA-256 OK"
 skill_directory="$HOME/.agents/skills/clinical-data-research-navigator"
 test ! -e "$skill_directory" || { echo "Skill already exists: $skill_directory"; exit 1; }
 mkdir -p "$skill_directory"

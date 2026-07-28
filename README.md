@@ -16,6 +16,32 @@ login-gated documents. It is not a TMUCRD data dictionary.
 For institutional implementation, mount an approved, versioned private Adapter
 outside this repository and verify current metadata in the governed environment.
 
+## New to clinical-data standards?
+
+You do not need prior CDISC knowledge to use this Skill. These three terms
+describe different parts of a standards-based clinical-trial data workflow:
+
+| Term | Plain-language meaning | Why it appears here |
+|---|---|---|
+| [CDISC](https://www.cdisc.org/standards) | The Clinical Data Interchange Standards Consortium and its suite of standards for representing clinical and non-clinical research data. | It provides the standards ecosystem that includes SDTM, ADaM, controlled terminology, and related implementation guides. |
+| [SDTM](https://www.cdisc.org/standards/foundational/sdtm) | The Study Data Tabulation Model standardizes how collected or received study data are organized and formatted without changing their original meaning. | It makes study data more consistent for exchange, review, aggregation, and regulatory submission. |
+| [ADaM](https://www.cdisc.org/standards/foundational/adam) | The Analysis Data Model defines analysis datasets and metadata that support reproducible statistical analyses. | It helps reviewers trace an analysis result back through analysis data to its SDTM source. |
+
+A common clinical-trial flow can be understood as:
+
+```text
+Collected or received study data
+→ SDTM: standardized tabulation and review
+→ ADaM: analysis-ready data and derivations
+→ statistical analyses, tables, figures, and listings
+```
+
+This is a simplified mental model; not every clinical-data question must follow
+it. EHR, claims, registry, OMOP, and other real-world data may use different
+source models. The Skill first determines which standards actually apply, then
+keeps official definitions, study-specific rules, implementation techniques,
+and institutional mappings separate.
+
 ## Supported questions
 
 Use the Skill for clinical-data questions involving:
@@ -52,9 +78,21 @@ Packaging produces a ZIP containing the installable Skill files only. Local
 installation places `clinical-data-research-navigator/` beneath a destination
 directory you select.
 
-## Python 3.11 setup
+## Does using the Skill require Python?
 
-This first release supports Python 3.11.
+Using the installed Skill does not require Python. The Skill itself consists of
+Markdown, YAML metadata, and reference files that Codex or ChatGPT reads
+directly. SAS, SQL, R, and Python may be discussed as target implementation
+languages, but none is a runtime dependency for invoking the Skill.
+
+Python 3.11 is required only for contributors who run this repository's tests,
+deterministic packager, or strict source-checkout installer. Installing the
+published ZIP with the PowerShell or POSIX instructions below does not require
+Python.
+
+## Contributor setup (Python 3.11)
+
+The repository's development and release tools support Python 3.11.
 
 ```bash
 python3.11 -m venv .venv
@@ -107,7 +145,17 @@ asset_name="clinical-data-research-navigator-$release_version"
 release_base="https://github.com/mtchuang1981/clin-data-nav/releases/download/v$release_version"
 curl -fLO "$release_base/$asset_name.zip"
 curl -fLO "$release_base/$asset_name.manifest.json"
-python -c "import hashlib,json,pathlib; z=pathlib.Path('$asset_name.zip'); m=json.loads(pathlib.Path('$asset_name.manifest.json').read_text()); assert hashlib.sha256(z.read_bytes()).hexdigest()==m['archive_sha256'], 'SHA-256 mismatch'; print('SHA-256 OK')"
+expected_hash="$(grep -o '"archive_sha256":"[0-9a-f]\{64\}"' "$asset_name.manifest.json" | cut -d '"' -f4)"
+if command -v sha256sum >/dev/null 2>&1; then
+  actual_hash="$(sha256sum "$asset_name.zip" | cut -d ' ' -f1)"
+elif command -v shasum >/dev/null 2>&1; then
+  actual_hash="$(shasum -a 256 "$asset_name.zip" | cut -d ' ' -f1)"
+else
+  echo "Install sha256sum or shasum to verify the archive." >&2
+  exit 1
+fi
+test "$actual_hash" = "$expected_hash" || { echo "SHA-256 mismatch" >&2; exit 1; }
+echo "SHA-256 OK"
 skill_directory="$HOME/.agents/skills/clinical-data-research-navigator"
 test ! -e "$skill_directory" || { echo "Skill already exists: $skill_directory"; exit 1; }
 mkdir -p "$skill_directory"

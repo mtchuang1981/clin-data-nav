@@ -65,6 +65,44 @@ def test_readmes_document_installation_activation_and_examples():
     assert "## 使用 Skill" in traditional_chinese
 
 
+def test_readmes_explain_cdisc_models_and_python_runtime_boundary():
+    english = (ROOT / "README.md").read_text(encoding="utf-8")
+    traditional_chinese = (ROOT / "README.zh-TW.md").read_text(encoding="utf-8")
+
+    assert "## New to clinical-data standards?" in english
+    assert "## 第一次接觸臨床資料標準？" in traditional_chinese
+    for term in ("CDISC", "SDTM", "ADaM"):
+        assert term in english
+        assert term in traditional_chinese
+    for official_url in (
+        "https://www.cdisc.org/standards",
+        "https://www.cdisc.org/standards/foundational/sdtm",
+        "https://www.cdisc.org/standards/foundational/adam",
+    ):
+        assert official_url in english
+        assert official_url in traditional_chinese
+
+    assert "Collected or received study data" in english
+    assert "收集或接收的研究資料" in traditional_chinese
+    assert "Using the installed Skill does not require Python." in english
+    assert "使用已安裝的 Skill 不需要 Python。" in traditional_chinese
+    assert "## Contributor setup (Python 3.11)" in english
+    assert "## 貢獻者環境（Python 3.11）" in traditional_chinese
+    assert "not every clinical-data question" in english
+    assert "不是每一個臨床資料問題" in traditional_chinese
+
+    english_posix = english.split("POSIX shell:", 1)[1].split(
+        "## Install from a source checkout",
+        1,
+    )[0]
+    chinese_posix = traditional_chinese.split("POSIX shell：", 1)[1].split(
+        "## 從原始碼安裝",
+        1,
+    )[0]
+    assert "python -c" not in english_posix
+    assert "python -c" not in chinese_posix
+
+
 def test_citation_has_required_cff_1_2_schema_shape_and_author():
     citation = yaml.safe_load(
         (ROOT / "CITATION.cff").read_text(encoding="utf-8")
