@@ -6,19 +6,14 @@ import yaml
 
 REFERENCE_RE = re.compile(r"\[[^\]]+\]\((?!https?://)([^)#]+)")
 BACKTICK_CODE_RE = re.compile(r"`([^`\r\n]+)`")
-REFERENCE_ROOTS = {"agents", "assets", "references", "scripts"}
 
 
 def _is_backtick_reference(value: str) -> bool:
-    posix_path = PurePosixPath(value)
     windows_path = PureWindowsPath(value)
-    normalized_parts = value.replace("\\", "/").split("/")
     return (
-        posix_path.is_absolute()
-        or windows_path.is_absolute()
+        "/" in value
+        or "\\" in value
         or bool(windows_path.drive)
-        or value.startswith(("./", ".\\", "../", "..\\"))
-        or normalized_parts[0] in REFERENCE_ROOTS
     )
 
 

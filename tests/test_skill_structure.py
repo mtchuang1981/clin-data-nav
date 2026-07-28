@@ -94,6 +94,9 @@ def test_validator_rejects_backtick_reference_that_escapes_skill_root(
         "/tmp/outside.md",
         r"C:\outside.md",
         "./references/../../outside.md",
+        r"\outside.md",
+        r"References\..\..\outside.md",
+        "References/../../outside.md",
     ],
     ids=[
         "windows-separators",
@@ -101,6 +104,9 @@ def test_validator_rejects_backtick_reference_that_escapes_skill_root(
         "posix-absolute",
         "windows-drive",
         "dot-prefixed",
+        "windows-root-relative",
+        "casefolded-windows-root",
+        "casefolded-posix-root",
     ],
 )
 def test_validator_rejects_unsafe_backtick_path_syntax(tmp_path, relative):
