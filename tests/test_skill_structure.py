@@ -65,6 +65,27 @@ def test_validator_rejects_missing_reference(tmp_path):
     assert "missing reference: references/missing.md" in validate_skill(skill)
 
 
+def test_validator_rejects_backtick_reference_that_escapes_skill_root(
+    tmp_path,
+):
+    skill = tmp_path / "bad-skill"
+    write_valid_skill(skill)
+    (skill / "references").mkdir()
+    outside = tmp_path / "outside.md"
+    outside.write_text("outside Skill root\n", encoding="utf-8")
+    skill_file = skill / "SKILL.md"
+    skill_file.write_text(
+        skill_file.read_text(encoding="utf-8")
+        + "\nRead `references/../../outside.md`.\n",
+        encoding="utf-8",
+    )
+
+    assert (
+        "unsafe reference path: references/../../outside.md"
+        in validate_skill(skill)
+    )
+
+
 @pytest.mark.parametrize(
     "relative_path",
     [

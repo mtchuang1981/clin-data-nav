@@ -196,6 +196,44 @@ def test_no_overwrite_race_never_replaces_a_competing_target(
         assert list(installed.iterdir()) == []
 
 
+def test_identity_check_path_swap_never_mutates_competing_directory(
+    tmp_path,
+    monkeypatch,
+):
+    package = _build_test_package(tmp_path)
+    destination = tmp_path / "selected-skills"
+    installed = destination / "clinical-data-research-navigator"
+    displaced = tmp_path / "displaced-installer-reservation"
+    victim = installed / "victim.txt"
+    victim_bytes = b"competitor-owned bytes"
+    real_stat = Path.stat
+    swap_triggered = False
+
+    def swap_target_during_identity_check(path, *args, **kwargs):
+        nonlocal swap_triggered
+        if path == installed and not swap_triggered:
+            swap_triggered = True
+            installed.rename(displaced)
+            installed.mkdir()
+            victim.write_bytes(victim_bytes)
+            return real_stat(displaced, *args, **kwargs)
+        return real_stat(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "stat", swap_target_during_identity_check)
+
+    try:
+        install_package(package.archive, destination)
+    except FileExistsError:
+        pass
+
+    if swap_triggered:
+        assert installed.is_dir()
+        assert {path.name for path in installed.iterdir()} == {"victim.txt"}
+        assert victim.read_bytes() == victim_bytes
+    else:
+        assert (installed / "SKILL.md").is_file()
+
+
 def test_overwrite_replaces_only_exact_skill_and_preserves_siblings(tmp_path):
     package = _build_test_package(tmp_path)
     destination = tmp_path / "selected-skills"

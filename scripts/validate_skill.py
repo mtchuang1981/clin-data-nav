@@ -1,4 +1,4 @@
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import re
 
 import yaml
@@ -8,6 +8,25 @@ REFERENCE_RE = re.compile(r"\[[^\]]+\]\((?!https?://)([^)#]+)")
 BACKTICK_REFERENCE_RE = re.compile(
     r"`((?:agents|assets|references|scripts)/[A-Za-z0-9._/-]+)`"
 )
+
+
+def _reference_path_error(skill_dir: Path, relative: str) -> str | None:
+    path = PurePosixPath(relative)
+    if (
+        path.is_absolute()
+        or "\\" in relative
+        or any(part in {"", ".", ".."} for part in relative.split("/"))
+        or path.as_posix() != relative
+    ):
+        return f"unsafe reference path: {relative}"
+
+    skill_root = skill_dir.resolve()
+    referenced = (skill_dir / Path(*path.parts)).resolve(strict=False)
+    if not referenced.is_relative_to(skill_root):
+        return f"unsafe reference path: {relative}"
+    if not referenced.is_file():
+        return f"missing reference: {relative}"
+    return None
 
 
 def validate_skill(skill_dir: Path) -> list[str]:
@@ -38,8 +57,9 @@ def validate_skill(skill_dir: Path) -> list[str]:
         + BACKTICK_REFERENCE_RE.findall(parts[2])
     )
     for relative in references:
-        if not (skill_dir / relative).is_file():
-            errors.append(f"missing reference: {relative}")
+        reference_error = _reference_path_error(skill_dir, relative)
+        if reference_error is not None:
+            errors.append(reference_error)
 
     openai_file = skill_dir / "agents/openai.yaml"
     if not openai_file.is_file():

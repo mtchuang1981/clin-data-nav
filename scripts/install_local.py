@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import argparse
+import ctypes
+import errno
 import hashlib
 import json
 import os
 from pathlib import Path, PurePosixPath, PureWindowsPath
 import shutil
 import stat
+import sys
 import tempfile
 import unicodedata
 from zipfile import ZipFile, ZipInfo
@@ -30,6 +33,8 @@ MAX_MEMBER_COMPRESSED_BYTES = 10 * 1024 * 1024
 MAX_MEMBER_UNCOMPRESSED_BYTES = 10 * 1024 * 1024
 MAX_TOTAL_COMPRESSED_BYTES = 20 * 1024 * 1024
 MAX_TOTAL_UNCOMPRESSED_BYTES = 40 * 1024 * 1024
+AT_FDCWD = -100
+RENAME_NOREPLACE = 1
 
 
 class InstallRollbackError(RuntimeError):
@@ -251,30 +256,57 @@ def _stream_members(
             raise ValueError(f"manifest hash mismatch for {info.filename}")
 
 
+def _rename_no_replace(source: Path, target: Path) -> None:
+    if os.name == "nt":
+        os.rename(source, target)
+        return
+    if not sys.platform.startswith("linux"):
+        raise OSError(
+            errno.ENOTSUP,
+            "atomic no-replace directory installation is unsupported",
+            target,
+        )
+
+    libc = ctypes.CDLL(None, use_errno=True)
+    renameat2 = getattr(libc, "renameat2", None)
+    if renameat2 is None:
+        raise OSError(
+            errno.ENOTSUP,
+            "atomic no-replace directory installation is unsupported",
+            target,
+        )
+    renameat2.argtypes = (
+        ctypes.c_int,
+        ctypes.c_char_p,
+        ctypes.c_int,
+        ctypes.c_char_p,
+        ctypes.c_uint,
+    )
+    renameat2.restype = ctypes.c_int
+    result = renameat2(
+        AT_FDCWD,
+        os.fsencode(source),
+        AT_FDCWD,
+        os.fsencode(target),
+        RENAME_NOREPLACE,
+    )
+    if result != 0:
+        error_number = ctypes.get_errno()
+        raise OSError(
+            error_number,
+            os.strerror(error_number),
+            target,
+        )
+
+
 def _install_without_overwrite(staged: Path, installed: Path) -> None:
+    staged.chmod(0o755)
     try:
-        installed.mkdir(mode=0o700)
+        _rename_no_replace(staged, installed)
     except FileExistsError:
         raise FileExistsError(
             f"installation already exists: {installed}"
         ) from None
-
-    identity = installed.stat(follow_symlinks=False)
-    owned_identity = (identity.st_dev, identity.st_ino)
-    try:
-        for child in sorted(staged.iterdir(), key=lambda path: path.name):
-            os.replace(child, installed / child.name)
-        installed.chmod(0o755)
-    except BaseException:
-        try:
-            current = installed.stat(follow_symlinks=False)
-        except OSError:
-            current_identity = None
-        else:
-            current_identity = (current.st_dev, current.st_ino)
-        if current_identity == owned_identity:
-            shutil.rmtree(installed)
-        raise
 
 
 def install_package(
