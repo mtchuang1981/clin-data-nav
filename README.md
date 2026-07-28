@@ -74,25 +74,99 @@ python scripts/check_public_boundary.py
 python scripts/package_skill.py --check-reproducible
 ```
 
-## Package and install
+## Install from GitHub Release
 
-Choose absolute directories under your control, then substitute them in these
-commands. The installer does not assume a platform-specific Skill location.
+Codex discovers personal Skills under `$HOME/.agents/skills`. Download the ZIP
+and manifest from the same release, verify the ZIP against the manifest, then
+extract it into its own Skill directory. The examples below refuse to replace
+an existing installation and install release `v0.1.1`.
+
+PowerShell:
+
+```powershell
+$releaseVersion = "0.1.1"
+$assetName = "clinical-data-research-navigator-$releaseVersion"
+$releaseBase = "https://github.com/mtchuang1981/clin-data-nav/releases/download/v$releaseVersion"
+Invoke-WebRequest "$releaseBase/$assetName.zip" -OutFile "$assetName.zip"
+Invoke-WebRequest "$releaseBase/$assetName.manifest.json" -OutFile "$assetName.manifest.json"
+$manifest = Get-Content "$assetName.manifest.json" -Raw | ConvertFrom-Json
+$actualHash = (Get-FileHash "$assetName.zip" -Algorithm SHA256).Hash.ToLowerInvariant()
+if ($actualHash -ne $manifest.archive_sha256) { throw "SHA-256 mismatch" }
+$skillDirectory = Join-Path $HOME ".agents\skills\clinical-data-research-navigator"
+if (Test-Path $skillDirectory) { throw "Skill already exists: $skillDirectory" }
+New-Item -ItemType Directory -Path $skillDirectory -Force | Out-Null
+Expand-Archive "$assetName.zip" -DestinationPath $skillDirectory
+Test-Path (Join-Path $skillDirectory "SKILL.md")
+```
+
+POSIX shell:
+
+```bash
+release_version="0.1.1"
+asset_name="clinical-data-research-navigator-$release_version"
+release_base="https://github.com/mtchuang1981/clin-data-nav/releases/download/v$release_version"
+curl -fLO "$release_base/$asset_name.zip"
+curl -fLO "$release_base/$asset_name.manifest.json"
+python -c "import hashlib,json,pathlib; z=pathlib.Path('$asset_name.zip'); m=json.loads(pathlib.Path('$asset_name.manifest.json').read_text()); assert hashlib.sha256(z.read_bytes()).hexdigest()==m['archive_sha256'], 'SHA-256 mismatch'; print('SHA-256 OK')"
+skill_directory="$HOME/.agents/skills/clinical-data-research-navigator"
+test ! -e "$skill_directory" || { echo "Skill already exists: $skill_directory"; exit 1; }
+mkdir -p "$skill_directory"
+unzip "$asset_name.zip" -d "$skill_directory"
+test -f "$skill_directory/SKILL.md"
+```
+
+Codex detects Skill changes automatically. If the Skill does not appear, restart
+Codex and check `/skills` again.
+
+## Install from a source checkout
+
+For the repository's stricter installer checks, create the package and keep its
+manifest beside the ZIP. The installer verifies the archive hash, member
+manifest, size limits, paths, and extracted Skill before installation.
 
 ```bash
 python scripts/package_skill.py --output-dir /absolute/path/you/select/skill-package
 python scripts/install_local.py \
-  /absolute/path/you/select/skill-package/clinical-data-research-navigator-0.1.0.zip \
-  --destination /absolute/path/you/select/installed-skills
+  /absolute/path/you/select/skill-package/clinical-data-research-navigator-0.1.1.zip \
+  --destination "$HOME/.agents/skills"
 ```
 
-The resulting installed directory is
-`/absolute/path/you/select/installed-skills/clinical-data-research-navigator`.
-Use `--overwrite` only when intentionally replacing that installed Skill.
+The resulting directory is
+`$HOME/.agents/skills/clinical-data-research-navigator`. Use `--overwrite` only
+when intentionally replacing that exact installed Skill.
+
+## Use the Skill
+
+In Codex CLI or the IDE extension, run `/skills` to confirm discovery or invoke
+the Skill explicitly with `$clinical-data-research-navigator`. In the ChatGPT
+desktop app, open **Skills** in the sidebar or type `@` and select
+**Clinical Data Research Navigator**. Codex and ChatGPT may also activate it
+implicitly when a request matches the Skill description.
+
+Example prompts:
+
+```text
+$clinical-data-research-navigator Rank the governing sources for a synthetic
+TEAE derivation, then produce Evidence → Contract → Code maturity →
+Validation gaps.
+
+$clinical-data-research-navigator Review a synthetic SAS ADAE approach for
+optimization. Search official SAS documentation first, then targeted
+Lex Jansen implementation literature, and preserve provenance and reuse terms.
+
+$clinical-data-research-navigator Describe a non-executable OMOP-like
+phenotype without inventing Concept IDs or institutional schema details.
+```
+
+If no approved versioned Adapter, live metadata, or fixtures are available,
+expect a specification and validation-gap report rather than executable
+institutional code.
 
 ## Further documentation
 
 - [Architecture](docs/architecture.md)
 - [Release process](docs/release.md)
+- [Changelog](CHANGELOG.md)
 - [Security response](SECURITY.md)
 - [Contributing](CONTRIBUTING.md)
+- [Official Codex Skill documentation](https://learn.chatgpt.com/docs/build-skills)

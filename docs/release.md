@@ -15,8 +15,11 @@ GitHub publishing is given.
 2. Confirm `git status` is clean.
 3. Generate the package and manifest with `python scripts/package_skill.py`.
 4. Perform a manual public-boundary review of the intended release artifacts.
-5. Tag `v0.1.0`.
-6. Attach the ZIP, manifest, and release notes to the GitHub Release.
+5. Create an annotated `v<version>` tag from the verified release commit.
+6. Push `main` and the tag without rewriting an existing published tag.
+7. Create the GitHub Release from that tag and attach the matching
+   `clinical-data-research-navigator-<version>.zip` and
+   `clinical-data-research-navigator-<version>.manifest.json`.
 
-Stop after step 4. Do not perform steps 5–6 (tagging or creating a GitHub
+Stop after step 4. Do not perform steps 5–7 (tagging, pushing, or creating a GitHub
 Release) unless the user separately approves GitHub publishing.

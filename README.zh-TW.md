@@ -58,22 +58,83 @@ python scripts/check_public_boundary.py
 python scripts/package_skill.py --check-reproducible
 ```
 
-## 封裝與安裝
+## 從 GitHub Release 安裝
 
-請先選擇你有權限管理的絕對路徑，再將下列指令中的範例路徑替換成實際位置。安裝程式不會假設特定平台的 Skill 路徑。
+Codex 會從 `$HOME/.agents/skills` 載入個人 Skill。請從同一個 Release 下載 ZIP 與 manifest，先用 manifest 核對 ZIP，再解壓縮到獨立的 Skill 目錄。以下範例會安裝 `v0.1.1`；遇到既有安裝時會停止，不會直接覆寫。
+
+PowerShell：
+
+```powershell
+$releaseVersion = "0.1.1"
+$assetName = "clinical-data-research-navigator-$releaseVersion"
+$releaseBase = "https://github.com/mtchuang1981/clin-data-nav/releases/download/v$releaseVersion"
+Invoke-WebRequest "$releaseBase/$assetName.zip" -OutFile "$assetName.zip"
+Invoke-WebRequest "$releaseBase/$assetName.manifest.json" -OutFile "$assetName.manifest.json"
+$manifest = Get-Content "$assetName.manifest.json" -Raw | ConvertFrom-Json
+$actualHash = (Get-FileHash "$assetName.zip" -Algorithm SHA256).Hash.ToLowerInvariant()
+if ($actualHash -ne $manifest.archive_sha256) { throw "SHA-256 mismatch" }
+$skillDirectory = Join-Path $HOME ".agents\skills\clinical-data-research-navigator"
+if (Test-Path $skillDirectory) { throw "Skill already exists: $skillDirectory" }
+New-Item -ItemType Directory -Path $skillDirectory -Force | Out-Null
+Expand-Archive "$assetName.zip" -DestinationPath $skillDirectory
+Test-Path (Join-Path $skillDirectory "SKILL.md")
+```
+
+POSIX shell：
+
+```bash
+release_version="0.1.1"
+asset_name="clinical-data-research-navigator-$release_version"
+release_base="https://github.com/mtchuang1981/clin-data-nav/releases/download/v$release_version"
+curl -fLO "$release_base/$asset_name.zip"
+curl -fLO "$release_base/$asset_name.manifest.json"
+python -c "import hashlib,json,pathlib; z=pathlib.Path('$asset_name.zip'); m=json.loads(pathlib.Path('$asset_name.manifest.json').read_text()); assert hashlib.sha256(z.read_bytes()).hexdigest()==m['archive_sha256'], 'SHA-256 mismatch'; print('SHA-256 OK')"
+skill_directory="$HOME/.agents/skills/clinical-data-research-navigator"
+test ! -e "$skill_directory" || { echo "Skill already exists: $skill_directory"; exit 1; }
+mkdir -p "$skill_directory"
+unzip "$asset_name.zip" -d "$skill_directory"
+test -f "$skill_directory/SKILL.md"
+```
+
+Codex 會自動偵測 Skill 變更；若 Skill 沒有出現，請重新啟動 Codex，再用 `/skills` 檢查。
+
+## 從原始碼安裝
+
+若要使用本儲存庫較嚴格的安裝檢查，請自行建立封裝檔，並讓 manifest 與 ZIP 放在同一個目錄。安裝程式會驗證壓縮檔雜湊、檔案清單、大小限制、路徑與解壓後的 Skill。
 
 ```bash
 python scripts/package_skill.py --output-dir /absolute/path/you/select/skill-package
 python scripts/install_local.py \
-  /absolute/path/you/select/skill-package/clinical-data-research-navigator-0.1.0.zip \
-  --destination /absolute/path/you/select/installed-skills
+  /absolute/path/you/select/skill-package/clinical-data-research-navigator-0.1.1.zip \
+  --destination "$HOME/.agents/skills"
 ```
 
-安裝完成後的目錄為 `/absolute/path/you/select/installed-skills/clinical-data-research-navigator`。只有在確定要取代既有安裝時，才使用 `--overwrite`。
+安裝完成後的目錄為 `$HOME/.agents/skills/clinical-data-research-navigator`。只有在確定要取代這個既有 Skill 時，才使用 `--overwrite`。
+
+## 使用 Skill
+
+在 Codex CLI 或 IDE 擴充功能中，可先執行 `/skills` 確認 Skill 已被偵測，再用 `$clinical-data-research-navigator` 明確呼叫。使用 ChatGPT 桌面版時，可從側邊欄開啟 **Skills**，或輸入 `@` 後選擇 **Clinical Data Research Navigator**。若問題符合 Skill 的描述，Codex 與 ChatGPT 也可能自動啟用。
+
+提示詞範例：
+
+```text
+$clinical-data-research-navigator 請排序合成 TEAE 衍生規則的權威來源，
+並依序產出「證據 → 資料契約 → 程式碼成熟度 → 驗證缺口」。
+
+$clinical-data-research-navigator 請審查一段合成 SAS ADAE 邏輯的最佳化方向。
+先查 SAS 官方文件，再針對 Lex Jansen 實作文獻精準搜尋，並保留來源與再利用條款。
+
+$clinical-data-research-navigator 請描述不可執行的 OMOP 類型 phenotype，
+不要猜測 Concept ID 或機構內部 schema。
+```
+
+若沒有經核准且具版本控管的 Adapter、即時中繼資料或測試資料，預期輸出會是規格與驗證缺口，而不是可直接在機構環境執行的程式碼。
 
 ## 延伸文件
 
 - [架構說明](docs/architecture.md)
 - [發布流程](docs/release.md)
+- [版本紀錄](CHANGELOG.zh-TW.md)
 - [安全性回報](SECURITY.md)
 - [貢獻指南](CONTRIBUTING.md)
+- [Codex 官方 Skill 文件](https://learn.chatgpt.com/docs/build-skills)

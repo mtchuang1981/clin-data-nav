@@ -1,4 +1,5 @@
 from pathlib import Path
+import json
 
 from scripts.package_skill import build_package
 
@@ -45,3 +46,19 @@ def test_package_excludes_repository_files(tmp_path):
         not name.startswith(("tests/", "docs/", ".git/"))
         for name in result.files
     )
+
+
+def test_v011_package_and_manifest_names_match_release_version(tmp_path):
+    result = build_package(
+        Path("skills/clinical-data-research-navigator"),
+        tmp_path,
+    )
+    manifest = json.loads(result.manifest.read_text(encoding="utf-8"))
+
+    assert result.archive.name == "clinical-data-research-navigator-0.1.1.zip"
+    assert (
+        result.manifest.name
+        == "clinical-data-research-navigator-0.1.1.manifest.json"
+    )
+    assert manifest["version"] == "0.1.1"
+    assert manifest["archive"] == result.archive.name

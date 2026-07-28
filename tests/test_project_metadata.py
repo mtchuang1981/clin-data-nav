@@ -1,6 +1,10 @@
 from pathlib import Path
+import tomllib
 
 import yaml
+
+from scripts.install_local import PACKAGE_VERSION as INSTALLER_VERSION
+from scripts.package_skill import PACKAGE_VERSION as PACKAGER_VERSION
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -27,9 +31,38 @@ def test_citation_and_license_metadata():
         (ROOT / "CITATION.cff").read_text(encoding="utf-8")
     )
     assert citation["title"] == "Clinical Data Research Navigator"
-    assert citation["version"] == "0.1.0"
+    assert citation["version"] == "0.1.1"
     assert citation["license"] == "Apache-2.0"
     assert "Apache License" in (ROOT / "LICENSE").read_text(encoding="utf-8")
+
+
+def test_release_version_is_synchronized():
+    project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    citation = yaml.safe_load((ROOT / "CITATION.cff").read_text(encoding="utf-8"))
+    changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
+    changelog_zh_tw = (ROOT / "CHANGELOG.zh-TW.md").read_text(encoding="utf-8")
+
+    assert project["project"]["version"] == "0.1.1"
+    assert citation["version"] == "0.1.1"
+    assert PACKAGER_VERSION == "0.1.1"
+    assert INSTALLER_VERSION == "0.1.1"
+    assert "## 0.1.1 - 2026-07-28" in changelog
+    assert "## 0.1.1 - 2026-07-28" in changelog_zh_tw
+
+
+def test_readmes_document_installation_activation_and_examples():
+    english = (ROOT / "README.md").read_text(encoding="utf-8")
+    traditional_chinese = (ROOT / "README.zh-TW.md").read_text(encoding="utf-8")
+
+    for text in (english, traditional_chinese):
+        assert "$HOME/.agents/skills" in text
+        assert "$clinical-data-research-navigator" in text
+        assert "v0.1.1" in text
+        assert "SHA-256" in text
+    assert "## Install from GitHub Release" in english
+    assert "## Use the Skill" in english
+    assert "## 從 GitHub Release 安裝" in traditional_chinese
+    assert "## 使用 Skill" in traditional_chinese
 
 
 def test_citation_has_required_cff_1_2_schema_shape_and_author():
