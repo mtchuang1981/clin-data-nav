@@ -52,7 +52,6 @@ DATA_ARTIFACT_ALLOWLIST: set[str] = set()
 SKIP_DIRECTORIES = {
     ".git",
     ".pytest_cache",
-    ".worktrees",
     "__pycache__",
     "dist",
 }
@@ -138,6 +137,7 @@ def scan_repository(root: Path, max_text_bytes: int = 200_000) -> list[Finding]:
             name
             for name in child_directories
             if name not in SKIP_DIRECTORIES
+            and (directory_path != root or name != ".worktrees")
         )
         for filename in sorted(filenames):
             path = directory_path / filename

@@ -175,6 +175,9 @@ def test_scanner_skips_only_the_repository_dot_worktrees_container(tmp_path):
     ordinary_fixture = tmp_path / "worktrees/feature/stale-codingbook.md"
     ordinary_fixture.parent.mkdir(parents=True)
     ordinary_fixture.write_text("synthetic public file", encoding="utf-8")
+    nested_fixture = tmp_path / "docs/.worktrees/stale-codingbook.md"
+    nested_fixture.parent.mkdir(parents=True)
+    nested_fixture.write_text("synthetic nested private file", encoding="utf-8")
 
     assert [
         (finding.path, finding.rule)
@@ -183,7 +186,10 @@ def test_scanner_skips_only_the_repository_dot_worktrees_container(tmp_path):
     assert [
         (finding.path, finding.rule)
         for finding in scan_repository(tmp_path)
-    ] == [("worktrees/feature/stale-codingbook.md", "private-filename")]
+    ] == [
+        ("docs/.worktrees/stale-codingbook.md", "private-filename"),
+        ("worktrees/feature/stale-codingbook.md", "private-filename"),
+    ]
 
 
 def test_scanner_skips_git_and_python_cache_directories(tmp_path):
