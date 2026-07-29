@@ -23,6 +23,32 @@ CASE_IDS = {
 }
 
 
+def test_eval_readme_distinguishes_catalog_from_scored_fixture_pairs():
+    case_ids = {
+        case["id"]
+        for case in yaml.safe_load(
+            (ROOT / "evals/cases.yaml").read_text(encoding="utf-8")
+        )["cases"]
+    }
+    baseline_ids = {
+        path.stem for path in (ROOT / "tests/fixtures/baseline").glob("*.md")
+    }
+    forward_ids = {
+        path.stem for path in (ROOT / "tests/fixtures/forward").glob("*.md")
+    }
+    paired_ids = baseline_ids & forward_ids
+    readme = (ROOT / "evals/README.md").read_text(encoding="utf-8")
+    table_ids = set(
+        re.findall(r"^\| `([^`]+)` \|", readme, flags=re.MULTILINE)
+    )
+
+    assert f"{len(case_ids)} catalog cases" in readme
+    assert f"{len(paired_ids)} scored fixture pairs" in readme
+    assert paired_ids <= case_ids
+    assert table_ids == paired_ids
+    assert "not proof of semantic correctness or clinical validity" in readme
+
+
 def test_each_case_uses_the_public_eval_schema():
     data = yaml.safe_load((ROOT / "evals/cases.yaml").read_text(encoding="utf-8"))
     cases = data["cases"]
