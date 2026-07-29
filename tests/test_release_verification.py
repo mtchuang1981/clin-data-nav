@@ -1,13 +1,18 @@
 from pathlib import Path
+import hashlib
+import json
 import os
 import subprocess
 import sys
+from zipfile import ZipFile
 
 import pytest
 
 import scripts.verify_release as verify_release
+from scripts.package_skill import build_package
 from scripts.verify_release import (
     ReleaseVerificationError,
+    verify_release_artifacts,
     verify_release_ref,
 )
 
@@ -189,3 +194,87 @@ def test_git_environment_filter_keeps_safe_directory_config_and_removes_redirect
     assert captured["GIT_CONFIG_COUNT"] == "1"
     assert captured["GIT_CONFIG_KEY_0"] == "safe.directory"
     assert captured["GIT_CONFIG_VALUE_0"] == "*"
+
+
+def test_packager_output_passes_release_artifact_verification(tmp_path):
+    package = build_package(
+        Path("skills/clinical-data-research-navigator"),
+        tmp_path / "dist",
+    )
+
+    verify_release_artifacts(package.archive, package.manifest)
+
+
+def test_archive_sha_mismatch_is_rejected(tmp_path):
+    package = build_package(
+        Path("skills/clinical-data-research-navigator"),
+        tmp_path / "dist",
+    )
+    package.archive.write_bytes(package.archive.read_bytes() + b"tamper")
+
+    with pytest.raises(ReleaseVerificationError, match="archive SHA-256"):
+        verify_release_artifacts(package.archive, package.manifest)
+
+
+def test_unreadable_archive_is_rejected_safely(tmp_path):
+    package = build_package(
+        Path("skills/clinical-data-research-navigator"),
+        tmp_path / "dist",
+    )
+    package.archive.unlink()
+
+    with pytest.raises(ReleaseVerificationError, match="readable ZIP"):
+        verify_release_artifacts(package.archive, package.manifest)
+
+
+def test_member_hash_mismatch_is_rejected(tmp_path):
+    package = build_package(
+        Path("skills/clinical-data-research-navigator"),
+        tmp_path / "dist",
+    )
+    manifest = json.loads(package.manifest.read_text(encoding="utf-8"))
+    manifest["files"][0]["sha256"] = "0" * 64
+    package.manifest.write_text(
+        json.dumps(manifest, separators=(",", ":"), sort_keys=True),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ReleaseVerificationError, match="member SHA-256"):
+        verify_release_artifacts(package.archive, package.manifest)
+
+
+def test_undeclared_archive_member_is_rejected(tmp_path):
+    package = build_package(
+        Path("skills/clinical-data-research-navigator"),
+        tmp_path / "dist",
+    )
+    with ZipFile(package.archive, "a") as archive:
+        archive.writestr("undeclared.txt", b"not in manifest")
+    manifest = json.loads(package.manifest.read_text(encoding="utf-8"))
+    manifest["archive_sha256"] = hashlib.sha256(
+        package.archive.read_bytes()
+    ).hexdigest()
+    package.manifest.write_text(
+        json.dumps(manifest, separators=(",", ":"), sort_keys=True),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ReleaseVerificationError, match="member set"):
+        verify_release_artifacts(package.archive, package.manifest)
+
+
+@pytest.mark.parametrize("unsafe_path", ["../outside.txt", r"..\outside.txt"])
+def test_unsafe_manifest_member_is_rejected(tmp_path, unsafe_path):
+    package = build_package(
+        Path("skills/clinical-data-research-navigator"),
+        tmp_path / "dist",
+    )
+    manifest = json.loads(package.manifest.read_text(encoding="utf-8"))
+    manifest["files"][0]["path"] = unsafe_path
+    package.manifest.write_text(
+        json.dumps(manifest, separators=(",", ":"), sort_keys=True),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ReleaseVerificationError, match="unsafe"):
+        verify_release_artifacts(package.archive, package.manifest)

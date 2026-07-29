@@ -4,17 +4,22 @@ from __future__ import annotations
 
 import argparse
 from dataclasses import dataclass
+import hashlib
+import json
 import os
 from pathlib import Path
+from pathlib import PurePosixPath
 import re
 import subprocess
 import sys
 import tomllib
+from zipfile import BadZipFile, ZipFile
 
 
 TAG_PATTERN = re.compile(
     r"^v(?P<version>(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*))$"
 )
+SKILL_NAME = "clinical-data-research-navigator"
 GIT_REPOSITORY_OVERRIDES = frozenset(
     {
         "GIT_DIR",
@@ -42,6 +47,107 @@ class ReleaseRef:
     tag: str
     version: str
     commit: str
+
+
+def _safe_member_name(name: str) -> bool:
+    path = PurePosixPath(name)
+    return (
+        bool(name)
+        and "\\" not in name
+        and path != PurePosixPath(".")
+        and not path.is_absolute()
+        and ".." not in path.parts
+    )
+
+
+def verify_release_artifacts(archive: Path, manifest: Path) -> None:
+    archive = archive.resolve()
+    manifest = manifest.resolve()
+    try:
+        data = json.loads(manifest.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as error:
+        raise ReleaseVerificationError("manifest must be valid UTF-8 JSON") from error
+
+    required = {"archive", "archive_sha256", "files", "name", "version"}
+    if not isinstance(data, dict) or set(data) != required:
+        raise ReleaseVerificationError("manifest keys do not match release schema")
+    if data["name"] != SKILL_NAME:
+        raise ReleaseVerificationError("manifest Skill name is invalid")
+    if not isinstance(data["archive_sha256"], str) or re.fullmatch(
+        r"[0-9a-f]{64}",
+        data["archive_sha256"],
+    ) is None:
+        raise ReleaseVerificationError("manifest archive SHA-256 is invalid")
+    version = data["version"]
+    if not isinstance(version, str) or re.fullmatch(
+        r"(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)",
+        version,
+    ) is None:
+        raise ReleaseVerificationError("manifest version is invalid")
+    expected_archive = f"{SKILL_NAME}-{version}.zip"
+    expected_manifest = f"{SKILL_NAME}-{version}.manifest.json"
+    if archive.name != expected_archive or data["archive"] != expected_archive:
+        raise ReleaseVerificationError("archive name does not match manifest version")
+    if manifest.name != expected_manifest:
+        raise ReleaseVerificationError("manifest filename does not match version")
+
+    try:
+        archive_bytes = archive.read_bytes()
+    except OSError as error:
+        raise ReleaseVerificationError("archive must be a readable ZIP") from error
+    actual_archive_hash = hashlib.sha256(archive_bytes).hexdigest()
+    if actual_archive_hash != data["archive_sha256"]:
+        raise ReleaseVerificationError("archive SHA-256 does not match manifest")
+
+    records = data["files"]
+    if not isinstance(records, list):
+        raise ReleaseVerificationError("manifest files must be a list")
+    by_path = {}
+    for record in records:
+        if not isinstance(record, dict) or set(record) != {"path", "sha256", "size"}:
+            raise ReleaseVerificationError("manifest file record is invalid")
+        path = record["path"]
+        if not isinstance(path, str) or not _safe_member_name(path):
+            raise ReleaseVerificationError("manifest member path is unsafe")
+        if not isinstance(record["size"], int) or record["size"] < 0:
+            raise ReleaseVerificationError("manifest member size is invalid")
+        if not isinstance(record["sha256"], str) or re.fullmatch(
+            r"[0-9a-f]{64}",
+            record["sha256"],
+        ) is None:
+            raise ReleaseVerificationError("manifest member SHA-256 is invalid")
+        if path in by_path:
+            raise ReleaseVerificationError("manifest contains duplicate members")
+        by_path[path] = record
+
+    try:
+        with ZipFile(archive) as zip_file:
+            infos = zip_file.infolist()
+            names = [info.filename for info in infos]
+            if len(names) != len(set(names)):
+                raise ReleaseVerificationError("archive contains duplicate members")
+            if any(
+                info.is_dir() or not _safe_member_name(info.filename)
+                for info in infos
+            ):
+                raise ReleaseVerificationError("archive member path is unsafe")
+            if set(names) != set(by_path):
+                raise ReleaseVerificationError(
+                    "archive and manifest member sets differ"
+                )
+            for info in infos:
+                member_bytes = zip_file.read(info)
+                record = by_path[info.filename]
+                if len(member_bytes) != record["size"]:
+                    raise ReleaseVerificationError(
+                        f"member size mismatch: {info.filename}"
+                    )
+                if hashlib.sha256(member_bytes).hexdigest() != record["sha256"]:
+                    raise ReleaseVerificationError(
+                        f"member SHA-256 mismatch: {info.filename}"
+                    )
+    except (OSError, BadZipFile) as error:
+        raise ReleaseVerificationError("archive must be a readable ZIP") from error
 
 
 def _git(root: Path, *arguments: str, check: bool = True) -> subprocess.CompletedProcess:
@@ -134,9 +240,17 @@ def _verify_release_ref(
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     subparsers = parser.add_subparsers(dest="command", required=True)
+
     ref_parser = subparsers.add_parser("ref", help="verify a release tag")
     ref_parser.add_argument("--tag", required=True)
     ref_parser.add_argument("--main-ref", default="origin/main")
+
+    artifact_parser = subparsers.add_parser(
+        "artifacts",
+        help="verify a release ZIP and manifest",
+    )
+    artifact_parser.add_argument("--archive", required=True, type=Path)
+    artifact_parser.add_argument("--manifest", required=True, type=Path)
     return parser
 
 
@@ -147,6 +261,10 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "ref":
             result = verify_release_ref(root, args.tag, args.main_ref)
             print(result.version)
+            return 0
+        if args.command == "artifacts":
+            verify_release_artifacts(args.archive, args.manifest)
+            print("release artifacts verified")
             return 0
     except ReleaseVerificationError as error:
         print(f"release verification failed: {error}", file=sys.stderr)
