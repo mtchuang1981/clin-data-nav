@@ -283,11 +283,22 @@ def _call_native_rename(
         )
 
 
-def _rename_no_replace(source: Path, target: Path) -> None:
+def _platform_family() -> str:
     if os.name == "nt":
+        return "windows"
+    if sys.platform.startswith("linux"):
+        return "linux"
+    if sys.platform == "darwin":
+        return "darwin"
+    return "unsupported"
+
+
+def _rename_no_replace(source: Path, target: Path) -> None:
+    platform_family = _platform_family()
+    if platform_family == "windows":
         os.rename(source, target)
         return
-    if sys.platform.startswith("linux"):
+    if platform_family == "linux":
         _call_native_rename(
             "renameat2",
             (
@@ -307,7 +318,7 @@ def _rename_no_replace(source: Path, target: Path) -> None:
             target,
         )
         return
-    if sys.platform == "darwin":
+    if platform_family == "darwin":
         _call_native_rename(
             "renamex_np",
             (

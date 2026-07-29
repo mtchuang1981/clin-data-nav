@@ -267,6 +267,19 @@ def test_competitor_winning_at_atomic_publish_is_preserved(
     assert list(installed.iterdir()) == []
 
 
+def test_platform_family_reports_the_running_host():
+    family = install_local_module._platform_family()
+
+    if install_local_module.os.name == "nt":
+        assert family == "windows"
+    elif install_local_module.sys.platform.startswith("linux"):
+        assert family == "linux"
+    elif install_local_module.sys.platform == "darwin":
+        assert family == "darwin"
+    else:
+        assert family == "unsupported"
+
+
 def test_darwin_uses_atomic_exclusive_rename(tmp_path, monkeypatch):
     calls = []
 
@@ -283,7 +296,11 @@ def test_darwin_uses_atomic_exclusive_rename(tmp_path, monkeypatch):
 
     source = tmp_path / "staged"
     target = tmp_path / "installed"
-    monkeypatch.setattr(install_local_module.sys, "platform", "darwin")
+    monkeypatch.setattr(
+        install_local_module,
+        "_platform_family",
+        lambda: "darwin",
+    )
     monkeypatch.setattr(
         install_local_module.ctypes,
         "CDLL",
@@ -301,16 +318,20 @@ def test_darwin_uses_atomic_exclusive_rename(tmp_path, monkeypatch):
     ]
 
 
-@pytest.mark.parametrize("platform", ["linux", "darwin"])
+@pytest.mark.parametrize("platform_family", ["linux", "darwin"])
 def test_missing_native_no_replace_primitive_fails_closed(
     tmp_path,
     monkeypatch,
-    platform,
+    platform_family,
 ):
     class FakeLibc:
         pass
 
-    monkeypatch.setattr(install_local_module.sys, "platform", platform)
+    monkeypatch.setattr(
+        install_local_module,
+        "_platform_family",
+        lambda: platform_family,
+    )
     monkeypatch.setattr(
         install_local_module.ctypes,
         "CDLL",
@@ -327,7 +348,11 @@ def test_missing_native_no_replace_primitive_fails_closed(
 
 
 def test_unsupported_platform_fails_closed(tmp_path, monkeypatch):
-    monkeypatch.setattr(install_local_module.sys, "platform", "freebsd14")
+    monkeypatch.setattr(
+        install_local_module,
+        "_platform_family",
+        lambda: "unsupported",
+    )
 
     with pytest.raises(OSError) as raised:
         install_local_module._rename_no_replace(
