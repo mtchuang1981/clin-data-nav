@@ -43,3 +43,13 @@ GitHub services to check out source, configure Python, and install the declared
 dependencies. After dependency acquisition, validation makes no institutional
 or external LLM network calls. The read-only repository token is sufficient
 for checkout and validation; the workflow receives no project secrets.
+
+## Release trust boundary
+
+The validation workflow runs the same four-command verification set on Ubuntu
+and Windows with read-only repository permissions. The manually dispatched
+release workflow checks an existing annotated, version-matched tag that is
+reachable from `origin/main`, repeats both platform jobs against that tag, and
+grants `contents: write` only to the dependent publish job. The publish job
+rebuilds and verifies the deterministic ZIP and manifest before creating a new
+Release; it cannot edit an existing Release.

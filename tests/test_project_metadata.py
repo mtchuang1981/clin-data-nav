@@ -22,20 +22,53 @@ def test_pyproject_declares_explicit_setuptools_package_boundary():
     assert project["tool"]["setuptools"]["packages"] == ["scripts"]
 
 
-def test_ci_has_read_only_permissions_and_required_commands():
-    workflow = yaml.safe_load(
-        (ROOT / ".github/workflows/validate.yml").read_text(encoding="utf-8")
-    )
+def test_ci_has_dual_platform_read_only_jobs_and_required_commands():
+    workflow_path = ROOT / ".github/workflows/validate.yml"
+    workflow = yaml.safe_load(workflow_path.read_text(encoding="utf-8"))
+    job = workflow["jobs"]["test"]
+
     assert workflow["permissions"] == {"contents": "read"}
-    rendered = (ROOT / ".github/workflows/validate.yml").read_text(encoding="utf-8")
+    assert job["runs-on"] == "${{ matrix.os }}"
+    assert set(job["strategy"]["matrix"]["os"]) == {
+        "ubuntu-latest",
+        "windows-latest",
+    }
+    rendered = workflow_path.read_text(encoding="utf-8")
     for command in (
+        'python -m pip install -e ".[dev]"',
         "python -m pytest -q",
         "python scripts/validate_skill.py",
         "python scripts/check_public_boundary.py",
         "python scripts/package_skill.py --check-reproducible",
     ):
         assert command in rendered
+    assert "continue-on-error" not in rendered
     assert "secrets." not in rendered
+
+
+def test_release_workflow_is_manual_fail_closed_and_least_privilege():
+    path = ROOT / ".github/workflows/release.yml"
+    rendered = path.read_text(encoding="utf-8")
+    workflow = yaml.load(rendered, Loader=yaml.BaseLoader)
+
+    assert "workflow_dispatch" in workflow["on"]
+    assert workflow["permissions"] == {"contents": "read"}
+    assert set(workflow["jobs"]) == {"preflight", "validate", "publish"}
+    assert workflow["jobs"]["validate"]["needs"] == "preflight"
+    assert workflow["jobs"]["publish"]["permissions"] == {"contents": "write"}
+    assert set(workflow["jobs"]["publish"]["needs"]) == {
+        "preflight",
+        "validate",
+    }
+    assert rendered.count("contents: write") == 1
+    assert "python scripts/verify_release.py ref" in rendered
+    assert "python scripts/verify_release.py artifacts" in rendered
+    assert "python scripts/package_skill.py" in rendered
+    assert "gh release create" in rendered
+    assert "--verify-tag" in rendered
+    assert "continue-on-error" not in rendered
+    assert "release edit" not in rendered
+    assert "git tag -f" not in rendered
 
 
 def test_citation_and_license_metadata():
