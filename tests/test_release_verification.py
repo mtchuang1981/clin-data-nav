@@ -5,6 +5,7 @@ import sys
 
 import pytest
 
+import scripts.verify_release as verify_release
 from scripts.verify_release import (
     ReleaseVerificationError,
     verify_release_ref,
@@ -153,3 +154,38 @@ def test_cli_failure_is_safe_when_git_environment_points_to_non_commit_tag(tmp_p
     assert result.returncode == 1
     assert "release verification failed:" in result.stderr
     assert "Traceback" not in result.stderr
+
+
+def test_git_environment_filter_keeps_safe_directory_config_and_removes_redirects(
+    tmp_path, monkeypatch
+):
+    captured = {}
+
+    def run(*arguments, **kwargs):
+        captured.update(kwargs["env"])
+        return subprocess.CompletedProcess(arguments[0], 0, "", "")
+
+    for name in (
+        "GIT_DIR",
+        "GIT_WORK_TREE",
+        "GIT_OBJECT_DIRECTORY",
+        "GIT_NAMESPACE",
+    ):
+        monkeypatch.setenv(name, "redirect")
+    monkeypatch.setenv("GIT_CONFIG_COUNT", "1")
+    monkeypatch.setenv("GIT_CONFIG_KEY_0", "safe.directory")
+    monkeypatch.setenv("GIT_CONFIG_VALUE_0", "*")
+    monkeypatch.setattr(verify_release.subprocess, "run", run)
+
+    verify_release._git(tmp_path, "status")
+
+    for name in (
+        "GIT_DIR",
+        "GIT_WORK_TREE",
+        "GIT_OBJECT_DIRECTORY",
+        "GIT_NAMESPACE",
+    ):
+        assert name not in captured
+    assert captured["GIT_CONFIG_COUNT"] == "1"
+    assert captured["GIT_CONFIG_KEY_0"] == "safe.directory"
+    assert captured["GIT_CONFIG_VALUE_0"] == "*"

@@ -15,6 +15,22 @@ import tomllib
 TAG_PATTERN = re.compile(
     r"^v(?P<version>(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*))$"
 )
+GIT_REPOSITORY_OVERRIDES = frozenset(
+    {
+        "GIT_DIR",
+        "GIT_COMMON_DIR",
+        "GIT_WORK_TREE",
+        "GIT_IMPLICIT_WORK_TREE",
+        "GIT_OBJECT_DIRECTORY",
+        "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+        "GIT_GRAFT_FILE",
+        "GIT_SHALLOW_FILE",
+        "GIT_REPLACE_REF_BASE",
+        "GIT_NAMESPACE",
+        "GIT_CEILING_DIRECTORIES",
+        "GIT_DISCOVERY_ACROSS_FILESYSTEM",
+    }
+)
 
 
 class ReleaseVerificationError(ValueError):
@@ -30,7 +46,9 @@ class ReleaseRef:
 
 def _git(root: Path, *arguments: str, check: bool = True) -> subprocess.CompletedProcess:
     environment = {
-        name: value for name, value in os.environ.items() if not name.startswith("GIT_")
+        name: value
+        for name, value in os.environ.items()
+        if name not in GIT_REPOSITORY_OVERRIDES
     }
     return subprocess.run(
         ["git", *arguments],
