@@ -35,6 +35,23 @@ def initialize_repository(path: Path, branch: str = "main") -> None:
 
 
 def default_branch_is_main(root: Path) -> bool:
+    remote_head = subprocess.run(
+        [
+            "git",
+            "symbolic-ref",
+            "--quiet",
+            "--short",
+            "refs/remotes/origin/HEAD",
+        ],
+        cwd=root,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if remote_head.returncode == 0:
+        return remote_head.stdout.strip() == "origin/main"
+    if remote_head.returncode not in (1, 128):
+        return False
     head = subprocess.run(
         ["git", "symbolic-ref", "--quiet", "--short", "HEAD"],
         cwd=root,
@@ -73,6 +90,38 @@ def test_attached_feature_with_local_main_ref_is_rejected(tmp_path, monkeypatch)
     monkeypatch.delenv("GITHUB_REF", raising=False)
 
     assert not default_branch_is_main(repository)
+
+
+def test_attached_feature_accepts_origin_defaulting_to_main(tmp_path):
+    repository = tmp_path / "repository"
+    initialize_repository(repository)
+    subprocess.run(
+        ["git", "checkout", "-q", "-b", "feature"],
+        cwd=repository,
+        check=True,
+    )
+    subprocess.run(
+        [
+            "git",
+            "update-ref",
+            "refs/remotes/origin/main",
+            "refs/heads/main",
+        ],
+        cwd=repository,
+        check=True,
+    )
+    subprocess.run(
+        [
+            "git",
+            "symbolic-ref",
+            "refs/remotes/origin/HEAD",
+            "refs/remotes/origin/main",
+        ],
+        cwd=repository,
+        check=True,
+    )
+
+    assert default_branch_is_main(repository)
 
 
 def test_detached_checkout_with_local_main_ref_is_accepted(tmp_path):
