@@ -1,7 +1,7 @@
 from pathlib import Path
 import hashlib
 import json
-import os
+import shutil
 import subprocess
 import sys
 from zipfile import ZipFile
@@ -43,6 +43,35 @@ def _repository(
     _git(repo, "add", "pyproject.toml")
     _git(repo, "commit", "-m", "initial")
     return repo
+
+
+def _run_verifier_cli(
+    repo: Path,
+    tag: str,
+    *,
+    main_ref: str = "main",
+) -> subprocess.CompletedProcess:
+    script = repo / "scripts/verify_release.py"
+    script.parent.mkdir(exist_ok=True)
+    source_script = (
+        Path(__file__).resolve().parents[1] / "scripts/verify_release.py"
+    )
+    shutil.copy2(source_script, script)
+    return subprocess.run(
+        [
+            sys.executable,
+            str(script),
+            "ref",
+            "--tag",
+            tag,
+            "--main-ref",
+            main_ref,
+        ],
+        cwd=repo,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
 
 
 def test_annotated_version_matched_main_reachable_tag_is_accepted(tmp_path):
@@ -151,21 +180,26 @@ def test_git_environment_cannot_redirect_verification_to_another_repository(
     assert result.commit == root_commit
 
 
-def test_cli_failure_is_safe_when_git_environment_points_to_non_commit_tag(tmp_path):
+def test_cli_failure_is_safe_for_non_commit_tag_in_its_own_repository(tmp_path):
     repo = _repository(tmp_path)
     _git(repo, "tag", "-a", "v0.2.2", "HEAD^{tree}", "-m", "tree tag")
-    environment = os.environ | {"GIT_DIR": str(repo / ".git")}
 
-    result = subprocess.run(
-        [sys.executable, "scripts/verify_release.py", "ref", "--tag", "v0.2.2"],
-        capture_output=True,
-        text=True,
-        env=environment,
-    )
+    result = _run_verifier_cli(repo, "v0.2.2")
 
     assert result.returncode == 1
     assert "release verification failed:" in result.stderr
     assert "Traceback" not in result.stderr
+
+
+def test_cli_missing_tag_failure_is_safe_and_repository_local(tmp_path):
+    repo = _repository(tmp_path)
+
+    result = _run_verifier_cli(repo, "v0.2.2")
+
+    assert result.returncode == 1
+    assert "release tag does not exist: v0.2.2" in result.stderr
+    assert "Traceback" not in result.stderr
+    assert str(repo) not in result.stderr
 
 
 def test_git_environment_filter_keeps_safe_directory_config_and_removes_redirects(
@@ -263,6 +297,22 @@ def test_member_hash_mismatch_is_rejected(tmp_path):
     )
 
     with pytest.raises(ReleaseVerificationError, match="member SHA-256"):
+        verify_release_artifacts(package.archive, package.manifest)
+
+
+def test_boolean_manifest_member_size_is_rejected_as_invalid(tmp_path):
+    package = build_package(
+        Path("skills/clinical-data-research-navigator"),
+        tmp_path / "dist",
+    )
+    manifest = json.loads(package.manifest.read_text(encoding="utf-8"))
+    manifest["files"][0]["size"] = True
+    package.manifest.write_text(
+        json.dumps(manifest, separators=(",", ":"), sort_keys=True),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ReleaseVerificationError, match="member size is invalid"):
         verify_release_artifacts(package.archive, package.manifest)
 
 

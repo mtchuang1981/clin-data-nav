@@ -49,7 +49,12 @@ for checkout and validation; the workflow receives no project secrets.
 The validation workflow runs the same four-command verification set on Ubuntu
 and Windows with read-only repository permissions. The manually dispatched
 release workflow checks an existing annotated, version-matched tag that is
-reachable from `origin/main`, repeats both platform jobs against that tag, and
-grants `contents: write` only to the dependent publish job. The publish job
-rebuilds and verifies the deterministic ZIP and manifest before creating a new
-Release; it cannot edit an existing Release.
+reachable from `origin/main` and repeats both platform jobs against its pinned
+commit. A read-only build job creates and verifies the deterministic ZIP,
+manifest, static Release notes, and transit checksum file, then uploads that
+bundle under an immutable artifact ID. Only the dependent writer job has
+`contents: write`; it has no source checkout, Python setup, dependency install,
+or repository code execution. It downloads the verified bundle, checks both
+the checksum-file digest and every bundled file, immediately rechecks the
+remote annotated tag object, peeled commit, and absence of an existing Release,
+then creates a new Release. It cannot edit an existing Release.

@@ -72,7 +72,7 @@ def _tracked_paths(root: Path) -> set[str] | None:
             capture_output=True,
         )
         if repository.returncode != 0 or repository.stdout.strip() != b"true":
-            return None
+            raise TrackedPathQueryError
         result = subprocess.run(
             ["git", "ls-files", "-z"],
             cwd=root,

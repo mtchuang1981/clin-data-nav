@@ -158,12 +158,12 @@ python scripts/package_skill.py --check-reproducible
 
 ## 經驗證的 GitHub Release 手動安裝
 
-Codex 會從 `$HOME/.agents/skills` 載入個人 Skill。請從同一個 Release 下載 ZIP 與 manifest，先用 manifest 核對 ZIP，再解壓縮到獨立的 Skill 目錄。以下範例會安裝 `v0.2.2`；遇到既有安裝時會停止，不會直接覆寫。
+Codex 會從 `$HOME/.agents/skills` 載入個人 Skill。請從同一個 Release 下載 ZIP 與 manifest，先用 manifest 核對 ZIP，再解壓縮到獨立的 Skill 目錄。以下範例會安裝目前已發布的 `v0.2.1`；遇到既有安裝時會停止，不會直接覆寫。
 
 PowerShell：
 
 ```powershell
-$releaseVersion = "0.2.2"
+$releaseVersion = "0.2.1"
 $assetName = "clinical-data-research-navigator-$releaseVersion"
 $releaseBase = "https://github.com/mtchuang1981/clin-data-nav/releases/download/v$releaseVersion"
 Invoke-WebRequest "$releaseBase/$assetName.zip" -OutFile "$assetName.zip"
@@ -181,7 +181,7 @@ Test-Path (Join-Path $skillDirectory "SKILL.md")
 POSIX shell：
 
 ```bash
-release_version="0.2.2"
+release_version="0.2.1"
 asset_name="clinical-data-research-navigator-$release_version"
 release_base="https://github.com/mtchuang1981/clin-data-nav/releases/download/v$release_version"
 curl -fLO "$release_base/$asset_name.zip"

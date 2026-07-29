@@ -34,9 +34,13 @@ After approval:
    succeed with no skipped verification step.
 3. Create an annotated `vX.Y.Z` tag at that commit and push only that new tag.
 4. Manually dispatch `.github/workflows/release.yml` with the annotated tag.
-   The workflow revalidates the tag on Ubuntu and Windows, rebuilds the assets,
-   verifies the ZIP and manifest, and grants write permission only to its final
-   publish job.
+   Read-only jobs revalidate the tag on Ubuntu and Windows, build and verify
+   the ZIP and manifest, and upload a short-lived bundle containing those
+   files, static Release notes, and transit checksums. The final writer job
+   receives no source checkout or Python environment: it downloads that exact
+   artifact ID, verifies the checksums, rechecks the remote annotated tag
+   object and peeled commit, refuses an existing Release, and only then creates
+   the Release.
 5. Confirm the public Release points to the intended tag and contains exactly
    `clinical-data-research-navigator-X.Y.Z.zip` and
    `clinical-data-research-navigator-X.Y.Z.manifest.json`.

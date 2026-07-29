@@ -19,12 +19,12 @@ jobs:
       commit: ${{ steps.verify.outputs.commit }}
       tag_object: ${{ steps.verify.outputs.tag_object }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           fetch-depth: 0
           ref: ${{ inputs.tag }}
           persist-credentials: false
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.11"
       - run: git fetch origin main:refs/remotes/origin/main
@@ -33,6 +33,7 @@ jobs:
         env:
           TAG: ${{ inputs.tag }}
         run: |
+          set -euo pipefail
           version="$(python scripts/verify_release.py ref --tag "$TAG" --main-ref origin/main)"
           commit="$(git rev-parse "$TAG^{commit}")"
           tag_object="$(git rev-parse "$TAG^{tag}")"
@@ -47,6 +48,7 @@ jobs:
           READ_TOKEN: ${{ github.token }}
           TAG: ${{ inputs.tag }}
         run: |
+          set -euo pipefail
           status="$(curl --silent --show-error --output release-response.json --write-out '%{http_code}' \
             --header "Accept: application/vnd.github+json" \
             --header "Authorization: Bearer $READ_TOKEN" \
@@ -66,11 +68,11 @@ jobs:
         os: [ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           ref: ${{ needs.preflight.outputs.commit }}
           persist-credentials: false
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.11"
       - run: python -m pip install --upgrade pip
@@ -80,36 +82,101 @@ jobs:
       - run: python scripts/check_public_boundary.py
       - run: python scripts/package_skill.py --check-reproducible
 
-  publish:
+  build:
     needs: [preflight, validate]
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
+    outputs:
+      artifact_id: ${{ steps.upload.outputs.artifact-id }}
+      artifact_digest: ${{ steps.upload.outputs.artifact-digest }}
+      checksum_sha256: ${{ steps.bundle.outputs.checksum_sha256 }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           ref: ${{ needs.preflight.outputs.commit }}
           persist-credentials: false
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.11"
       - run: python -m pip install --upgrade pip
       - run: python -m pip install -e ".[dev]"
       - run: python scripts/package_skill.py
-      - name: Verify immutable assets and tag identity
+      - id: bundle
+        name: Verify and assemble the immutable release bundle
         shell: bash
         env:
+          VERSION: ${{ needs.preflight.outputs.version }}
+        run: |
+          set -euo pipefail
+          archive="clinical-data-research-navigator-$VERSION.zip"
+          manifest="clinical-data-research-navigator-$VERSION.manifest.json"
+          notes="docs/releases/$VERSION.md"
+          test -f "$notes"
+          python scripts/verify_release.py artifacts \
+            --archive "dist/$archive" \
+            --manifest "dist/$manifest"
+          mkdir release-bundle
+          cp "dist/$archive" "release-bundle/$archive"
+          cp "dist/$manifest" "release-bundle/$manifest"
+          cp "$notes" release-bundle/release-notes.md
+          (
+            cd release-bundle
+            sha256sum "$archive" "$manifest" release-notes.md \
+              > release-bundle.sha256
+          )
+          checksum_sha256="$(sha256sum release-bundle/release-bundle.sha256 | cut -d ' ' -f 1)"
+          echo "checksum_sha256=$checksum_sha256" >> "$GITHUB_OUTPUT"
+      - id: upload
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: release-bundle-${{ needs.preflight.outputs.commit }}
+          path: release-bundle
+          if-no-files-found: error
+          retention-days: 1
+
+  publish:
+    needs: [preflight, validate, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          artifact-ids: ${{ needs.build.outputs.artifact_id }}
+          path: release-bundle
+      - name: Verify release bundle transit integrity
+        shell: bash
+        env:
+          CHECKSUM_SHA256: ${{ needs.build.outputs.checksum_sha256 }}
+        run: |
+          set -euo pipefail
+          test "$CHECKSUM_SHA256" != ""
+          actual_checksum_sha256="$(sha256sum release-bundle/release-bundle.sha256 | cut -d ' ' -f 1)"
+          test "$actual_checksum_sha256" = "$CHECKSUM_SHA256"
+          (
+            cd release-bundle
+            sha256sum --check release-bundle.sha256
+          )
+      - name: Recheck remote state and publish immutable Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
           TAG: ${{ inputs.tag }}
           VERSION: ${{ needs.preflight.outputs.version }}
           VERIFIED_COMMIT: ${{ needs.preflight.outputs.commit }}
           VERIFIED_TAG_OBJECT: ${{ needs.preflight.outputs.tag_object }}
         run: |
-          archive="dist/clinical-data-research-navigator-$VERSION.zip"
-          manifest="dist/clinical-data-research-navigator-$VERSION.manifest.json"
-          notes="docs/releases/$VERSION.md"
+          set -euo pipefail
+          archive="release-bundle/clinical-data-research-navigator-$VERSION.zip"
+          manifest="release-bundle/clinical-data-research-navigator-$VERSION.manifest.json"
+          notes="release-bundle/release-notes.md"
+          test -f "$archive"
+          test -f "$manifest"
           test -f "$notes"
-          python scripts/verify_release.py artifacts --archive "$archive" --manifest "$manifest"
-          remote_refs="$(git ls-remote origin "refs/tags/$TAG" "refs/tags/$TAG^{}")"
+
+          remote_refs="$(git ls-remote \
+            "https://github.com/$GITHUB_REPOSITORY.git" \
+            "refs/tags/$TAG" \
+            "refs/tags/$TAG^{}")"
           remote_tag_object=""
           remote_commit=""
           while IFS=$'\t' read -r object ref; do
@@ -122,16 +189,18 @@ jobs:
           test -n "$remote_commit"
           test "$remote_tag_object" = "$VERIFIED_TAG_OBJECT"
           test "$remote_commit" = "$VERIFIED_COMMIT"
-      - name: Publish immutable assets
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-          TAG: ${{ inputs.tag }}
-          VERSION: ${{ needs.preflight.outputs.version }}
-        run: |
-          archive="dist/clinical-data-research-navigator-$VERSION.zip"
-          manifest="dist/clinical-data-research-navigator-$VERSION.manifest.json"
-          notes="docs/releases/$VERSION.md"
+
+          status="$(curl --silent --show-error --output release-response.json --write-out '%{http_code}' \
+            --header "Accept: application/vnd.github+json" \
+            --header "Authorization: Bearer $GH_TOKEN" \
+            --header "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/releases/tags/$TAG")"
+          case "$status" in
+            404) ;;
+            200) echo "Release already exists: $TAG" >&2; exit 1 ;;
+            *) echo "GitHub Release lookup failed with HTTP $status" >&2; exit 1 ;;
+          esac
+
           gh release create "$TAG" "$archive" "$manifest" \
             --repo "$GITHUB_REPOSITORY" \
             --verify-tag \

@@ -169,9 +169,10 @@ def test_scanner_scans_non_sdd_superpowers_content(tmp_path):
 
 
 def test_scanner_skips_git_and_python_cache_directories(tmp_path):
+    _initialize_git_repository(tmp_path)
     for directory in (".git", ".pytest_cache", "__pycache__"):
         path = tmp_path / directory / "archive.pdf"
-        path.parent.mkdir()
+        path.parent.mkdir(exist_ok=True)
         path.write_bytes(b"synthetic")
     assert scan_repository(tmp_path) == []
 

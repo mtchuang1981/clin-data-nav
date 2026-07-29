@@ -1,5 +1,6 @@
 from pathlib import Path
 import subprocess
+import sys
 
 import yaml
 
@@ -105,3 +106,49 @@ def test_public_boundary_fails_closed_when_tracked_path_query_fails(tmp_path):
             "Git tracked paths could not be verified",
         )
     ]
+
+
+def test_public_boundary_fails_closed_when_git_metadata_cannot_be_resolved(
+    tmp_path,
+):
+    repository = tmp_path / "repository"
+    repository.mkdir()
+    (repository / ".git").mkdir()
+
+    findings = scan_repository(repository)
+
+    assert [
+        (finding.path, finding.rule, finding.detail)
+        for finding in findings
+    ] == [
+        (
+            ".",
+            "tracked-path-query-failed",
+            "Git tracked paths could not be verified",
+        )
+    ]
+
+
+def test_public_boundary_cli_hides_git_query_failure_details(tmp_path):
+    repository = tmp_path / "repository"
+    repository.mkdir()
+    (repository / ".git").mkdir()
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(ROOT / "scripts/check_public_boundary.py"),
+            str(repository),
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 1
+    assert result.stdout == (
+        ".: tracked-path-query-failed: "
+        "Git tracked paths could not be verified\n"
+    )
+    assert result.stderr == ""
+    assert str(repository) not in result.stdout

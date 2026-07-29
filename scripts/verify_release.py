@@ -130,7 +130,7 @@ def _verify_release_artifacts(archive: Path, manifest: Path) -> None:
         path = record["path"]
         if not isinstance(path, str) or not _safe_member_name(path):
             raise ReleaseVerificationError("manifest member path is unsafe")
-        if not isinstance(record["size"], int) or record["size"] < 0:
+        if type(record["size"]) is not int or record["size"] < 0:
             raise ReleaseVerificationError("manifest member size is invalid")
         if not isinstance(record["sha256"], str) or re.fullmatch(
             r"[0-9a-f]{64}",
