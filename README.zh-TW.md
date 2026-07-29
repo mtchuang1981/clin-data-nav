@@ -4,6 +4,18 @@
 
 Clinical Data Research Navigator 協助研究人員將臨床資料問題整理成依來源權威性排序的證據、安全的資料契約，以及明確的執行成熟度評估。
 
+## 快速開始
+
+請在要使用此 Skill 的專案根目錄執行：
+
+```bash
+npx skills add mtchuang1981/clin-data-nav
+```
+
+`skills` 預設會將它安裝到該專案的 `.agents/skills`。請用 `/skills`
+確認系統已偵測到 Skill，再以 `$clinical-data-research-navigator`
+明確呼叫。第三方 Skill 會使用代理程式的權限執行，使用前請先審閱內容。
+
 ## 公開邊界
 
 本儲存庫是公開核心（Public Core），內容包含可重複使用的指引、合成範例、測試與封裝工具；不包含私有 TMUCRD Adapter、編碼手冊、資料字典、實體 schema、憑證，或需登入才能存取的文件。本儲存庫不是 TMUCRD 資料字典。
@@ -108,7 +120,7 @@ python scripts/check_public_boundary.py
 python scripts/package_skill.py --check-reproducible
 ```
 
-## 從 GitHub Release 安裝
+## 經驗證的 GitHub Release 手動安裝
 
 Codex 會從 `$HOME/.agents/skills` 載入個人 Skill。請從同一個 Release 下載 ZIP 與 manifest，先用 manifest 核對 ZIP，再解壓縮到獨立的 Skill 目錄。以下範例會安裝 `v0.2.0`；遇到既有安裝時會停止，不會直接覆寫。
 

@@ -6,6 +6,19 @@ Clinical Data Research Navigator helps researchers turn clinical-data questions
 into source-ranked evidence, a safe data contract, and an explicit execution
 maturity assessment.
 
+## Quick start
+
+Run this command from the root of the project where you want to use the Skill:
+
+```bash
+npx skills add mtchuang1981/clin-data-nav
+```
+
+By default, `skills` installs it for that project under `.agents/skills`. Run
+`/skills` to confirm discovery, then use `$clinical-data-research-navigator` to
+invoke it explicitly. Review third-party Skills before use because they run
+with your agent's permissions.
+
 ## Public boundary
 
 This repository is a public Core: it contains reusable guidance, synthetic
@@ -140,7 +153,7 @@ python scripts/check_public_boundary.py
 python scripts/package_skill.py --check-reproducible
 ```
 
-## Install from GitHub Release
+## Verified manual installation from GitHub Release
 
 Codex discovers personal Skills under `$HOME/.agents/skills`. Download the ZIP
 and manifest from the same release, verify the ZIP against the manifest, then

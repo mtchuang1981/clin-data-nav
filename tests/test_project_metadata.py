@@ -50,18 +50,27 @@ def test_release_version_is_synchronized():
     assert "## 0.2.0 - 2026-07-28" in changelog_zh_tw
 
 
-def test_readmes_document_installation_activation_and_examples():
+def test_readmes_document_quick_start_verified_installation_and_activation():
     english = (ROOT / "README.md").read_text(encoding="utf-8")
     traditional_chinese = (ROOT / "README.zh-TW.md").read_text(encoding="utf-8")
 
     for text in (english, traditional_chinese):
+        assert "npx skills add mtchuang1981/clin-data-nav" in text
+        assert ".agents/skills" in text
+        assert "/skills" in text
         assert "$HOME/.agents/skills" in text
         assert "$clinical-data-research-navigator" in text
         assert "v0.2.0" in text
         assert "SHA-256" in text
-    assert "## Install from GitHub Release" in english
+
+    assert "## Quick start" in english
+    assert "from the root of the project" in english
+    assert "## Verified manual installation from GitHub Release" in english
     assert "## Use the Skill" in english
-    assert "## 從 GitHub Release 安裝" in traditional_chinese
+
+    assert "## 快速開始" in traditional_chinese
+    assert "要使用此 Skill 的專案根目錄" in traditional_chinese
+    assert "## 經驗證的 GitHub Release 手動安裝" in traditional_chinese
     assert "## 使用 Skill" in traditional_chinese
 
 
