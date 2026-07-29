@@ -234,7 +234,7 @@ def test_citation_and_license_metadata():
         (ROOT / "CITATION.cff").read_text(encoding="utf-8")
     )
     assert citation["title"] == "Clinical Data Research Navigator"
-    assert citation["version"] == "0.2.1"
+    assert citation["version"] == "0.2.2"
     assert citation["license"] == "Apache-2.0"
     assert "Apache License" in (ROOT / "LICENSE").read_text(encoding="utf-8")
 
@@ -245,12 +245,25 @@ def test_release_version_is_synchronized():
     changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
     changelog_zh_tw = (ROOT / "CHANGELOG.zh-TW.md").read_text(encoding="utf-8")
 
-    assert project["project"]["version"] == "0.2.1"
-    assert citation["version"] == "0.2.1"
-    assert PACKAGER_VERSION == "0.2.1"
-    assert INSTALLER_VERSION == "0.2.1"
-    assert "## 0.2.1 - 2026-07-29" in changelog
-    assert "## 0.2.1 - 2026-07-29" in changelog_zh_tw
+    assert project["project"]["version"] == "0.2.2"
+    assert citation["version"] == "0.2.2"
+    assert PACKAGER_VERSION == "0.2.2"
+    assert INSTALLER_VERSION == "0.2.2"
+    assert "## 0.2.2 - 2026-07-29" in changelog
+    assert "## 0.2.2 - 2026-07-29" in changelog_zh_tw
+
+
+def test_v022_release_notes_are_current_and_mark_remote_work_pending():
+    notes = (
+        ROOT / "docs" / "releases" / "0.2.2.md"
+    ).read_text(encoding="utf-8")
+
+    assert notes.startswith("# Clinical Data Research Navigator v0.2.2\n")
+    assert "GitHub-hosted dual-platform run remains pending" in notes
+    assert "Dispatch and publication of v0.2.2 remain pending" in notes
+    assert "GitHub 託管的雙平台" in notes
+    assert "v0.2.2 的觸發與發布仍為 pending" in notes
+    assert "npx skills add mtchuang1981/clin-data-nav" in notes
 
 
 def test_readmes_document_quick_start_verified_installation_and_activation():
@@ -263,7 +276,7 @@ def test_readmes_document_quick_start_verified_installation_and_activation():
         assert "/skills" in text
         assert "$HOME/.agents/skills" in text
         assert "$clinical-data-research-navigator" in text
-        assert "v0.2.1" in text
+        assert "v0.2.2" in text
         assert "SHA-256" in text
 
     assert "## Quick start" in english

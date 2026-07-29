@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.2.2 - 2026-07-29
+
+### Fixed
+
+- Make fresh Python 3.11 editable installation deterministic by declaring the
+  setuptools package boundary.
+- Make atomic installer platform tests portable across Windows and POSIX hosts
+  without adding an overwrite fallback.
+- Run the complete validation set on Ubuntu and Windows and add a fail-closed,
+  manually dispatched GitHub Release workflow.
+
+### Documentation
+
+- Add prerequisites, terminal-versus-Codex command boundaries, an update
+  command, and a 60-second first-success path in both READMEs.
+- Distinguish the 11-case Eval catalog from the three scored fixture pairs.
+
 ## 0.2.1 - 2026-07-29
 
 ### Documentation

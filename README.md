@@ -197,12 +197,12 @@ python scripts/package_skill.py --check-reproducible
 Codex discovers personal Skills under `$HOME/.agents/skills`. Download the ZIP
 and manifest from the same release, verify the ZIP against the manifest, then
 extract it into its own Skill directory. The examples below refuse to replace
-an existing installation and install release `v0.2.1`.
+an existing installation and install release `v0.2.2`.
 
 PowerShell:
 
 ```powershell
-$releaseVersion = "0.2.1"
+$releaseVersion = "0.2.2"
 $assetName = "clinical-data-research-navigator-$releaseVersion"
 $releaseBase = "https://github.com/mtchuang1981/clin-data-nav/releases/download/v$releaseVersion"
 Invoke-WebRequest "$releaseBase/$assetName.zip" -OutFile "$assetName.zip"
@@ -220,7 +220,7 @@ Test-Path (Join-Path $skillDirectory "SKILL.md")
 POSIX shell:
 
 ```bash
-release_version="0.2.1"
+release_version="0.2.2"
 asset_name="clinical-data-research-navigator-$release_version"
 release_base="https://github.com/mtchuang1981/clin-data-nav/releases/download/v$release_version"
 curl -fLO "$release_base/$asset_name.zip"
@@ -255,7 +255,7 @@ manifest, size limits, paths, and extracted Skill before installation.
 ```bash
 python scripts/package_skill.py --output-dir /absolute/path/you/select/skill-package
 python scripts/install_local.py \
-  /absolute/path/you/select/skill-package/clinical-data-research-navigator-0.2.1.zip \
+  /absolute/path/you/select/skill-package/clinical-data-research-navigator-0.2.2.zip \
   --destination "$HOME/.agents/skills"
 ```
 

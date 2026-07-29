@@ -1,5 +1,22 @@
 # 版本紀錄
 
+## 0.2.2 - 2026-07-29
+
+### 修正
+
+- 明確宣告 setuptools 套件界線，讓全新的 Python 3.11 環境可穩定執行
+  editable install。
+- 讓原子安裝的平台測試可在 Windows 與 POSIX 主機穩定執行，且不加入可能
+  覆寫既有安裝的 fallback。
+- 在 Ubuntu 與 Windows 執行完整驗證，並加入遇到不一致就停止、需手動觸發
+  的 GitHub Release workflow。
+
+### 文件
+
+- 在雙語 README 加入必要條件、終端機與 Codex 指令界線、更新指令及 60 秒
+  第一次成功流程。
+- 清楚區分 11 個 Eval 案例目錄與 3 組已評分 fixture。
+
 ## 0.2.1 - 2026-07-29
 
 ### 文件
