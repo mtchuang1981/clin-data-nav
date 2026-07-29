@@ -51,19 +51,61 @@ def test_release_workflow_is_manual_fail_closed_and_least_privilege():
     rendered = path.read_text(encoding="utf-8")
     workflow = yaml.load(rendered, Loader=yaml.BaseLoader)
 
-    assert "workflow_dispatch" in workflow["on"]
+    assert set(workflow["on"]) == {"workflow_dispatch"}
     assert workflow["permissions"] == {"contents": "read"}
     assert set(workflow["jobs"]) == {"preflight", "validate", "publish"}
+    assert set(workflow["jobs"]["preflight"]["outputs"]) == {
+        "version",
+        "commit",
+        "tag_object",
+    }
     assert workflow["jobs"]["validate"]["needs"] == "preflight"
     assert workflow["jobs"]["publish"]["permissions"] == {"contents": "write"}
     assert set(workflow["jobs"]["publish"]["needs"]) == {
         "preflight",
         "validate",
     }
+    for job_name in ("preflight", "validate", "publish"):
+        checkout = next(
+            step
+            for step in workflow["jobs"][job_name]["steps"]
+            if step.get("uses") == "actions/checkout@v4"
+        )
+        assert checkout["with"]["persist-credentials"] == "false"
+    for job_name in ("validate", "publish"):
+        checkout = next(
+            step
+            for step in workflow["jobs"][job_name]["steps"]
+            if step.get("uses") == "actions/checkout@v4"
+        )
+        assert checkout["with"]["ref"] == (
+            "${{ needs.preflight.outputs.commit }}"
+        )
+    publish_steps = workflow["jobs"]["publish"]["steps"]
+    verify_step = next(
+        step
+        for step in publish_steps
+        if step.get("name") == "Verify immutable assets and tag identity"
+    )
+    release_step = next(
+        step
+        for step in publish_steps
+        if step.get("name") == "Publish immutable assets"
+    )
+    assert "GH_TOKEN" not in verify_step.get("env", {})
+    assert "gh release create" not in verify_step["run"]
+    assert release_step["env"]["GH_TOKEN"] == "${{ github.token }}"
+    assert "python scripts/" not in release_step["run"]
+    assert rendered.count("GH_TOKEN:") == 1
     assert rendered.count("contents: write") == 1
     assert "python scripts/verify_release.py ref" in rendered
     assert "python scripts/verify_release.py artifacts" in rendered
     assert "python scripts/package_skill.py" in rendered
+    assert 'git rev-parse "$TAG^{tag}"' in rendered
+    assert 'git rev-parse "$TAG^{commit}"' in rendered
+    assert "git ls-remote origin" in rendered
+    assert "VERIFIED_TAG_OBJECT" in rendered
+    assert "VERIFIED_COMMIT" in rendered
     assert "gh release create" in rendered
     assert "--verify-tag" in rendered
     assert "continue-on-error" not in rendered
