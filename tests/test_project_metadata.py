@@ -1,6 +1,8 @@
 from pathlib import Path
+import re
 import tomllib
 
+import pytest
 import yaml
 
 from scripts.install_local import PACKAGE_VERSION as INSTALLER_VERSION
@@ -8,6 +10,120 @@ from scripts.package_skill import PACKAGE_VERSION as PACKAGER_VERSION
 
 
 ROOT = Path(__file__).resolve().parents[1]
+TERMINAL_ONBOARDING_COMMANDS = (
+    "node --version",
+    "npm --version",
+    "npx skills add mtchuang1981/clin-data-nav",
+    "npx skills update clinical-data-research-navigator --project --yes",
+)
+CODEX_ONBOARDING_INPUTS = (
+    "/skills",
+    "$clinical-data-research-navigator",
+)
+TERMINAL_FENCE_LANGUAGES = {"bash", "sh", "shell", "powershell", "pwsh"}
+FENCED_BLOCK_PATTERN = re.compile(
+    r"^[ \t]*```(?P<language>[^\n`]*)[ \t]*\n"
+    r"(?P<body>.*?)"
+    r"^[ \t]*```[ \t]*$",
+    flags=re.MULTILINE | re.DOTALL,
+)
+ENGLISH_ONBOARDING_CONTRACT = {
+    "headings": (
+        "## Quick start prerequisites",
+        "## Quick start",
+        "## 60-second first success",
+        "## Public boundary",
+    ),
+    "not_terminal_phrase": "not terminal commands",
+    "clarification_phrase": "question clarification",
+    "missing_information_phrase": "missing-information list",
+}
+TRADITIONAL_CHINESE_ONBOARDING_CONTRACT = {
+    "headings": (
+        "## 快速開始的必要條件",
+        "## 快速開始",
+        "## 60 秒完成第一次使用",
+        "## 公開邊界",
+    ),
+    "not_terminal_phrase": "不是終端機指令",
+    "clarification_phrase": "問題釐清",
+    "missing_information_phrase": "缺少資訊清單",
+}
+
+
+def _assert_readme_onboarding_contract(
+    text: str,
+    *,
+    headings: tuple[str, str, str, str],
+    not_terminal_phrase: str,
+    clarification_phrase: str,
+    missing_information_phrase: str,
+) -> None:
+    for command in (*TERMINAL_ONBOARDING_COMMANDS, *CODEX_ONBOARDING_INPUTS):
+        assert command in text
+    assert ".agents/skills" in text
+    for heading in headings:
+        assert heading in text
+    for phrase in (
+        not_terminal_phrase,
+        clarification_phrase,
+        missing_information_phrase,
+    ):
+        assert phrase in text
+
+    lines = text.splitlines()
+    heading_positions = []
+    for heading in headings:
+        assert lines.count(heading) == 1, (
+            f"onboarding heading must appear exactly once: {heading}"
+        )
+        heading_positions.append(lines.index(heading))
+    assert heading_positions == sorted(heading_positions), (
+        "onboarding sections must appear in the required order"
+    )
+
+    onboarding = "\n".join(
+        lines[heading_positions[0] : heading_positions[-1]]
+    )
+    blocks = [
+        (match["language"].strip(), match["body"])
+        for match in FENCED_BLOCK_PATTERN.finditer(onboarding)
+    ]
+    bash_blocks = [body for language, body in blocks if language == "bash"]
+    terminal_blocks = [
+        body
+        for language, body in blocks
+        if language in TERMINAL_FENCE_LANGUAGES
+    ]
+    bash_lines = {
+        line.strip()
+        for body in bash_blocks
+        for line in body.splitlines()
+    }
+    for command in TERMINAL_ONBOARDING_COMMANDS:
+        assert command in bash_lines, (
+            f"terminal command must be an exact line in a bash block: {command}"
+        )
+    joined_terminal_blocks = "\n".join(terminal_blocks)
+    for codex_input in CODEX_ONBOARDING_INPUTS:
+        assert codex_input not in joined_terminal_blocks, (
+            f"Codex input must not appear in a terminal block: {codex_input}"
+        )
+
+    quick_start = "\n".join(
+        lines[heading_positions[1] : heading_positions[2]]
+    )
+    quick_start_prose = FENCED_BLOCK_PATTERN.sub("", quick_start)
+    sentences = " ".join(quick_start_prose.split()).replace("。", ".").split(".")
+    assert any(
+        "Codex" in sentence
+        and not_terminal_phrase in sentence
+        and all(
+            codex_input in sentence
+            for codex_input in CODEX_ONBOARDING_INPUTS
+        )
+        for sentence in sentences
+    ), "Codex inputs must be identified together as non-terminal inputs"
 
 
 def test_pyproject_declares_explicit_setuptools_package_boundary():
@@ -165,29 +281,85 @@ def test_readmes_define_prerequisites_command_boundaries_and_first_success():
     english = (ROOT / "README.md").read_text(encoding="utf-8")
     traditional_chinese = (ROOT / "README.zh-TW.md").read_text(encoding="utf-8")
 
-    for text in (english, traditional_chinese):
-        for command in (
-            "node --version",
-            "npm --version",
-            "npx skills add mtchuang1981/clin-data-nav",
-            "npx skills update clinical-data-research-navigator --project --yes",
-            "/skills",
-            "$clinical-data-research-navigator",
-        ):
-            assert command in text
-        assert ".agents/skills" in text
+    _assert_readme_onboarding_contract(
+        english,
+        **ENGLISH_ONBOARDING_CONTRACT,
+    )
+    _assert_readme_onboarding_contract(
+        traditional_chinese,
+        **TRADITIONAL_CHINESE_ONBOARDING_CONTRACT,
+    )
 
-    assert "## Quick start prerequisites" in english
-    assert "## 60-second first success" in english
-    assert "not terminal commands" in english
-    assert "question clarification" in english
-    assert "missing-information list" in english
 
-    assert "## 快速開始的必要條件" in traditional_chinese
-    assert "## 60 秒完成第一次使用" in traditional_chinese
-    assert "不是終端機指令" in traditional_chinese
-    assert "問題釐清" in traditional_chinese
-    assert "缺少資訊清單" in traditional_chinese
+@pytest.mark.parametrize(
+    ("mutation", "expected_error"),
+    (
+        pytest.param(
+            lambda text: text.replace(
+                "## Quick start prerequisites",
+                "## temporary heading",
+                1,
+            )
+            .replace("## Quick start", "## Quick start prerequisites", 1)
+            .replace("## temporary heading", "## Quick start", 1),
+            "required order",
+            id="section-order",
+        ),
+        pytest.param(
+            lambda text: text.replace(
+                "```bash\nnode --version",
+                "```text\nnode --version",
+                1,
+            ),
+            "exact line in a bash block",
+            id="terminal-command-outside-bash",
+        ),
+        pytest.param(
+            lambda text: text.replace(
+                "node --version\nnpm --version",
+                (
+                    "node --version\n"
+                    "npm --version\n"
+                    "/skills\n"
+                    "$clinical-data-research-navigator"
+                ),
+                1,
+            ),
+            "must not appear in a terminal block",
+            id="codex-input-inside-bash",
+        ),
+        pytest.param(
+            lambda text: text.replace(
+                (
+                    "`/skills` and\n"
+                    "`$clinical-data-research-navigator` are entered in\n"
+                    "Codex; they are not terminal commands."
+                ),
+                (
+                    "`Skill discovery` and\n"
+                    "`Skill invocation` are entered in\n"
+                    "Codex; they are not terminal commands."
+                ),
+                1,
+            ),
+            "identified together as non-terminal inputs",
+            id="codex-input-outside-explanation",
+        ),
+    ),
+)
+def test_readme_onboarding_contract_rejects_misplaced_instructions(
+    mutation,
+    expected_error,
+):
+    english = (ROOT / "README.md").read_text(encoding="utf-8")
+    misplaced = mutation(english)
+
+    assert misplaced != english
+    with pytest.raises(AssertionError, match=expected_error):
+        _assert_readme_onboarding_contract(
+            misplaced,
+            **ENGLISH_ONBOARDING_CONTRACT,
+        )
 
 
 def test_readmes_explain_cdisc_models_and_python_runtime_boundary():
