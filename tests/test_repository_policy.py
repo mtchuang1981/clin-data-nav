@@ -42,3 +42,7 @@ def test_eval_catalog_has_eleven_unique_cases():
         "causal-rwd-incomplete-readiness",
         "build-rwe-sap-unavailable",
     }
+
+
+def test_repository_excludes_unrelated_local_tool_configuration():
+    assert not (ROOT / ".baoyu-skills").exists()
