@@ -72,6 +72,13 @@ def test_non_release_tag_shape_is_rejected(tmp_path, tag):
         verify_release_ref(repo, tag, "main")
 
 
+def test_unicode_digit_in_release_tag_is_rejected(tmp_path):
+    repo = _repository(tmp_path)
+
+    with pytest.raises(ReleaseVerificationError, match="vX.Y.Z"):
+        verify_release_ref(repo, "v1.1٢.3", "main")
+
+
 def test_tag_and_project_version_mismatch_is_rejected(tmp_path):
     repo = _repository(tmp_path, version="0.2.1")
     _git(repo, "tag", "-a", "v0.2.2", "-m", "wrong version")
@@ -227,6 +234,22 @@ def test_unreadable_archive_is_rejected_safely(tmp_path):
         verify_release_artifacts(package.archive, package.manifest)
 
 
+def test_unicode_digit_in_manifest_version_is_rejected(tmp_path):
+    package = build_package(
+        Path("skills/clinical-data-research-navigator"),
+        tmp_path / "dist",
+    )
+    manifest = json.loads(package.manifest.read_text(encoding="utf-8"))
+    manifest["version"] = "1.1٢.3"
+    package.manifest.write_text(
+        json.dumps(manifest, separators=(",", ":"), sort_keys=True),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ReleaseVerificationError, match="manifest version"):
+        verify_release_artifacts(package.archive, package.manifest)
+
+
 def test_member_hash_mismatch_is_rejected(tmp_path):
     package = build_package(
         Path("skills/clinical-data-research-navigator"),
@@ -263,7 +286,17 @@ def test_undeclared_archive_member_is_rejected(tmp_path):
         verify_release_artifacts(package.archive, package.manifest)
 
 
-@pytest.mark.parametrize("unsafe_path", ["../outside.txt", r"..\outside.txt"])
+@pytest.mark.parametrize(
+    "unsafe_path",
+    [
+        "../outside.txt",
+        r"..\outside.txt",
+        "./a",
+        "a//b",
+        "a/./b",
+        "C:/a",
+    ],
+)
 def test_unsafe_manifest_member_is_rejected(tmp_path, unsafe_path):
     package = build_package(
         Path("skills/clinical-data-research-navigator"),
@@ -277,4 +310,68 @@ def test_unsafe_manifest_member_is_rejected(tmp_path, unsafe_path):
     )
 
     with pytest.raises(ReleaseVerificationError, match="unsafe"):
+        verify_release_artifacts(package.archive, package.manifest)
+
+
+def test_artifact_resolve_failure_is_rejected_safely(tmp_path, monkeypatch):
+    package = build_package(
+        Path("skills/clinical-data-research-navigator"),
+        tmp_path / "dist",
+    )
+
+    def fail_resolve(self, strict=False):
+        raise OSError("fixture failure")
+
+    monkeypatch.setattr(Path, "resolve", fail_resolve)
+
+    with pytest.raises(ReleaseVerificationError, match="could not be completed safely"):
+        verify_release_artifacts(package.archive, package.manifest)
+
+
+def _refresh_archive_hash(package) -> None:
+    manifest = json.loads(package.manifest.read_text(encoding="utf-8"))
+    manifest["archive_sha256"] = hashlib.sha256(
+        package.archive.read_bytes()
+    ).hexdigest()
+    package.manifest.write_text(
+        json.dumps(manifest, separators=(",", ":"), sort_keys=True),
+        encoding="utf-8",
+    )
+
+
+def _rewrite_zip_header_field(
+    archive: Path,
+    signature: bytes,
+    offset: int,
+    value: int,
+) -> None:
+    contents = bytearray(archive.read_bytes())
+    start = 0
+    while (index := contents.find(signature, start)) != -1:
+        contents[index + offset : index + offset + 2] = value.to_bytes(2, "little")
+        start = index + len(signature)
+    archive.write_bytes(contents)
+
+
+def test_unsupported_zip_compression_is_rejected_safely(tmp_path):
+    package = build_package(
+        Path("skills/clinical-data-research-navigator"),
+        tmp_path / "dist",
+    )
+    _rewrite_zip_header_field(package.archive, b"PK\x01\x02", 10, 99)
+    _refresh_archive_hash(package)
+
+    with pytest.raises(ReleaseVerificationError, match="could not be completed safely"):
+        verify_release_artifacts(package.archive, package.manifest)
+
+
+def test_encrypted_zip_member_is_rejected_safely(tmp_path):
+    package = build_package(
+        Path("skills/clinical-data-research-navigator"),
+        tmp_path / "dist",
+    )
+    _rewrite_zip_header_field(package.archive, b"PK\x01\x02", 8, 1)
+    _refresh_archive_hash(package)
+
+    with pytest.raises(ReleaseVerificationError, match="could not be completed safely"):
         verify_release_artifacts(package.archive, package.manifest)

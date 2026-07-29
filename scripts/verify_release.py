@@ -17,7 +17,7 @@ from zipfile import BadZipFile, ZipFile
 
 
 TAG_PATTERN = re.compile(
-    r"^v(?P<version>(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*))$"
+    r"^v(?P<version>(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*))$"
 )
 SKILL_NAME = "clinical-data-research-navigator"
 GIT_REPOSITORY_OVERRIDES = frozenset(
@@ -54,13 +54,34 @@ def _safe_member_name(name: str) -> bool:
     return (
         bool(name)
         and "\\" not in name
+        and re.match(r"^[A-Za-z]:", name) is None
         and path != PurePosixPath(".")
         and not path.is_absolute()
         and ".." not in path.parts
+        and name == path.as_posix()
     )
 
 
 def verify_release_artifacts(archive: Path, manifest: Path) -> None:
+    try:
+        _verify_release_artifacts(archive, manifest)
+    except ReleaseVerificationError:
+        raise
+    except (
+        OSError,
+        UnicodeError,
+        json.JSONDecodeError,
+        BadZipFile,
+        NotImplementedError,
+        RuntimeError,
+        ValueError,
+    ) as error:
+        raise ReleaseVerificationError(
+            "artifact verification could not be completed safely"
+        ) from error
+
+
+def _verify_release_artifacts(archive: Path, manifest: Path) -> None:
     archive = archive.resolve()
     manifest = manifest.resolve()
     try:
@@ -80,7 +101,7 @@ def verify_release_artifacts(archive: Path, manifest: Path) -> None:
         raise ReleaseVerificationError("manifest archive SHA-256 is invalid")
     version = data["version"]
     if not isinstance(version, str) or re.fullmatch(
-        r"(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)",
+        r"(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)",
         version,
     ) is None:
         raise ReleaseVerificationError("manifest version is invalid")
