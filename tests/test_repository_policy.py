@@ -86,3 +86,22 @@ def test_public_boundary_rejects_tracked_local_tool_configuration(tmp_path):
             "local tool configuration is not permitted in the public project",
         )
     ]
+
+
+def test_public_boundary_fails_closed_when_tracked_path_query_fails(tmp_path):
+    repository = tmp_path / "repository"
+    _initialize_repository(repository)
+    (repository / ".git/index").write_bytes(b"not a valid Git index")
+
+    findings = scan_repository(repository)
+
+    assert [
+        (finding.path, finding.rule, finding.detail)
+        for finding in findings
+    ] == [
+        (
+            ".",
+            "tracked-path-query-failed",
+            "Git tracked paths could not be verified",
+        )
+    ]

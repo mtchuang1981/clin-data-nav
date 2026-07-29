@@ -17,6 +17,10 @@ class Finding:
     detail: str
 
 
+class TrackedPathQueryError(RuntimeError):
+    """Git tracked paths could not be enumerated."""
+
+
 PRIVATE_NAMES = {
     "tmucrd-v2.16-dictionary.txt",
     "tmucrd-v2.16-guide.md",
@@ -60,14 +64,25 @@ SYNTHETIC_EVAL_FIXTURES = {
 def _tracked_paths(root: Path) -> set[str] | None:
     if not (root / ".git").exists():
         return None
-    result = subprocess.run(
-        ["git", "ls-files", "-z"],
-        cwd=root,
-        check=False,
-        capture_output=True,
-    )
+    try:
+        repository = subprocess.run(
+            ["git", "rev-parse", "--is-inside-work-tree"],
+            cwd=root,
+            check=False,
+            capture_output=True,
+        )
+        if repository.returncode != 0 or repository.stdout.strip() != b"true":
+            return None
+        result = subprocess.run(
+            ["git", "ls-files", "-z"],
+            cwd=root,
+            check=False,
+            capture_output=True,
+        )
+    except OSError as error:
+        raise TrackedPathQueryError from error
     if result.returncode != 0:
-        return None
+        raise TrackedPathQueryError
     return {
         item.decode("utf-8", errors="surrogateescape")
         for item in result.stdout.split(b"\0")
@@ -86,7 +101,16 @@ def scan_repository(root: Path, max_text_bytes: int = 200_000) -> list[Finding]:
     """Return deterministic public-boundary findings below *root*."""
     findings: list[Finding] = []
     root = root.resolve()
-    tracked_paths = _tracked_paths(root)
+    try:
+        tracked_paths = _tracked_paths(root)
+    except TrackedPathQueryError:
+        return [
+            Finding(
+                ".",
+                "tracked-path-query-failed",
+                "Git tracked paths could not be verified",
+            )
+        ]
 
     if tracked_paths is not None:
         for relative_path in tracked_paths:
