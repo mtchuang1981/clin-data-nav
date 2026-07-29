@@ -143,6 +143,7 @@ jobs:
         with:
           artifact-ids: ${{ needs.build.outputs.artifact_id }}
           path: release-bundle
+          merge-multiple: true
       - name: Verify release bundle transit integrity
         shell: bash
         env:

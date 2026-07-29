@@ -282,9 +282,11 @@ def test_release_workflow_is_manual_fail_closed_and_least_privilege():
         for step in publish_steps
         if step.get("uses", "").startswith("actions/download-artifact@")
     )
-    assert download_step["with"]["artifact-ids"] == (
-        "${{ needs.build.outputs.artifact_id }}"
-    )
+    assert download_step["with"] == {
+        "artifact-ids": "${{ needs.build.outputs.artifact_id }}",
+        "path": "release-bundle",
+        "merge-multiple": "true",
+    }
     verify_step = next(
         step
         for step in publish_steps
@@ -296,6 +298,7 @@ def test_release_workflow_is_manual_fail_closed_and_least_privilege():
         if step.get("name") == "Recheck remote state and publish immutable Release"
     )
     assert "GH_TOKEN" not in verify_step.get("env", {})
+    assert "release-bundle/release-bundle.sha256" in verify_step["run"]
     assert "sha256sum --check" in verify_step["run"]
     assert "CHECKSUM_SHA256" in verify_step["env"]
     assert "gh release create" not in verify_step["run"]
