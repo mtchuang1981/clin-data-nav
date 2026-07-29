@@ -168,6 +168,24 @@ def test_scanner_scans_non_sdd_superpowers_content(tmp_path):
     ]
 
 
+def test_scanner_skips_only_the_repository_dot_worktrees_container(tmp_path):
+    sibling_fixture = tmp_path / ".worktrees/feature/stale-codingbook.md"
+    sibling_fixture.parent.mkdir(parents=True)
+    sibling_fixture.write_text("synthetic negative fixture", encoding="utf-8")
+    ordinary_fixture = tmp_path / "worktrees/feature/stale-codingbook.md"
+    ordinary_fixture.parent.mkdir(parents=True)
+    ordinary_fixture.write_text("synthetic public file", encoding="utf-8")
+
+    assert [
+        (finding.path, finding.rule)
+        for finding in scan_repository(sibling_fixture.parent)
+    ] == [("stale-codingbook.md", "private-filename")]
+    assert [
+        (finding.path, finding.rule)
+        for finding in scan_repository(tmp_path)
+    ] == [("worktrees/feature/stale-codingbook.md", "private-filename")]
+
+
 def test_scanner_skips_git_and_python_cache_directories(tmp_path):
     _initialize_git_repository(tmp_path)
     for directory in (".git", ".pytest_cache", "__pycache__"):

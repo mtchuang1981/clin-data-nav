@@ -49,7 +49,13 @@ DATA_SUFFIXES = {
     ".xpt",
 }
 DATA_ARTIFACT_ALLOWLIST: set[str] = set()
-SKIP_DIRECTORIES = {".git", ".pytest_cache", "__pycache__", "dist"}
+SKIP_DIRECTORIES = {
+    ".git",
+    ".pytest_cache",
+    ".worktrees",
+    "__pycache__",
+    "dist",
+}
 SDD_SCRATCH_DIRECTORY = Path(".superpowers/sdd")
 UNRELATED_LOCAL_TOOL_DIRECTORY = ".baoyu-skills"
 LARGE_TEXT_ALLOWLIST = {
