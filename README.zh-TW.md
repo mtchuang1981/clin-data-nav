@@ -4,6 +4,19 @@
 
 Clinical Data Research Navigator 協助研究人員將臨床資料問題整理成依來源權威性排序的證據、安全的資料契約，以及明確的執行成熟度評估。
 
+## 快速開始的必要條件
+
+使用 npx 安裝需要 Node.js 與 npm/npx，也需要支援 Skills 的 Codex
+介面。請先在終端機確認下列指令可執行：
+
+```bash
+node --version
+npm --version
+```
+
+使用已安裝的 Skill 不需要 Python。Python 3.11 只供後文所述的專案貢獻者
+執行測試與發布工具。
+
 ## 快速開始
 
 請在要使用此 Skill 的專案根目錄執行：
@@ -12,9 +25,32 @@ Clinical Data Research Navigator 協助研究人員將臨床資料問題整理�
 npx skills add mtchuang1981/clin-data-nav
 ```
 
-`skills` 預設會將它安裝到該專案的 `.agents/skills`。請用 `/skills`
-確認系統已偵測到 Skill，再以 `$clinical-data-research-navigator`
-明確呼叫。第三方 Skill 會使用代理程式的權限執行，使用前請先審閱內容。
+`npx skills add mtchuang1981/clin-data-nav` 是終端機指令，預設會把 Skill
+安裝到目前專案的 `.agents/skills`。`/skills` 與
+`$clinical-data-research-navigator` 要輸入在 Codex 對話中，不是終端機指令。
+先用 `/skills` 確認 Codex 已找到 Skill，再明確叫用它。第三方 Skill 會使用
+代理程式的權限執行，使用前請先審閱內容。
+
+日後若要更新此專案內的安裝，請在終端機執行：
+
+```bash
+npx skills update clinical-data-research-navigator --project --yes
+```
+
+## 60 秒完成第一次使用
+
+1. 在 Codex 輸入 `/skills`，確認清單中出現 **Clinical Data Research
+   Navigator**。
+2. 在 Codex 輸入這個最小範例：
+
+   ```text
+   $clinical-data-research-navigator 請協助我規劃使用合成真實世界資料的
+   醫療利用描述性研究；不要自行猜測 schema 或代碼。
+   ```
+
+3. 預期第一份回覆會包含問題釐清、來源與 schema 界線、建議工作流程及
+   缺少資訊清單。輸入不完整時，應得到規格與驗證缺口，而不是可上線 SQL、
+   完整 SAP 或因果結論。
 
 ## 公開邊界
 

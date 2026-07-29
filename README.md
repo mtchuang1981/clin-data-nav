@@ -6,6 +6,19 @@ Clinical Data Research Navigator helps researchers turn clinical-data questions
 into source-ranked evidence, a safe data contract, and an explicit execution
 maturity assessment.
 
+## Quick start prerequisites
+
+The npx installation path requires Node.js with npm/npx and a Codex interface
+that supports Skills. In a terminal, confirm that both commands work:
+
+```bash
+node --version
+npm --version
+```
+
+No Python installation is required to use the installed Skill. Python 3.11 is
+only a contributor dependency described later in this README.
+
 ## Quick start
 
 Run this command from the root of the project where you want to use the Skill:
@@ -14,10 +27,36 @@ Run this command from the root of the project where you want to use the Skill:
 npx skills add mtchuang1981/clin-data-nav
 ```
 
-By default, `skills` installs it for that project under `.agents/skills`. Run
-`/skills` to confirm discovery, then use `$clinical-data-research-navigator` to
-invoke it explicitly. Review third-party Skills before use because they run
-with your agent's permissions.
+`npx skills add mtchuang1981/clin-data-nav` is a terminal command and installs
+the Skill for the current project under `.agents/skills`. `/skills` and
+`$clinical-data-research-navigator` are entered in
+Codex; they are not terminal commands.
+Run `/skills` to confirm discovery, then invoke the Skill explicitly.
+Review third-party Skills before use because they run with your agent's
+permissions.
+
+To update this project-local installation later, run in the terminal:
+
+```bash
+npx skills update clinical-data-research-navigator --project --yes
+```
+
+## 60-second first success
+
+1. Run `/skills` in Codex and confirm that **Clinical Data Research
+   Navigator** appears.
+2. Enter this minimal request in Codex:
+
+   ```text
+   $clinical-data-research-navigator Help me frame a descriptive study of
+   health-care utilisation using synthetic real-world data. Do not invent a
+   schema or codes.
+   ```
+
+3. Expect question clarification, source and schema boundaries, a recommended
+   workflow, and a missing-information list. With incomplete inputs, expect a
+   specification and validation gaps—not production SQL, a complete SAP, or a
+   causal conclusion.
 
 ## Public boundary
 

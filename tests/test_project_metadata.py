@@ -161,6 +161,35 @@ def test_readmes_document_quick_start_verified_installation_and_activation():
     assert "## 使用 Skill" in traditional_chinese
 
 
+def test_readmes_define_prerequisites_command_boundaries_and_first_success():
+    english = (ROOT / "README.md").read_text(encoding="utf-8")
+    traditional_chinese = (ROOT / "README.zh-TW.md").read_text(encoding="utf-8")
+
+    for text in (english, traditional_chinese):
+        for command in (
+            "node --version",
+            "npm --version",
+            "npx skills add mtchuang1981/clin-data-nav",
+            "npx skills update clinical-data-research-navigator --project --yes",
+            "/skills",
+            "$clinical-data-research-navigator",
+        ):
+            assert command in text
+        assert ".agents/skills" in text
+
+    assert "## Quick start prerequisites" in english
+    assert "## 60-second first success" in english
+    assert "not terminal commands" in english
+    assert "question clarification" in english
+    assert "missing-information list" in english
+
+    assert "## 快速開始的必要條件" in traditional_chinese
+    assert "## 60 秒完成第一次使用" in traditional_chinese
+    assert "不是終端機指令" in traditional_chinese
+    assert "問題釐清" in traditional_chinese
+    assert "缺少資訊清單" in traditional_chinese
+
+
 def test_readmes_explain_cdisc_models_and_python_runtime_boundary():
     english = (ROOT / "README.md").read_text(encoding="utf-8")
     traditional_chinese = (ROOT / "README.zh-TW.md").read_text(encoding="utf-8")
