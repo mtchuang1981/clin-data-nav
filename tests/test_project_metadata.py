@@ -10,6 +10,18 @@ from scripts.package_skill import PACKAGE_VERSION as PACKAGER_VERSION
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def test_pyproject_declares_explicit_setuptools_package_boundary():
+    project = tomllib.loads(
+        (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    )
+
+    assert project["build-system"] == {
+        "requires": ["setuptools>=68"],
+        "build-backend": "setuptools.build_meta",
+    }
+    assert project["tool"]["setuptools"]["packages"] == ["scripts"]
+
+
 def test_ci_has_read_only_permissions_and_required_commands():
     workflow = yaml.safe_load(
         (ROOT / ".github/workflows/validate.yml").read_text(encoding="utf-8")
