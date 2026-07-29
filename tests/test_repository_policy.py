@@ -1,6 +1,9 @@
 from pathlib import Path
+import subprocess
 
 import yaml
+
+from scripts.check_public_boundary import scan_repository
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -44,5 +47,42 @@ def test_eval_catalog_has_eleven_unique_cases():
     }
 
 
-def test_repository_excludes_unrelated_local_tool_configuration():
-    assert not (ROOT / ".baoyu-skills").exists()
+def _initialize_repository(path: Path) -> None:
+    path.mkdir()
+    subprocess.run(["git", "init", "-q"], cwd=path, check=True)
+
+
+def test_public_boundary_ignores_untracked_local_tool_configuration(tmp_path):
+    repository = tmp_path / "repository"
+    _initialize_repository(repository)
+    configuration = repository / ".baoyu-skills/baoyu-translate/EXTEND.md"
+    configuration.parent.mkdir(parents=True)
+    configuration.write_text("target_language: zh-TW\n", encoding="utf-8")
+
+    assert scan_repository(repository) == []
+
+
+def test_public_boundary_rejects_tracked_local_tool_configuration(tmp_path):
+    repository = tmp_path / "repository"
+    _initialize_repository(repository)
+    configuration = repository / ".baoyu-skills/baoyu-translate/EXTEND.md"
+    configuration.parent.mkdir(parents=True)
+    configuration.write_text("target_language: zh-TW\n", encoding="utf-8")
+    subprocess.run(
+        ["git", "add", "--", ".baoyu-skills/baoyu-translate/EXTEND.md"],
+        cwd=repository,
+        check=True,
+    )
+
+    findings = scan_repository(repository)
+
+    assert [
+        (finding.path, finding.rule, finding.detail)
+        for finding in findings
+    ] == [
+        (
+            ".baoyu-skills/baoyu-translate/EXTEND.md",
+            "unrelated-local-tool-configuration",
+            "local tool configuration is not permitted in the public project",
+        )
+    ]

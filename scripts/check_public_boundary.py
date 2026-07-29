@@ -47,6 +47,7 @@ DATA_SUFFIXES = {
 DATA_ARTIFACT_ALLOWLIST: set[str] = set()
 SKIP_DIRECTORIES = {".git", ".pytest_cache", "__pycache__", "dist"}
 SDD_SCRATCH_DIRECTORY = Path(".superpowers/sdd")
+UNRELATED_LOCAL_TOOL_DIRECTORY = ".baoyu-skills"
 LARGE_TEXT_ALLOWLIST = {
     "skills/clinical-data-research-navigator/references/tmucrd-public-profile.md"
 }
@@ -86,6 +87,20 @@ def scan_repository(root: Path, max_text_bytes: int = 200_000) -> list[Finding]:
     findings: list[Finding] = []
     root = root.resolve()
     tracked_paths = _tracked_paths(root)
+
+    if tracked_paths is not None:
+        for relative_path in tracked_paths:
+            if (
+                relative_path == UNRELATED_LOCAL_TOOL_DIRECTORY
+                or relative_path.startswith(f"{UNRELATED_LOCAL_TOOL_DIRECTORY}/")
+            ):
+                findings.append(
+                    Finding(
+                        relative_path,
+                        "unrelated-local-tool-configuration",
+                        "local tool configuration is not permitted in the public project",
+                    )
+                )
 
     for directory, child_directories, filenames in os.walk(root):
         directory_path = Path(directory)
