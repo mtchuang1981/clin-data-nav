@@ -1,6 +1,6 @@
 [project]
 name = "clin-data-nav"
-version = "0.2.0"
+version = "0.2.1"
 requires-python = ">=3.11,<3.12"
 dependencies = ["PyYAML>=6.0,<7.0"]
 

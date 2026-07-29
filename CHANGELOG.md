@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.2.1 - 2026-07-29
+
+### Documentation
+
+- Add a bilingual quick start using
+  `npx skills add mtchuang1981/clin-data-nav`.
+- Clarify that the `npx` path is project-local and retain the versioned,
+  manifest-verified GitHub Release workflow as the verified manual option.
+
+### Validation
+
+- Extend the README contract test to cover the quick-start command,
+  project-local installation boundary, Skill discovery, and explicit
+  invocation.
+
 ## 0.2.0 - 2026-07-28
 
 ### Features

@@ -23,7 +23,7 @@ except ModuleNotFoundError:  # Direct execution from the scripts directory.
 
 
 SKILL_NAME = "clinical-data-research-navigator"
-PACKAGE_VERSION = "0.2.0"
+PACKAGE_VERSION = "0.2.1"
 READ_CHUNK_BYTES = 64 * 1024
 MAX_MANIFEST_BYTES = 1 * 1024 * 1024
 MAX_ARCHIVE_BYTES = 20 * 1024 * 1024

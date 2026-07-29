@@ -31,7 +31,7 @@ def test_citation_and_license_metadata():
         (ROOT / "CITATION.cff").read_text(encoding="utf-8")
     )
     assert citation["title"] == "Clinical Data Research Navigator"
-    assert citation["version"] == "0.2.0"
+    assert citation["version"] == "0.2.1"
     assert citation["license"] == "Apache-2.0"
     assert "Apache License" in (ROOT / "LICENSE").read_text(encoding="utf-8")
 
@@ -42,12 +42,12 @@ def test_release_version_is_synchronized():
     changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
     changelog_zh_tw = (ROOT / "CHANGELOG.zh-TW.md").read_text(encoding="utf-8")
 
-    assert project["project"]["version"] == "0.2.0"
-    assert citation["version"] == "0.2.0"
-    assert PACKAGER_VERSION == "0.2.0"
-    assert INSTALLER_VERSION == "0.2.0"
-    assert "## 0.2.0 - 2026-07-28" in changelog
-    assert "## 0.2.0 - 2026-07-28" in changelog_zh_tw
+    assert project["project"]["version"] == "0.2.1"
+    assert citation["version"] == "0.2.1"
+    assert PACKAGER_VERSION == "0.2.1"
+    assert INSTALLER_VERSION == "0.2.1"
+    assert "## 0.2.1 - 2026-07-29" in changelog
+    assert "## 0.2.1 - 2026-07-29" in changelog_zh_tw
 
 
 def test_readmes_document_quick_start_verified_installation_and_activation():
@@ -60,7 +60,7 @@ def test_readmes_document_quick_start_verified_installation_and_activation():
         assert "/skills" in text
         assert "$HOME/.agents/skills" in text
         assert "$clinical-data-research-navigator" in text
-        assert "v0.2.0" in text
+        assert "v0.2.1" in text
         assert "SHA-256" in text
 
     assert "## Quick start" in english
