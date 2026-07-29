@@ -1,5 +1,7 @@
 from pathlib import Path
+import os
 import subprocess
+import sys
 
 import pytest
 
@@ -20,9 +22,11 @@ def _git(repo: Path, *arguments: str) -> str:
     return result.stdout.strip()
 
 
-def _repository(tmp_path: Path, version: str = "0.2.2") -> Path:
-    repo = tmp_path / "repo"
-    repo.mkdir()
+def _repository(
+    tmp_path: Path, version: str = "0.2.2", name: str = "repo"
+) -> Path:
+    repo = tmp_path / name
+    repo.mkdir(parents=True)
     _git(repo, "init", "-b", "main")
     _git(repo, "config", "user.name", "Release Test")
     _git(repo, "config", "user.email", "release-test@example.invalid")
@@ -91,3 +95,61 @@ def test_tag_commit_must_be_reachable_from_main(tmp_path):
 
     with pytest.raises(ReleaseVerificationError, match="reachable from main"):
         verify_release_ref(repo, "v0.2.2", "main")
+
+
+def test_annotated_tag_that_does_not_peel_to_a_commit_is_rejected(tmp_path):
+    repo = _repository(tmp_path)
+    _git(repo, "tag", "-a", "v0.2.2", "HEAD^{tree}", "-m", "tree tag")
+
+    with pytest.raises(ReleaseVerificationError, match="could not be completed safely"):
+        verify_release_ref(repo, "v0.2.2", "main")
+
+
+@pytest.mark.parametrize(
+    "metadata",
+    [None, "not valid toml = [", '[project]\nname = "clin-data-nav"\n'],
+    ids=["missing", "malformed", "missing-version"],
+)
+def test_unreadable_project_metadata_is_rejected_safely(tmp_path, metadata):
+    repo = _repository(tmp_path)
+    _git(repo, "tag", "-a", "v0.2.2", "-m", "release")
+    metadata_path = repo / "pyproject.toml"
+    if metadata is None:
+        metadata_path.unlink()
+    else:
+        metadata_path.write_text(metadata, encoding="utf-8")
+
+    with pytest.raises(ReleaseVerificationError, match="could not be completed safely"):
+        verify_release_ref(repo, "v0.2.2", "main")
+
+
+def test_git_environment_cannot_redirect_verification_to_another_repository(
+    tmp_path, monkeypatch
+):
+    repo = _repository(tmp_path, name="root")
+    _git(repo, "tag", "-a", "v0.2.2", "-m", "release")
+    root_commit = _git(repo, "rev-parse", "HEAD")
+    other = _repository(tmp_path, name="other")
+    _git(other, "tag", "v0.2.2")
+    monkeypatch.setenv("GIT_DIR", str(other / ".git"))
+
+    result = verify_release_ref(repo, "v0.2.2", "main")
+
+    assert result.commit == root_commit
+
+
+def test_cli_failure_is_safe_when_git_environment_points_to_non_commit_tag(tmp_path):
+    repo = _repository(tmp_path)
+    _git(repo, "tag", "-a", "v0.2.2", "HEAD^{tree}", "-m", "tree tag")
+    environment = os.environ | {"GIT_DIR": str(repo / ".git")}
+
+    result = subprocess.run(
+        [sys.executable, "scripts/verify_release.py", "ref", "--tag", "v0.2.2"],
+        capture_output=True,
+        text=True,
+        env=environment,
+    )
+
+    assert result.returncode == 1
+    assert "release verification failed:" in result.stderr
+    assert "Traceback" not in result.stderr

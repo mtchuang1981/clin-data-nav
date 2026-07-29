@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 from dataclasses import dataclass
+import os
 from pathlib import Path
 import re
 import subprocess
@@ -28,12 +29,16 @@ class ReleaseRef:
 
 
 def _git(root: Path, *arguments: str, check: bool = True) -> subprocess.CompletedProcess:
+    environment = {
+        name: value for name, value in os.environ.items() if not name.startswith("GIT_")
+    }
     return subprocess.run(
         ["git", *arguments],
         cwd=root,
         check=check,
         capture_output=True,
         text=True,
+        env=environment,
     )
 
 
@@ -41,6 +46,28 @@ def verify_release_ref(
     root: Path,
     tag: str,
     main_ref: str = "origin/main",
+) -> ReleaseRef:
+    try:
+        return _verify_release_ref(root, tag, main_ref)
+    except ReleaseVerificationError:
+        raise
+    except (
+        OSError,
+        KeyError,
+        TypeError,
+        UnicodeError,
+        subprocess.CalledProcessError,
+        tomllib.TOMLDecodeError,
+    ) as error:
+        raise ReleaseVerificationError(
+            "release verification could not be completed safely"
+        ) from error
+
+
+def _verify_release_ref(
+    root: Path,
+    tag: str,
+    main_ref: str,
 ) -> ReleaseRef:
     root = root.resolve()
     match = TAG_PATTERN.fullmatch(tag)
