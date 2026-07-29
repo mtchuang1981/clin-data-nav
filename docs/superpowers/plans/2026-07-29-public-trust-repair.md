@@ -46,6 +46,8 @@
   first success, update path, and current version examples.
 - `tests/test_project_metadata.py`: packaging, workflow, README, version, and
   architecture contracts.
+- `tests/test_acceptance.py`: repository-default-branch acceptance that works
+  from an attached feature worktree when `origin/HEAD` still targets main.
 - `tests/test_install_local.py`: portable platform behavior and fail-closed
   installer tests.
 - `tests/test_release_verification.py`: release-ref and artifact-verifier unit
@@ -60,6 +62,117 @@
   guarded workflow.
 - `docs/verification/2026-07-29-v0.2.1-assessment.md`: baseline findings,
   remediation evidence, deferrals, and remaining external settings.
+
+---
+
+### Task 0: Make default-branch acceptance worktree-safe
+
+**Files:**
+- Modify: `tests/test_acceptance.py`
+
+**Interfaces:**
+- Consumes: local Git refs, including `refs/remotes/origin/HEAD`, and the
+  existing detached-checkout GitHub environment fallback.
+- Produces: `default_branch_is_main(root: Path) -> bool` that identifies the
+  repository's configured default branch without requiring the current
+  attached branch itself to be `main`.
+
+- [ ] **Step 1: Add a failing feature-worktree regression test**
+
+Add:
+
+```python
+def test_attached_feature_accepts_origin_defaulting_to_main(tmp_path):
+    repository = tmp_path / "repository"
+    initialize_repository(repository)
+    subprocess.run(
+        ["git", "checkout", "-q", "-b", "feature"],
+        cwd=repository,
+        check=True,
+    )
+    subprocess.run(
+        [
+            "git",
+            "update-ref",
+            "refs/remotes/origin/main",
+            "refs/heads/main",
+        ],
+        cwd=repository,
+        check=True,
+    )
+    subprocess.run(
+        [
+            "git",
+            "symbolic-ref",
+            "refs/remotes/origin/HEAD",
+            "refs/remotes/origin/main",
+        ],
+        cwd=repository,
+        check=True,
+    )
+
+    assert default_branch_is_main(repository)
+```
+
+Keep `test_attached_feature_with_local_main_ref_is_rejected()` unchanged: a
+synthetic repository with no configured remote default and an attached feature
+branch must still be rejected.
+
+- [ ] **Step 2: Run the regression test and verify the intended red state**
+
+Run:
+
+```powershell
+python -m pytest tests/test_acceptance.py::test_attached_feature_accepts_origin_defaulting_to_main -q
+```
+
+Expected: FAIL because the helper currently compares the attached feature
+branch directly with `main`.
+
+- [ ] **Step 3: Check the configured remote default before current HEAD**
+
+Add this block at the start of `default_branch_is_main()`:
+
+```python
+    remote_head = subprocess.run(
+        [
+            "git",
+            "symbolic-ref",
+            "--quiet",
+            "--short",
+            "refs/remotes/origin/HEAD",
+        ],
+        cwd=root,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if remote_head.returncode == 0:
+        return remote_head.stdout.strip() == "origin/main"
+    if remote_head.returncode not in (1, 128):
+        return False
+```
+
+Leave the existing attached-HEAD, detached local-main, and GitHub environment
+fallback code after this block.
+
+- [ ] **Step 4: Run focused and complete acceptance tests**
+
+Run:
+
+```powershell
+python -m pytest tests/test_acceptance.py -q
+```
+
+Expected: all acceptance tests pass from the attached
+`codex/v0.2.2-public-trust-repair` worktree.
+
+- [ ] **Step 5: Commit the baseline repair**
+
+```powershell
+git add -- tests/test_acceptance.py
+git commit -m "fix: detect repository default branch in worktrees"
+```
 
 ---
 
