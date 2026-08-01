@@ -380,7 +380,9 @@ def test_readmes_document_quick_start_verified_installation_and_activation():
         assert "/skills" in text
         assert "$HOME/.agents/skills" in text
         assert "$clinical-data-research-navigator" in text
-        assert "v0.2.1" in text
+        assert "v0.2.2" in text
+        assert 'releaseVersion = "0.2.2"' in text
+        assert 'release_version="0.2.2"' in text
         assert "SHA-256" in text
 
     assert "## Quick start" in english
@@ -409,9 +411,9 @@ def test_readmes_document_quick_start_verified_installation_and_activation():
             next_heading,
             maxsplit=1,
         )[0]
-        assert 'releaseVersion = "0.2.1"' in manual_install
-        assert 'release_version="0.2.1"' in manual_install
-        assert "v0.2.2" not in manual_install
+        assert 'releaseVersion = "0.2.2"' in manual_install
+        assert 'release_version="0.2.2"' in manual_install
+        assert "v0.2.1" not in manual_install
 
 
 def test_readmes_define_prerequisites_command_boundaries_and_first_success():
