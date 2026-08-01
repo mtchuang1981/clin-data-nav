@@ -33,6 +33,23 @@ def _matching_packages(tmp_path: Path) -> tuple[Path, Path]:
     return first, second
 
 
+def _root_symlink_or_root_with_symlink_flag(
+    tmp_path: Path, target: Path, monkeypatch
+) -> Path:
+    """Return a root symlink, or deterministically exercise its check."""
+    linked_root = tmp_path / "linked-root"
+    try:
+        linked_root.symlink_to(target, target_is_directory=True)
+    except OSError:
+        monkeypatch.setattr(
+            Path,
+            "is_symlink",
+            lambda path: path == target,
+        )
+        return target
+    return linked_root
+
+
 def test_identical_packages_return_sorted_file_names(tmp_path):
     first, second = _matching_packages(tmp_path)
 
@@ -49,6 +66,49 @@ def test_missing_directory_is_rejected_with_a_stable_label(tmp_path):
     second.rmdir()
 
     with pytest.raises(ValueError, match=r"^second: directory does not exist$"):
+        compare_package_directories(first, second)
+
+
+@pytest.mark.parametrize(
+    ("position", "label"),
+    ((0, "first"), (1, "second")),
+)
+def test_root_directory_symlink_is_rejected_for_each_input(
+    tmp_path, monkeypatch, position, label
+):
+    first, second = _matching_packages(tmp_path)
+    packages = [first, second]
+    packages[position] = _root_symlink_or_root_with_symlink_flag(
+        tmp_path,
+        packages[position],
+        monkeypatch,
+    )
+
+    with pytest.raises(
+        ValueError,
+        match=rf"^{label}: directory must not be a symlink$",
+    ):
+        compare_package_directories(*packages)
+
+
+def test_entry_symlink_remains_rejected(tmp_path, monkeypatch):
+    first, second = _matching_packages(tmp_path)
+    zip_path = first / ZIP_NAME
+    zip_path.unlink()
+    try:
+        zip_path.symlink_to(second / ZIP_NAME)
+    except OSError:
+        zip_path.write_bytes(b"zip bytes")
+        monkeypatch.setattr(
+            Path,
+            "is_symlink",
+            lambda path: path == zip_path,
+        )
+
+    with pytest.raises(
+        ValueError,
+        match=r"^first: unexpected entry: candidate\.zip$",
+    ):
         compare_package_directories(first, second)
 
 

@@ -10,6 +10,8 @@ import sys
 
 def _package_entries(directory: Path, label: str) -> tuple[str, str]:
     """Return the ZIP and manifest names after validating *directory*."""
+    if directory.is_symlink():
+        raise ValueError(f"{label}: directory must not be a symlink")
     if not directory.exists():
         raise ValueError(f"{label}: directory does not exist")
     if not directory.is_dir():
