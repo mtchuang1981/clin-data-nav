@@ -2,8 +2,8 @@
 
 Output depth: evidence navigation
 
-Provide only a public-background profile from a dated public source snapshot.
-It is not a schema and not an institutional query guide.
+Public source snapshot: 2026-07-27. Provide only a public-background profile
+from that snapshot. It is not a schema and not an institutional query guide.
 
 ## Evidence table
 

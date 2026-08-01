@@ -68,6 +68,8 @@ def test_all_catalog_cases_have_paired_response_only_fixture_evidence():
         "expected answer:",
         "score:",
         "test commentary:",
+        "private dictionary:",
+        "existing skill:",
         "system prompt",
         "hidden reasoning",
     )
@@ -98,6 +100,43 @@ def test_all_catalog_cases_have_paired_response_only_fixture_evidence():
             assert text.strip(), case["id"]
             lowered = text.lower()
             assert not any(marker in lowered for marker in forbidden_fixture_markers)
+            assert not lowered.startswith("public-background text (safe to reuse):")
+
+
+def test_original_control_fixtures_keep_response_only_protections():
+    fixture_ids = {
+        "institutional-sql-without-dictionary",
+        "stale-codingbook",
+        "tmucrd-public-profile",
+    }
+    for fixture_id in fixture_ids:
+        text = (
+            ROOT / "tests/fixtures/baseline" / f"{fixture_id}.md"
+        ).read_text(encoding="utf-8")
+        lowered = text.lower()
+        for marker in (
+            "prompt:",
+            "rubric:",
+            "expected answer:",
+            "private dictionary:",
+            "existing skill:",
+            "system prompt",
+            "hidden reasoning",
+        ):
+            assert marker not in lowered
+        assert not lowered.startswith("public-background text (safe to reuse):")
+
+
+def test_tmucrd_forward_fixture_labels_an_explicit_public_snapshot_date():
+    response = (
+        ROOT / "tests/fixtures/forward/tmucrd-public-profile.md"
+    ).read_text(encoding="utf-8")
+
+    assert re.search(
+        r"public source snapshot:\s+\d{4}-\d{2}-\d{2}",
+        response,
+        flags=re.IGNORECASE,
+    )
 
 
 def test_rendered_eval_summary_matches_checked_in_generated_block():
@@ -179,9 +218,9 @@ def test_eval_summary_check_detects_staleness_and_rewrites_only_generated_block(
         newline="\n",
     )
 
+    before_check = readme_path.read_bytes()
     assert render_eval_summary.main(["--check"], root=tmp_path) == 1
-    assert readme_path.read_text(encoding="utf-8").startswith(prefix)
-    assert readme_path.read_text(encoding="utf-8").endswith(suffix)
+    assert readme_path.read_bytes() == before_check
 
     assert render_eval_summary.main([], root=tmp_path) == 0
     rewritten = readme_path.read_text(encoding="utf-8")
