@@ -48,10 +48,12 @@ request and offers a deeper next step instead of combining every depth.
 
 ## Agent Skill and Plugin boundary
 
-This repository distributes an installable Agent Skill from GitHub and does
-not claim a public Plugin-directory listing. A Plugin is a separate packaging
-and distribution boundary and may contain Skills, apps, or other capabilities;
-installing this repository does not create or publish that product.
+OpenAI's documentation says a Skill packages instructions, resources, and
+optional scripts so ChatGPT or Codex can follow a workflow. A Plugin is a
+separate distribution package for reusable Skills and connectors. This
+repository distributes an installable Agent Skill from GitHub and does not
+claim a public Plugin-directory listing; installing it does not create or
+publish a Plugin.
 
 ## Documentation
 

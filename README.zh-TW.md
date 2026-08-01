@@ -47,9 +47,10 @@ $clinical-data-research-navigator ADaM 是什麼、為什麼重要，又不能�
 
 ## Agent Skill 與 Plugin 的界線
 
-本儲存庫透過 GitHub 發布可安裝的 Agent Skill，不宣稱已刊登於公開 Plugin
-目錄。Plugin 屬於另一套封裝與發布邊界，可包含 Skills、apps 或其他能力；
-安裝本儲存庫不會建立或發布該產品。
+OpenAI 官方文件說明，Skill 會封裝操作指引、資源與選用指令碼，讓 ChatGPT
+或 Codex 能依工作流程執行任務；Plugin 則是另一種發布套件，用來發布可重複
+使用的 Skills 與 connectors。本儲存庫透過 GitHub 發布可安裝的 Agent Skill，
+不宣稱已刊登於公開 Plugin 目錄；安裝本儲存庫不會建立或發布 Plugin。
 
 ## 文件導覽
 

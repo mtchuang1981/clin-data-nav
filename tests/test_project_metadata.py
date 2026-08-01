@@ -1050,6 +1050,101 @@ def test_citation_has_required_cff_1_2_schema_shape_and_author():
         )
 
 
+def test_citation_points_to_the_public_repository_without_an_unverified_release_date():
+    citation = yaml.safe_load(
+        (ROOT / "CITATION.cff").read_text(encoding="utf-8")
+    )
+
+    repository_url = "https://github.com/mtchuang1981/clin-data-nav"
+    assert citation["url"] == repository_url
+    assert citation["repository-code"] == repository_url
+    assert "date-released" not in citation
+
+
+def test_security_policy_has_supported_versions_and_safe_confidential_reporting():
+    security = (ROOT / "SECURITY.md").read_text(encoding="utf-8")
+    normalized = " ".join(security.split())
+
+    assert "| Version | Supported |" in security
+    assert "0.2.x" in security
+    for prohibited_public_material in (
+        "secrets",
+        "PII",
+        "private data dictionaries",
+    ):
+        assert prohibited_public_material in normalized
+    assert "public issue" in normalized
+    assert "2026-08-02" in normalized
+    assert "private vulnerability reporting is not enabled" in normalized
+    assert "non-sensitive request for private coordination" in normalized
+    assert "best effort" in normalized
+    assert not re.search(
+        r"\bwithin\s+\d+\s+(?:business\s+)?(?:hours?|days?)\b",
+        normalized,
+        flags=re.IGNORECASE,
+    )
+    for response_step in (
+        "Stop merge and distribution",
+        "Remove branch or pull request access",
+        "Rotate potentially affected credentials",
+        "GitHub's sensitive-data removal procedure",
+        "Do not rely on a later deletion commit to erase history",
+    ):
+        assert response_step in normalized
+
+
+def test_repository_settings_is_a_post_change_operator_checklist_not_state_evidence():
+    settings = (ROOT / "docs/repository-settings.md").read_text(
+        encoding="utf-8"
+    )
+    normalized = " ".join(settings.split())
+
+    assert "operator checklist" in normalized
+    assert "explicitly approved change" in normalized
+    assert "documentation is not proof that a setting is enabled" in normalized
+    assert "post-change re-read" in normalized
+    assert "Ubuntu" in normalized
+    assert "Windows" in normalized
+    assert "required status checks" in normalized
+    for topic in (
+        "clinical-research",
+        "rwe",
+        "cdisc",
+        "omop",
+        "sas",
+        "agent-skills",
+    ):
+        assert f"`{topic}`" in settings
+    assert "private vulnerability reporting" in normalized
+    assert "Dependabot security updates" in normalized
+    assert "optional Zenodo evaluation" in normalized
+    for decision_input in (
+        "citation goal",
+        "maintainer account/integration",
+        "deposition ownership",
+        "DOI verification",
+    ):
+        assert decision_input in normalized
+    assert "no DOI is claimed without a verified deposition" in normalized
+    assert "gh api" in settings
+    assert "Settings" in settings
+
+
+def test_readmes_use_the_official_skill_and_plugin_product_boundary():
+    english = " ".join((ROOT / "README.md").read_text(encoding="utf-8").split())
+    traditional_chinese = " ".join(
+        (ROOT / "README.zh-TW.md").read_text(encoding="utf-8").split()
+    )
+
+    assert "packages instructions, resources, and optional scripts" in english
+    assert "separate distribution package" in english
+    assert "封裝操作指引、資源與選用指令碼" in traditional_chinese
+    assert "另一種發布套件" in traditional_chinese
+    for document in (english, traditional_chinese):
+        assert "https://learn.chatgpt.com/docs/build-skills" in document
+        assert "https://help.openai.com/en/articles/20001066" in document
+
+
 def test_contribution_provenance_evidence_is_required_without_private_documents():
     contributing = " ".join(
         (ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8").split()

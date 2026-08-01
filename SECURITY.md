@@ -1,4 +1,37 @@
-# Security and accidental private-data response
+# Security policy
+
+## Supported versions
+
+The newest published release line receives security fixes. As of 2026-08-02,
+that line is `0.2.x`.
+
+| Version | Supported |
+|---|---|
+| `0.2.x` | Yes |
+| `< 0.2` | No |
+
+Support and response timing are best effort. This project does not promise an
+acknowledgement or remediation service level.
+
+## Report a vulnerability
+
+Never put secrets, credentials, personally identifiable information (PII),
+protected health information, private data dictionaries, private Adapter
+contents, login-gated documents, or an exploit payload containing such
+material in a public issue.
+
+On 2026-08-02 (Asia/Taipei), GitHub's read-only repository API reported that
+private vulnerability reporting is not enabled for this repository. While
+that remains unavailable, open a public issue containing only a non-sensitive
+request for private coordination. Include no vulnerability details, samples,
+or sensitive payload. A maintainer can then arrange a private channel before
+details are exchanged. An ordinary security concern that contains no sensitive
+material may be reported in a public issue.
+
+Repository state can change. Maintainers must re-read the setting rather than
+treat this dated observation as current proof.
+
+## Accidental private-data response
 
 Do not submit private institutional data, credentials, Adapter contents, or
 login-gated documents to this repository. If such material is submitted or
