@@ -13,6 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 TERMINAL_ONBOARDING_COMMANDS = (
     "node --version",
     "npm --version",
+    "npx --version",
     "npx skills add mtchuang1981/clin-data-nav",
     "npx skills update clinical-data-research-navigator --project --yes",
 )
@@ -28,27 +29,139 @@ FENCED_BLOCK_PATTERN = re.compile(
     flags=re.MULTILINE | re.DOTALL,
 )
 ENGLISH_ONBOARDING_CONTRACT = {
-    "headings": (
-        "## Quick start prerequisites",
-        "## Quick start",
-        "## 60-second first success",
-        "## Public boundary",
-    ),
     "not_terminal_phrase": "not terminal commands",
     "clarification_phrase": "question clarification",
     "missing_information_phrase": "missing-information list",
 }
 TRADITIONAL_CHINESE_ONBOARDING_CONTRACT = {
-    "headings": (
-        "## 快速開始的必要條件",
-        "## 快速開始",
-        "## 60 秒完成第一次使用",
-        "## 公開邊界",
-    ),
     "not_terminal_phrase": "不是終端機指令",
     "clarification_phrase": "問題釐清",
     "missing_information_phrase": "缺少資訊清單",
 }
+VALIDATION_BADGE_IMAGE = (
+    "https://github.com/mtchuang1981/clin-data-nav/"
+    "actions/workflows/validate.yml/badge.svg?branch=main"
+)
+VALIDATION_BADGE_LINK = (
+    "https://github.com/mtchuang1981/clin-data-nav/"
+    "actions/workflows/validate.yml?query=branch%3Amain"
+)
+README_NAVIGATION_TARGETS = {
+    "README.md": (
+        "docs/installation.md",
+        "docs/glossary.md",
+        "docs/learning-paths.md",
+        "examples/teae-to-sas-spec.md",
+        "examples/omop-phenotype-to-sql-spec.md",
+        "examples/synthetic-institutional-mapping.md",
+        (
+            "skills/clinical-data-research-navigator/references/"
+            "evidence-output-template.md"
+        ),
+        "CONTRIBUTING.md",
+        "SECURITY.md",
+        "docs/release.md",
+    ),
+    "README.zh-TW.md": (
+        "docs/installation.zh-TW.md",
+        "docs/glossary.zh-TW.md",
+        "docs/learning-paths.zh-TW.md",
+        "examples/teae-to-sas-spec.md",
+        "examples/omop-phenotype-to-sql-spec.md",
+        "examples/synthetic-institutional-mapping.md",
+        (
+            "skills/clinical-data-research-navigator/references/"
+            "evidence-output-template.md"
+        ),
+        "CONTRIBUTING.md",
+        "SECURITY.md",
+        "docs/release.md",
+    ),
+}
+INSTALLATION_TROUBLESHOOTING_CONTRACTS = (
+    (
+        "missing-node",
+        ("node", "npm", "npx", "PATH"),
+        ("Node.js", "restart"),
+    ),
+    (
+        "install-command-failure",
+        ("npx skills add", "repository", "network"),
+        ("diagnostic", "retry"),
+    ),
+    (
+        "activation-failure",
+        (".agents/skills", "/skills", "SKILL.md"),
+        ("project root", "restart"),
+    ),
+    (
+        "stale-after-update",
+        ("npx skills update", "/skills"),
+        ("restart", "project"),
+    ),
+    (
+        "download-failure",
+        ("ZIP", "manifest", "Release"),
+        ("same release", "retry"),
+    ),
+    (
+        "manifest-mismatch",
+        ("SHA-256", "manifest"),
+        ("do not extract", "download"),
+    ),
+    (
+        "existing-target",
+        ("already exists", "refuse"),
+        ("inspect", "different destination"),
+    ),
+    (
+        "python-setup-failure",
+        ("Python 3.11", "python --version"),
+        ("virtual environment", "dependency"),
+    ),
+)
+TRADITIONAL_CHINESE_TROUBLESHOOTING_CONTRACTS = (
+    (
+        "missing-node",
+        ("node", "npm", "npx", "PATH"),
+        ("Node.js", "重新啟動"),
+    ),
+    (
+        "install-command-failure",
+        ("npx skills add", "儲存庫", "網路"),
+        ("診斷", "重新執行"),
+    ),
+    (
+        "activation-failure",
+        (".agents/skills", "/skills", "SKILL.md"),
+        ("專案根目錄", "重新啟動"),
+    ),
+    (
+        "stale-after-update",
+        ("npx skills update", "/skills"),
+        ("重新啟動", "專案"),
+    ),
+    (
+        "download-failure",
+        ("ZIP", "manifest", "Release"),
+        ("同一個 Release", "重新下載"),
+    ),
+    (
+        "manifest-mismatch",
+        ("SHA-256", "manifest"),
+        ("不要解壓縮", "下載"),
+    ),
+    (
+        "existing-target",
+        ("已存在", "拒絕"),
+        ("檢查", "另一個目的目錄"),
+    ),
+    (
+        "python-setup-failure",
+        ("Python 3.11", "python --version"),
+        ("虛擬環境", "相依套件"),
+    ),
+)
 GLOSSARY_TERM_KEYS = (
     "clinical-research",
     "cdisc",
@@ -76,16 +189,17 @@ LEARNING_PATH_IDS = (
 def _assert_readme_onboarding_contract(
     text: str,
     *,
-    headings: tuple[str, str, str, str],
     not_terminal_phrase: str,
     clarification_phrase: str,
     missing_information_phrase: str,
 ) -> None:
-    for command in (*TERMINAL_ONBOARDING_COMMANDS, *CODEX_ONBOARDING_INPUTS):
+    for command in TERMINAL_ONBOARDING_COMMANDS:
         assert command in text
+    for codex_input in CODEX_ONBOARDING_INPUTS:
+        assert codex_input in text, (
+            "Codex inputs must be identified together as non-terminal inputs"
+        )
     assert ".agents/skills" in text
-    for heading in headings:
-        assert heading in text
     for phrase in (
         not_terminal_phrase,
         clarification_phrase,
@@ -93,23 +207,9 @@ def _assert_readme_onboarding_contract(
     ):
         assert phrase in text
 
-    lines = text.splitlines()
-    heading_positions = []
-    for heading in headings:
-        assert lines.count(heading) == 1, (
-            f"onboarding heading must appear exactly once: {heading}"
-        )
-        heading_positions.append(lines.index(heading))
-    assert heading_positions == sorted(heading_positions), (
-        "onboarding sections must appear in the required order"
-    )
-
-    onboarding = "\n".join(
-        lines[heading_positions[0] : heading_positions[-1]]
-    )
     blocks = [
         (match["language"].strip(), match["body"])
-        for match in FENCED_BLOCK_PATTERN.finditer(onboarding)
+        for match in FENCED_BLOCK_PATTERN.finditer(text)
     ]
     bash_blocks = [body for language, body in blocks if language == "bash"]
     terminal_blocks = [
@@ -126,17 +226,18 @@ def _assert_readme_onboarding_contract(
         assert command in bash_lines, (
             f"terminal command must be an exact line in a bash block: {command}"
         )
-    joined_terminal_blocks = "\n".join(terminal_blocks)
+    terminal_lines = {
+        line.strip()
+        for body in terminal_blocks
+        for line in body.splitlines()
+    }
     for codex_input in CODEX_ONBOARDING_INPUTS:
-        assert codex_input not in joined_terminal_blocks, (
+        assert codex_input not in terminal_lines, (
             f"Codex input must not appear in a terminal block: {codex_input}"
         )
 
-    quick_start = "\n".join(
-        lines[heading_positions[1] : heading_positions[2]]
-    )
-    quick_start_prose = FENCED_BLOCK_PATTERN.sub("", quick_start)
-    sentences = " ".join(quick_start_prose.split()).replace("。", ".").split(".")
+    prose = FENCED_BLOCK_PATTERN.sub("", text)
+    sentences = " ".join(prose.split()).replace("。", ".").split(".")
     assert any(
         "Codex" in sentence
         and not_terminal_phrase in sentence
@@ -146,6 +247,31 @@ def _assert_readme_onboarding_contract(
         )
         for sentence in sentences
     ), "Codex inputs must be identified together as non-terminal inputs"
+
+
+def _nonblank_line_index(text: str, marker: str) -> int:
+    nonblank_lines = [line for line in text.splitlines() if line.strip()]
+    return next(
+        index for index, line in enumerate(nonblank_lines) if marker in line
+    )
+
+
+def _markdown_link_targets(text: str) -> set[str]:
+    return {
+        target
+        for target in re.findall(r"(?<!!)\[[^\]]+\]\(([^)]+)\)", text)
+    }
+
+
+def _troubleshooting_sections(text: str) -> dict[str, str]:
+    anchors = tuple(
+        re.findall(r'^<a id="(troubleshoot-[a-z0-9-]+)"></a>$', text, re.MULTILINE)
+    )
+    sections = _sections_after_anchors(text, anchors)
+    return {
+        anchor.removeprefix("troubleshoot-"): section
+        for anchor, section in sections.items()
+    }
 
 
 def _document_anchor_ids(text: str) -> tuple[str, ...]:
@@ -577,80 +703,141 @@ def test_v022_release_notes_are_static_uploadable_notes_without_candidate_state(
     assert "npx skills add mtchuang1981/clin-data-nav" in notes
 
 
-def test_readmes_document_quick_start_verified_installation_and_activation():
-    english = (ROOT / "README.md").read_text(encoding="utf-8")
-    traditional_chinese = (ROOT / "README.zh-TW.md").read_text(encoding="utf-8")
+def test_readmes_put_a_real_first_success_path_in_the_first_30_nonblank_lines():
+    first_success_markers = (
+        "npx skills add mtchuang1981/clin-data-nav",
+        "$clinical-data-research-navigator",
+        "Output depth: quick explanation",
+    )
 
-    for text in (english, traditional_chinese):
-        assert "npx skills add mtchuang1981/clin-data-nav" in text
-        assert ".agents/skills" in text
-        assert "/skills" in text
+    for relative_path in ("README.md", "README.zh-TW.md"):
+        text = (ROOT / relative_path).read_text(encoding="utf-8")
+        assert f"[![Validation]({VALIDATION_BADGE_IMAGE})]({VALIDATION_BADGE_LINK})" in text
+        assert _nonblank_line_index(text, VALIDATION_BADGE_IMAGE) < 30
+        for marker in first_success_markers:
+            assert _nonblank_line_index(text, marker) < 30
+
+
+def test_readmes_identify_the_installable_agent_skill_without_a_plugin_listing_claim():
+    english = " ".join((ROOT / "README.md").read_text(encoding="utf-8").split())
+    traditional_chinese = " ".join(
+        (ROOT / "README.zh-TW.md").read_text(encoding="utf-8").split()
+    )
+
+    assert "installable Agent Skill" in english
+    assert "does not claim a public Plugin-directory listing" in english
+    assert "可安裝的 Agent Skill" in traditional_chinese
+    assert "不宣稱已刊登於公開 Plugin 目錄" in traditional_chinese
+
+
+def test_readmes_link_every_first_party_user_and_maintainer_destination():
+    for relative_path, expected_targets in README_NAVIGATION_TARGETS.items():
+        text = (ROOT / relative_path).read_text(encoding="utf-8")
+        targets = _markdown_link_targets(text)
+        for target in expected_targets:
+            assert target in targets
+            assert (ROOT / target).is_file(), f"missing linked file: {target}"
+
+
+def test_installation_guides_preserve_quick_update_verified_and_source_paths():
+    documents = (
+        (
+            (ROOT / "docs/installation.md").read_text(encoding="utf-8"),
+            ENGLISH_ONBOARDING_CONTRACT,
+            "target version for the next release is `0.3.0`",
+            "not yet a claim that `v0.3.0` is published",
+        ),
+        (
+            (ROOT / "docs/installation.zh-TW.md").read_text(encoding="utf-8"),
+            TRADITIONAL_CHINESE_ONBOARDING_CONTRACT,
+            "下一個 Release 的目標版本是 `0.3.0`",
+            "不表示 `v0.3.0` 已經發布",
+        ),
+    )
+
+    for text, onboarding_contract, target_claim, prerelease_claim in documents:
+        _assert_readme_onboarding_contract(text, **onboarding_contract)
+        normalized = " ".join(text.split())
+        assert target_claim in normalized
+        assert prerelease_claim in normalized
+        assert 'releaseVersion = "0.3.0"' in text
+        assert 'release_version="0.3.0"' in text
         assert "$HOME/.agents/skills" in text
-        assert "$clinical-data-research-navigator" in text
-        assert "v0.2.2" in text
-        assert 'releaseVersion = "0.2.2"' in text
-        assert 'release_version="0.2.2"' in text
         assert "SHA-256" in text
+        assert "archive_sha256" in text
+        assert "scripts/package_skill.py" in text
+        assert "scripts/install_local.py" in text
+        assert "--overwrite" in text
+        assert "v0.2.2" not in text
 
-    assert "## Quick start" in english
-    assert "from the root of the project" in english
-    assert "## Verified manual installation from GitHub Release" in english
-    assert "## Use the Skill" in english
 
-    assert "## 快速開始" in traditional_chinese
-    assert "要使用此 Skill 的專案根目錄" in traditional_chinese
-    assert "## 經驗證的 GitHub Release 手動安裝" in traditional_chinese
-    assert "## 使用 Skill" in traditional_chinese
-
-    for text, manual_heading, next_heading in (
+def test_installation_guides_have_stage_specific_fail_closed_recovery():
+    documents = (
+        ("docs/installation.md", INSTALLATION_TROUBLESHOOTING_CONTRACTS),
         (
-            english,
-            "## Verified manual installation from GitHub Release",
-            "## Install from source",
+            "docs/installation.zh-TW.md",
+            TRADITIONAL_CHINESE_TROUBLESHOOTING_CONTRACTS,
         ),
-        (
-            traditional_chinese,
-            "## 經驗證的 GitHub Release 手動安裝",
-            "## 從原始碼安裝",
-        ),
+    )
+    for relative_path, contracts in documents:
+        text = (ROOT / relative_path).read_text(encoding="utf-8")
+        sections = _troubleshooting_sections(text)
+        assert tuple(sections) == tuple(
+            contract[0] for contract in contracts
+        )
+        normalized_sections = {
+            key: value.casefold() for key, value in sections.items()
+        }
+        for key, diagnosis_markers, recovery_markers in contracts:
+            section = normalized_sections[key]
+            for marker in (*diagnosis_markers, *recovery_markers):
+                assert marker.casefold() in section, f"{relative_path}: {key}: {marker}"
+        assert "--no-verify" not in text
+        assert "Remove-Item -Recurse" not in text
+        assert "rm -rf" not in text
+
+
+def test_installation_and_contributor_docs_separate_skill_use_from_python_tooling():
+    english_installation = (ROOT / "docs/installation.md").read_text(encoding="utf-8")
+    chinese_installation = (ROOT / "docs/installation.zh-TW.md").read_text(
+        encoding="utf-8"
+    )
+    contributing = (ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8")
+
+    assert "instruction-only installed Skill does not require Python" in english_installation
+    assert "安裝後只包含操作指引與參考文件的 Skill 不需要 Python" in chinese_installation
+    assert "Python 3.11" in contributing
+    assert 'python -m pip install -e ".[dev]"' in contributing
+    for command in (
+        "python -m pytest -q",
+        "python scripts/validate_skill.py",
+        "python scripts/check_public_boundary.py",
+        "python scripts/package_skill.py --check-reproducible",
     ):
-        manual_install = text.split(manual_heading, maxsplit=1)[1].split(
-            next_heading,
-            maxsplit=1,
-        )[0]
-        assert 'releaseVersion = "0.2.2"' in manual_install
-        assert 'release_version="0.2.2"' in manual_install
-        assert "v0.2.1" not in manual_install
+        assert command in contributing
 
 
-def test_readmes_define_prerequisites_command_boundaries_and_first_success():
-    english = (ROOT / "README.md").read_text(encoding="utf-8")
-    traditional_chinese = (ROOT / "README.zh-TW.md").read_text(encoding="utf-8")
-
-    _assert_readme_onboarding_contract(
-        english,
-        **ENGLISH_ONBOARDING_CONTRACT,
+def test_installation_guides_preserve_codex_and_chatgpt_activation_routes():
+    english = " ".join(
+        (ROOT / "docs/installation.md").read_text(encoding="utf-8").split()
     )
-    _assert_readme_onboarding_contract(
-        traditional_chinese,
-        **TRADITIONAL_CHINESE_ONBOARDING_CONTRACT,
+    traditional_chinese = " ".join(
+        (ROOT / "docs/installation.zh-TW.md").read_text(encoding="utf-8").split()
     )
+
+    assert "Codex CLI or the IDE extension" in english
+    assert "ChatGPT desktop app" in english
+    assert "Plugins > Skills" in english
+    assert "does not install it into ChatGPT" in english
+    assert "Codex CLI 或 IDE 擴充功能" in traditional_chinese
+    assert "ChatGPT 桌面版" in traditional_chinese
+    assert "Plugins > Skills" in traditional_chinese
+    assert "不會把它安裝到 ChatGPT" in traditional_chinese
 
 
 @pytest.mark.parametrize(
     ("mutation", "expected_error"),
     (
-        pytest.param(
-            lambda text: text.replace(
-                "## Quick start prerequisites",
-                "## temporary heading",
-                1,
-            )
-            .replace("## Quick start", "## Quick start prerequisites", 1)
-            .replace("## temporary heading", "## Quick start", 1),
-            "required order",
-            id="section-order",
-        ),
         pytest.param(
             lambda text: text.replace(
                 "```bash\nnode --version",
@@ -697,7 +884,7 @@ def test_readme_onboarding_contract_rejects_misplaced_instructions(
     mutation,
     expected_error,
 ):
-    english = (ROOT / "README.md").read_text(encoding="utf-8")
+    english = (ROOT / "docs/installation.md").read_text(encoding="utf-8")
     misplaced = mutation(english)
 
     assert misplaced != english
@@ -708,60 +895,41 @@ def test_readme_onboarding_contract_rejects_misplaced_instructions(
         )
 
 
-def test_readmes_explain_cdisc_models_and_python_runtime_boundary():
-    english = (ROOT / "README.md").read_text(encoding="utf-8")
-    traditional_chinese = (ROOT / "README.zh-TW.md").read_text(encoding="utf-8")
-
-    assert "## New to clinical-data standards?" in english
-    assert "## 第一次接觸臨床資料標準？" in traditional_chinese
-    for term in ("CDISC", "SDTM", "ADaM"):
-        assert term in english
-        assert term in traditional_chinese
-    for official_url in (
-        "https://www.cdisc.org/standards",
-        "https://www.cdisc.org/standards/foundational/sdtm",
-        "https://www.cdisc.org/standards/foundational/adam",
-    ):
-        assert official_url in english
-        assert official_url in traditional_chinese
-
-    assert "Collected or received study data" in english
-    assert "收集或接收的研究資料" in traditional_chinese
-    assert "Using the installed Skill does not require Python." in english
-    assert "使用已安裝的 Skill 不需要 Python。" in traditional_chinese
-    assert "## Contributor setup (Python 3.11)" in english
-    assert "## 貢獻者環境（Python 3.11）" in traditional_chinese
-    assert "not every clinical-data question" in english
-    assert "不是每一個臨床資料問題" in traditional_chinese
+def test_installation_guides_keep_zip_verification_free_of_python_one_liners():
+    english = (ROOT / "docs/installation.md").read_text(encoding="utf-8")
+    traditional_chinese = (ROOT / "docs/installation.zh-TW.md").read_text(
+        encoding="utf-8"
+    )
 
     english_posix = english.split("POSIX shell:", 1)[1].split(
         "## Install from a source checkout",
         1,
     )[0]
     chinese_posix = traditional_chinese.split("POSIX shell：", 1)[1].split(
-        "## 從原始碼安裝",
+        "## 從原始碼簽出安裝",
         1,
     )[0]
     assert "python -c" not in english_posix
     assert "python -c" not in chinese_posix
 
 
-def test_readmes_explain_rwe_routing_and_optional_build_rwe_sap():
-    english = (ROOT / "README.md").read_text(encoding="utf-8")
-    traditional_chinese = (ROOT / "README.zh-TW.md").read_text(encoding="utf-8")
+def test_readmes_preserve_cdisc_rwe_and_optional_handoff_discovery():
+    english = " ".join((ROOT / "README.md").read_text(encoding="utf-8").split())
+    traditional_chinese = " ".join(
+        (ROOT / "README.zh-TW.md").read_text(encoding="utf-8").split()
+    )
 
-    assert "## Real-world evidence and causal-study routing" in english
-    assert "## 真實世界證據與因果研究路由" in traditional_chinese
+    for term in ("CDISC", "SDTM", "ADaM", "RWD", "RWE"):
+        assert term in english
+        assert term in traditional_chinese
     assert "RWD is not automatically RWE." in english
     assert "RWD 不會自動成為 RWE。" in traditional_chinese
     assert "causal-comparative" in english
     assert "因果比較" in traditional_chinese
-    assert "`build-rwe-sap` is optional and is not bundled" in english
-    assert "`build-rwe-sap` 是選配項目，並未內附" in traditional_chinese
+    assert "`build-rwe-sap` is optional and not bundled" in english
+    assert "`build-rwe-sap` 是選配項目，未內附" in traditional_chinese
     assert "never installs it automatically" in english
     assert "不會自動安裝" in traditional_chinese
-    assert "Normal Core use does not require `build-rwe-sap`" in english
-    assert "一般 Core 功能不需要 `build-rwe-sap`" in traditional_chinese
 
 
 def test_citation_has_required_cff_1_2_schema_shape_and_author():

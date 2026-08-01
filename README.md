@@ -1,300 +1,97 @@
-# Clinical Data Research Navigator
-
 English | [繁體中文](README.zh-TW.md)
 
-Clinical Data Research Navigator helps researchers turn clinical-data questions
-into source-ranked evidence, a safe data contract, and an explicit execution
-maturity assessment.
+# Clinical Data Research Navigator
 
-## Quick start prerequisites
+This installable Agent Skill turns clinical-data questions into source-ranked guidance without supplying private schemas or claiming validated clinical conclusions.
 
-The npx installation path requires Node.js with npm/npx and a Codex interface
-that supports Skills. In a terminal, confirm that both commands work:
+[![Validation](https://github.com/mtchuang1981/clin-data-nav/actions/workflows/validate.yml/badge.svg?branch=main)](https://github.com/mtchuang1981/clin-data-nav/actions/workflows/validate.yml?query=branch%3Amain)
 
-```bash
-node --version
-npm --version
-```
-
-No Python installation is required to use the installed Skill. Python 3.11 is
-only a contributor dependency described later in this README.
-
-## Quick start
-
-Run this command from the root of the project where you want to use the Skill:
+## Install in a project
 
 ```bash
 npx skills add mtchuang1981/clin-data-nav
 ```
 
-`npx skills add mtchuang1981/clin-data-nav` is a terminal command and installs
-the Skill for the current project under `.agents/skills`. `/skills` and
-`$clinical-data-research-navigator` are entered in
-Codex; they are not terminal commands.
-Run `/skills` to confirm discovery, then invoke the Skill explicitly.
-Review third-party Skills before use because they run with your agent's
-permissions.
+See the [installation guide](docs/installation.md) for Node.js prerequisites, updates, verified ZIP installation, and troubleshooting.
 
-To update this project-local installation later, run in the terminal:
+## First success
 
-```bash
-npx skills update clinical-data-research-navigator --project --yes
+Enter this prompt in Codex:
+
+```text
+$clinical-data-research-navigator What is ADaM, why does it matter, and what does it not prove about source-data quality?
 ```
 
-## 60-second first success
+Expected first line: `Output depth: quick explanation`
 
-1. Run `/skills` in Codex and confirm that **Clinical Data Research
-   Navigator** appears.
-2. Enter this minimal request in Codex:
+- A direct plain-language definition and why ADaM matters in context.
+- One or two common confusions or limits, followed by a short governing-source list.
 
-   ```text
-   $clinical-data-research-navigator Help me frame a descriptive study of
-   health-care utilisation using synthetic real-world data. Do not invent a
-   schema or codes.
-   ```
+## Choose an output depth
 
-3. Expect question clarification, source and schema boundaries, a recommended
-   workflow, and a missing-information list. With incomplete inputs, expect a
-   specification and validation gaps—not production SQL, a complete SAP, or a
-   causal conclusion.
-
-## Public boundary
-
-This repository is a public Core: it contains reusable guidance, synthetic
-examples, tests, and packaging tools. It does not contain private TMUCRD
-adapters, codingbooks, data dictionaries, physical schemas, credentials, or
-login-gated documents. It is not a TMUCRD data dictionary.
-
-For institutional implementation, mount an approved, versioned private Adapter
-outside this repository and verify current metadata in the governed environment.
-
-## New to clinical-data standards?
-
-You do not need prior CDISC knowledge to use this Skill. These three terms
-describe different parts of a standards-based clinical-trial data workflow:
-
-| Term | Plain-language meaning | Why it appears here |
+| Depth | Use it for | It does not silently add |
 |---|---|---|
-| [CDISC](https://www.cdisc.org/standards) | The Clinical Data Interchange Standards Consortium and its suite of standards for representing clinical and non-clinical research data. | It provides the standards ecosystem that includes SDTM, ADaM, controlled terminology, and related implementation guides. |
-| [SDTM](https://www.cdisc.org/standards/foundational/sdtm) | The Study Data Tabulation Model standardizes how collected or received study data are organized and formatted without changing their original meaning. | It makes study data more consistent for exchange, review, aggregation, and regulatory submission. |
-| [ADaM](https://www.cdisc.org/standards/foundational/adam) | The Analysis Data Model defines analysis datasets and metadata that support reproducible statistical analyses. | It helps reviewers trace an analysis result back through analysis data to its SDTM source. |
+| `quick explanation` | Definitions, comparisons, and beginner questions | A full evidence matrix or implementation contract |
+| `evidence navigation` | Finding, ranking, and comparing governing sources | Unreviewed search snippets presented as evidence |
+| `research design` | Framing descriptive, predictive, or causal-comparative studies | A completed SAP, estimand, or causal result |
+| `implementation specification` | Data contracts, mappings, derivations, and validation rules | Executable institutional code when the execution gate is incomplete |
 
-A common clinical-trial flow can be understood as:
+An explicit depth request is honored unless it conflicts with a safety gate.
+Otherwise, the Skill selects the least intensive depth that fully answers the
+request and offers a deeper next step instead of combining every depth.
 
-```text
-Collected or received study data
-→ SDTM: standardized tabulation and review
-→ ADaM: analysis-ready data and derivations
-→ statistical analyses, tables, figures, and listings
-```
+## Choose a learning path
 
-This is a simplified mental model; not every clinical-data question must follow
-it. EHR, claims, registry, OMOP, and other real-world data may use different
-source models. The Skill first determines which standards actually apply, then
-keeps official definitions, study-specific rules, implementation techniques,
-and institutional mappings separate.
+- [Clinical trials and CDISC](docs/learning-paths.md#learn-the-terms): CDISC → SDTM → ADaM → protocol/SAP → implementation evidence.
+- [RWD and RWE](docs/learning-paths.md#assess-the-evidence): intent → PICO-informed fields → RWD fitness → RWE claim → TTE readiness when causal-comparative.
+- [Institutional implementation](docs/learning-paths.md#prepare-an-implementation): public evidence → logical data contract → approved Adapter → live metadata → fixtures → executable/validated status.
 
-## Real-world evidence and causal-study routing
+## Agent Skill and Plugin boundary
 
-For EHR, claims, registry, OMOP, and other real-world-data questions, the Skill
-first classifies the intent as descriptive, predictive, causal-comparative,
-measurement, or implementation work.
+This repository distributes an installable Agent Skill from GitHub and does
+not claim a public Plugin-directory listing. A Plugin is a separate packaging
+and distribution boundary and may contain Skills, apps, or other capabilities;
+installing this repository does not create or publish that product.
 
-- PICO-informed fields describe the population, intervention or exposure,
-  comparator, outcomes, time zero, follow-up, setting, and intended use. PICO
-  frames the question; it does not prove causal validity.
-- [RWD](https://www.fda.gov/science-research/science-and-research-special-topics/real-world-evidence)
-  are routinely collected data. RWE is clinical evidence generated by
-  analysing fit-for-purpose RWD. RWD is not automatically RWE.
-- Target trial emulation (TTE) is considered only for a causal-comparative
-  question with sufficiently defined strategies, eligibility, time zero,
-  follow-up, outcomes, estimand, and analysis plan. It is not the default for
-  every RWD request.
+## Documentation
 
-`build-rwe-sap` is optional and is not bundled with this repository. A
-separately installed compatible Skill may develop a complete SAP, estimand,
-target-trial protocol, or causal design from the confirmed handoff record.
-clin-data-nav never installs it automatically, and the name alone does not
-prove compatibility.
+| Need | Go to |
+|---|---|
+| Install, update, verified ZIP, or troubleshooting | [Installation](docs/installation.md) |
+| Definitions | [Beginner glossary](docs/glossary.md) |
+| Guided progression | [Learning paths](docs/learning-paths.md) |
+| Synthetic worked examples | [TEAE to SAS](examples/teae-to-sas-spec.md), [OMOP phenotype to SQL specification](examples/omop-phenotype-to-sql-spec.md), and [institutional mapping](examples/synthetic-institutional-mapping.md) |
+| Evidence shape and limitations | [Evidence output template](skills/clinical-data-research-navigator/references/evidence-output-template.md) and [architecture](docs/architecture.md) |
+| Contribute and validate | [Contributing](CONTRIBUTING.md) |
+| Report a security concern | [Security](SECURITY.md) |
+| Prepare an approved release | [Release process](docs/release.md) |
+| Review changes | [Changelog](CHANGELOG.md) |
+| Check current product guidance | [OpenAI Skills in ChatGPT](https://help.openai.com/en/articles/20001066) and [Codex Skill documentation](https://learn.chatgpt.com/docs/build-skills) |
 
-Normal Core use does not require `build-rwe-sap`. If it is unavailable or
-incompatible, clin-data-nav continues evidence navigation, RWD fitness review,
-and logical data-contract work, clearly states the missing design capability,
-and does not claim to have delivered a complete SAP or causal analysis.
+## Evidence, public boundary, and limitations
 
-## Supported questions
+The Skill ranks governing sources ahead of implementation literature and keeps
+confirmed facts, assumptions, limitations, and provenance visible. The
+repository's deterministic Evals check response contracts; they do not prove
+source accuracy, clinical validity, causal validity, or complete real-world
+coverage.
 
-Use the Skill for clinical-data questions involving:
+This public Core contains reusable guidance, synthetic examples, tests, and
+packaging tools. It contains no private TMUCRD Adapter, codingbook, data
+dictionary, physical schema, linkage rule, PII classification, credential, or
+login-gated document, and it is not a TMUCRD data dictionary. Institutional
+work requires an approved, versioned private Adapter outside this repository
+and current metadata checked in the governed environment.
 
-- CDISC, ADaM, SDTM, or regulatory terminology;
-- protocol, SAP, or evidence-source navigation;
-- SAS, SQL, R, EHR, claims, registry, or OMOP implementation specifications;
-- data contracts, mapping checklists, and code-maturity gates; and
-- public TMUCRD background that does not require schema or dictionary details.
+The [glossary](docs/glossary.md) explains CDISC, SDTM, ADaM, RWD, and RWE.
+RWD is not automatically RWE. Target trial emulation is considered only for a
+causal-comparative question with the required design fields. `build-rwe-sap`
+is optional and not bundled; clin-data-nav never installs it automatically.
 
-Without a versioned Adapter, live metadata, and fixtures, the Skill returns a
-specification rather than executable institutional code.
-
-For SAS optimization, refactoring, debugging, review, or derivation requests,
-the Skill searches official SAS documentation first. When implementation
-evidence is still needed and network tools are available, it runs a targeted
-`site:lexjansen.com` search and reviews the specific paper. It records source
-and code provenance, checks reuse terms, and requires target-environment
-measurement before claiming a performance improvement. If the paper cannot be
-reviewed, that limitation is reported as a validation gap.
-
-## Repository and installed Skill layout
-
-The source repository provides governance, tests, scripts, and the canonical
-installable Skill source:
-
-```text
-clin-data-nav/
-├── scripts/                              # validation, packaging, installation
-└── skills/clinical-data-research-navigator/  # source Skill
-```
-
-Packaging produces a ZIP containing the installable Skill files only. Local
-installation places `clinical-data-research-navigator/` beneath a destination
-directory you select.
-
-## Does using the Skill require Python?
-
-Using the installed Skill does not require Python. The Skill itself consists of
-Markdown, YAML metadata, and reference files that Codex or ChatGPT reads
-directly. SAS, SQL, R, and Python may be discussed as target implementation
-languages, but none is a runtime dependency for invoking the Skill.
-
-Python 3.11 is required only for contributors who run this repository's tests,
-deterministic packager, or strict source-checkout installer. Installing the
-published ZIP with the PowerShell or POSIX instructions below does not require
-Python.
-
-## Contributor setup (Python 3.11)
-
-The repository's development and release tools support Python 3.11.
-
-```bash
-python3.11 -m venv .venv
-. .venv/bin/activate
-python -m pip install --upgrade pip
-python -m pip install -e ".[dev]"
-```
-
-## Validate the repository
-
-Run all four checks before proposing a change:
-
-```bash
-python -m pytest -q
-python scripts/validate_skill.py
-python scripts/check_public_boundary.py
-python scripts/package_skill.py --check-reproducible
-```
-
-## Verified manual installation from GitHub Release
-
-Codex discovers personal Skills under `$HOME/.agents/skills`. Download the ZIP
-and manifest from the same release, verify the ZIP against the manifest, then
-extract it into its own Skill directory. The examples below refuse to replace
-an existing installation and install the currently published release `v0.2.2`.
-
-PowerShell:
-
-```powershell
-$releaseVersion = "0.2.2"
-$assetName = "clinical-data-research-navigator-$releaseVersion"
-$releaseBase = "https://github.com/mtchuang1981/clin-data-nav/releases/download/v$releaseVersion"
-Invoke-WebRequest "$releaseBase/$assetName.zip" -OutFile "$assetName.zip"
-Invoke-WebRequest "$releaseBase/$assetName.manifest.json" -OutFile "$assetName.manifest.json"
-$manifest = Get-Content "$assetName.manifest.json" -Raw | ConvertFrom-Json
-$actualHash = (Get-FileHash "$assetName.zip" -Algorithm SHA256).Hash.ToLowerInvariant()
-if ($actualHash -ne $manifest.archive_sha256) { throw "SHA-256 mismatch" }
-$skillDirectory = Join-Path $HOME ".agents\skills\clinical-data-research-navigator"
-if (Test-Path $skillDirectory) { throw "Skill already exists: $skillDirectory" }
-New-Item -ItemType Directory -Path $skillDirectory -Force | Out-Null
-Expand-Archive "$assetName.zip" -DestinationPath $skillDirectory
-Test-Path (Join-Path $skillDirectory "SKILL.md")
-```
-
-POSIX shell:
-
-```bash
-release_version="0.2.2"
-asset_name="clinical-data-research-navigator-$release_version"
-release_base="https://github.com/mtchuang1981/clin-data-nav/releases/download/v$release_version"
-curl -fLO "$release_base/$asset_name.zip"
-curl -fLO "$release_base/$asset_name.manifest.json"
-expected_hash="$(grep -o '"archive_sha256":"[0-9a-f]\{64\}"' "$asset_name.manifest.json" | cut -d '"' -f4)"
-if command -v sha256sum >/dev/null 2>&1; then
-  actual_hash="$(sha256sum "$asset_name.zip" | cut -d ' ' -f1)"
-elif command -v shasum >/dev/null 2>&1; then
-  actual_hash="$(shasum -a 256 "$asset_name.zip" | cut -d ' ' -f1)"
-else
-  echo "Install sha256sum or shasum to verify the archive." >&2
-  exit 1
-fi
-test "$actual_hash" = "$expected_hash" || { echo "SHA-256 mismatch" >&2; exit 1; }
-echo "SHA-256 OK"
-skill_directory="$HOME/.agents/skills/clinical-data-research-navigator"
-test ! -e "$skill_directory" || { echo "Skill already exists: $skill_directory"; exit 1; }
-mkdir -p "$skill_directory"
-unzip "$asset_name.zip" -d "$skill_directory"
-test -f "$skill_directory/SKILL.md"
-```
-
-Codex detects Skill changes automatically. If the Skill does not appear, restart
-Codex and check `/skills` again.
-
-## Install from a source checkout
-
-For the repository's stricter installer checks, create the package and keep its
-manifest beside the ZIP. The installer verifies the archive hash, member
-manifest, size limits, paths, and extracted Skill before installation.
-
-```bash
-python scripts/package_skill.py --output-dir /absolute/path/you/select/skill-package
-python scripts/install_local.py \
-  /absolute/path/you/select/skill-package/clinical-data-research-navigator-0.2.2.zip \
-  --destination "$HOME/.agents/skills"
-```
-
-The resulting directory is
-`$HOME/.agents/skills/clinical-data-research-navigator`. Use `--overwrite` only
-when intentionally replacing that exact installed Skill.
-
-## Use the Skill
-
-In Codex CLI or the IDE extension, run `/skills` to confirm discovery or invoke
-the Skill explicitly with `$clinical-data-research-navigator`. In the ChatGPT
-desktop app, open **Skills** in the sidebar or type `@` and select
-**Clinical Data Research Navigator**. Codex and ChatGPT may also activate it
-implicitly when a request matches the Skill description.
-
-Example prompts:
-
-```text
-$clinical-data-research-navigator Rank the governing sources for a synthetic
-TEAE derivation, then produce Evidence → Contract → Code maturity →
-Validation gaps.
-
-$clinical-data-research-navigator Review a synthetic SAS ADAE approach for
-optimization. Search official SAS documentation first, then targeted
-Lex Jansen implementation literature, and preserve provenance and reuse terms.
-
-$clinical-data-research-navigator Describe a non-executable OMOP-like
-phenotype without inventing Concept IDs or institutional schema details.
-```
-
-If no approved versioned Adapter, live metadata, or fixtures are available,
-expect a specification and validation-gap report rather than executable
-institutional code.
-
-## Further documentation
-
-- [Architecture](docs/architecture.md)
-- [Release process](docs/release.md)
-- [Changelog](CHANGELOG.md)
-- [Security response](SECURITY.md)
-- [Contributing](CONTRIBUTING.md)
-- [Official Codex Skill documentation](https://learn.chatgpt.com/docs/build-skills)
+Without an approved Adapter, current metadata, parameters, and fixtures, an
+implementation request remains `SPECIFICATION ONLY — NOT EXECUTABLE` and must
+not invent local tables, columns, joins, codes, or production-ready logic.
+Incomplete requests receive question clarification and a missing-information
+list rather than fabricated certainty. Using the installed instruction-only
+Skill does not require Python; Python 3.11 is for repository contributor and
+release tooling described in [CONTRIBUTING.md](CONTRIBUTING.md).
