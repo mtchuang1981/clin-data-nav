@@ -1,6 +1,27 @@
 # Changelog
 
-## Unreleased
+## 0.3.0 - Unreleased
+
+### Features
+
+- Add four explicit output depths so each response uses the least intensive
+  safe shape that fully answers the request.
+- Add aligned bilingual beginner navigation with a glossary, guided learning
+  paths, a compact first-success flow, and stage-specific installation help.
+
+### Validation
+
+- Expand the offline Eval evidence to 12 catalog cases, each with one scored
+  baseline/forward fixture pair across the four output depths.
+- Require Ubuntu and Windows package candidates to have byte-identical ZIP and
+  manifest files before validation or Release workflows can continue.
+- Update official GitHub Actions to pinned Node.js 24-capable releases while
+  retaining least-privilege workflow boundaries.
+
+### Documentation
+
+- Improve citation, Skill UI, security, product-boundary, and repository-setting
+  metadata without claiming unverified external state.
 
 ### Fixed
 

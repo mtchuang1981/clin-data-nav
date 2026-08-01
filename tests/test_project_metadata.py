@@ -939,7 +939,7 @@ def test_citation_and_license_metadata():
         (ROOT / "CITATION.cff").read_text(encoding="utf-8")
     )
     assert citation["title"] == "Clinical Data Research Navigator"
-    assert citation["version"] == "0.2.2"
+    assert citation["version"] == "0.3.0"
     assert citation["license"] == "Apache-2.0"
     assert "Apache License" in (ROOT / "LICENSE").read_text(encoding="utf-8")
 
@@ -949,11 +949,30 @@ def test_release_version_is_synchronized():
     citation = yaml.safe_load((ROOT / "CITATION.cff").read_text(encoding="utf-8"))
     changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
     changelog_zh_tw = (ROOT / "CHANGELOG.zh-TW.md").read_text(encoding="utf-8")
+    release_notes = (ROOT / "docs/releases/0.3.0.md").read_text(encoding="utf-8")
 
-    assert project["project"]["version"] == "0.2.2"
-    assert citation["version"] == "0.2.2"
-    assert PACKAGER_VERSION == "0.2.2"
-    assert INSTALLER_VERSION == "0.2.2"
+    current_version = "0.3.0"
+    active_surfaces = {
+        "pyproject": project["project"]["version"],
+        "citation": citation["version"],
+        "packager": PACKAGER_VERSION,
+        "installer": INSTALLER_VERSION,
+        "changelog": changelog.splitlines()[2].removeprefix("## ").removesuffix(
+            " - Unreleased"
+        ),
+        "changelog-zh-TW": changelog_zh_tw.splitlines()[2]
+        .removeprefix("## ")
+        .removesuffix(" - Unreleased"),
+        "release-notes": release_notes.splitlines()[0].rsplit("v", 1)[1],
+    }
+
+    assert len(active_surfaces) == 7
+    assert set(active_surfaces.values()) == {current_version}
+    assert "## 0.3.0 - Unreleased" in changelog
+    assert "## 0.3.0 - Unreleased" in changelog_zh_tw
+    assert "date-released" not in citation
+
+    # Published history remains immutable while current surfaces advance.
     assert "## 0.2.2 - 2026-07-29" in changelog
     assert "## 0.2.2 - 2026-07-29" in changelog_zh_tw
 
@@ -972,6 +991,66 @@ def test_v022_release_notes_are_static_uploadable_notes_without_candidate_state(
     ):
         assert candidate_state not in notes
     assert "npx skills add mtchuang1981/clin-data-nav" in notes
+
+
+def test_v030_release_notes_are_static_bilingual_and_uploadable():
+    notes = (
+        ROOT / "docs" / "releases" / "0.3.0.md"
+    ).read_text(encoding="utf-8")
+    normalized = " ".join(notes.split())
+
+    assert notes.startswith("# Clinical Data Research Navigator v0.3.0\n")
+    for heading in (
+        "## English",
+        "### Installation",
+        "### Verification",
+        "### Limitations",
+        "## 繁體中文",
+        "### 安裝",
+        "### 驗證",
+        "### 限制",
+    ):
+        assert heading in notes
+    for release_contract in (
+        "four output depths",
+        "beginner navigation",
+        "12 baseline/forward fixture pairs",
+        "byte-identical",
+        "metadata",
+        "npx skills add mtchuang1981/clin-data-nav",
+        "SHA-256",
+        "archive_sha256",
+        "四種輸出深度",
+        "初學者導覽",
+        "12 組 baseline／forward fixture",
+        "位元組完全相同",
+        "詮釋資料",
+    ):
+        assert release_contract.casefold() in normalized.casefold()
+
+    for candidate_or_external_claim in (
+        "- [ ]",
+        "generated date",
+        "generated on",
+        "local path",
+        "will be published",
+        "will be available",
+        "E:\\",
+        "Zenodo",
+        "DOI",
+        "Plugin-directory",
+        "branch protection",
+        "private vulnerability reporting",
+        "Dependabot",
+        "候選檢查清單",
+        "產生日期",
+        "本機路徑",
+        "將會發布",
+        "將會提供",
+        "分支保護",
+        "私人漏洞回報",
+    ):
+        assert candidate_or_external_claim.casefold() not in notes.casefold()
 
 
 def test_readmes_put_a_real_first_success_path_in_the_first_30_nonblank_lines():

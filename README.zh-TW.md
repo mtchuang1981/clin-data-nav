@@ -64,7 +64,7 @@ OpenAI 官方文件說明，Skill 會封裝操作指引、資源與選用指令�
 | 參與貢獻與驗證 | [貢獻指南](CONTRIBUTING.md) |
 | 回報安全性問題 | [安全性說明](SECURITY.md) |
 | 準備經核准的發布 | [發布流程](docs/release.md) |
-| 查看變更 | [版本紀錄](CHANGELOG.zh-TW.md) |
+| 查看 v0.3.0 變更 | [靜態 Release notes](docs/releases/0.3.0.md)與[版本紀錄](CHANGELOG.zh-TW.md) |
 | 查核目前產品指引 | [OpenAI 的 ChatGPT Skills 說明](https://help.openai.com/en/articles/20001066)與[Codex Skill 文件](https://learn.chatgpt.com/docs/build-skills) |
 
 ## 證據、公開邊界與限制
