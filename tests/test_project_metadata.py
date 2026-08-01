@@ -1,5 +1,7 @@
 from pathlib import Path
 import re
+import subprocess
+import sys
 import tomllib
 
 import pytest
@@ -827,12 +829,105 @@ def test_installation_guides_preserve_codex_and_chatgpt_activation_routes():
 
     assert "Codex CLI or the IDE extension" in english
     assert "ChatGPT desktop app" in english
-    assert "Plugins > Skills" in english
+    assert "open `Skills`" in english
+    assert "Plugins → Skills" in english
+    assert "upload" in english
     assert "does not install it into ChatGPT" in english
+    assert "https://help.openai.com/en/articles/20001066" in english
+    assert "https://learn.chatgpt.com/docs/build-skills" in english
     assert "Codex CLI 或 IDE 擴充功能" in traditional_chinese
     assert "ChatGPT 桌面版" in traditional_chinese
-    assert "Plugins > Skills" in traditional_chinese
+    assert "開啟 `Skills`" in traditional_chinese
+    assert "Plugins → Skills" in traditional_chinese
+    assert "上傳" in traditional_chinese
     assert "不會把它安裝到 ChatGPT" in traditional_chinese
+    assert "https://help.openai.com/en/articles/20001066" in traditional_chinese
+    assert "https://learn.chatgpt.com/docs/build-skills" in traditional_chinese
+
+
+def test_source_checkout_uses_packager_output_and_refuses_an_existing_target(
+    tmp_path,
+):
+    documents = (
+        (
+            (ROOT / "docs/installation.md").read_text(encoding="utf-8"),
+            "## Install from a source checkout",
+            "## Troubleshooting",
+        ),
+        (
+            (ROOT / "docs/installation.zh-TW.md").read_text(encoding="utf-8"),
+            "## 從原始碼簽出安裝",
+            "## 疑難排解",
+        ),
+    )
+    for text, start_heading, end_heading in documents:
+        section = text.split(start_heading, 1)[1].split(end_heading, 1)[0]
+        assert (
+            'package_output="$(python scripts/package_skill.py '
+            '--output-dir "$package_directory")"'
+        ) in section
+        assert "sed -n '1p'" in section
+        assert "sed -n '2p'" in section
+        assert 'test -f "$archive_path"' in section
+        assert 'test -f "$manifest_path"' in section
+        assert (
+            'python scripts/install_local.py \\\n'
+            '  "$archive_path" \\\n'
+            '  --destination "$HOME/.agents/skills"'
+        ) in section
+        source_command = next(
+            match["body"]
+            for match in FENCED_BLOCK_PATTERN.finditer(section)
+            if match["language"].strip() == "bash"
+        )
+        assert "--overwrite" not in source_command
+        assert "clinical-data-research-navigator-0.3.0.zip" not in section
+
+    package_directory = tmp_path / "package"
+    package_result = subprocess.run(
+        [
+            sys.executable,
+            "scripts/package_skill.py",
+            "--output-dir",
+            str(package_directory),
+        ],
+        cwd=ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    output_paths = package_result.stdout.splitlines()
+    assert len(output_paths) == 2
+    archive_path, manifest_path = map(Path, output_paths)
+    assert archive_path.is_file()
+    assert manifest_path.is_file()
+
+    destination = tmp_path / "installed-skills"
+    install_command = [
+        sys.executable,
+        "scripts/install_local.py",
+        str(archive_path),
+        "--destination",
+        str(destination),
+    ]
+    first_install = subprocess.run(
+        install_command,
+        cwd=ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    assert Path(first_install.stdout.strip()).is_dir()
+
+    refused_install = subprocess.run(
+        install_command,
+        cwd=ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert refused_install.returncode != 0
+    assert "installation already exists" in refused_install.stderr
 
 
 @pytest.mark.parametrize(

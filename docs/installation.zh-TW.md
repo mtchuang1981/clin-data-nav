@@ -42,11 +42,13 @@ npx skills add mtchuang1981/clin-data-nav
 
 在 Codex CLI 或 IDE 擴充功能中，請用 `/skills` 確認是否已找到 Skill，再用
 `$clinical-data-research-navigator` 明確叫用。ChatGPT 桌面版採用另一套安裝
-介面；若方案與工作區允許，請從 `Plugins > Skills` 存取、上傳或安裝 Skill。
-專案內的 `npx` 指令只會寫入 `.agents/skills`，不會把它安裝到 ChatGPT，也
-不能證明它已刊登於公開 Plugin 目錄。由於功能是否可用會依產品與工作區而異，
-使用 ChatGPT 安裝介面前，請先查核 OpenAI 的[最新 Skills
-說明](https://help.openai.com/en/articles/20001066)。
+介面：請開啟 `Skills`；部分介面會將它放在 **Plugins → Skills**。若方案與
+工作區允許上傳，請選擇 **Create**，再從電腦上傳 Skill。介面可能更新，請
+同時查核 OpenAI 的 [Help Center Skills
+說明](https://help.openai.com/en/articles/20001066)與[建立 Skills
+文件](https://learn.chatgpt.com/docs/build-skills)。專案內的 `npx` 指令只會
+寫入 `.agents/skills`，不會把它安裝到 ChatGPT，也不能證明它已刊登於公開
+Plugin 目錄。
 
 ## 更新專案內的安裝
 
@@ -118,15 +120,23 @@ test -f "$skill_directory/SKILL.md"
 的 Skill。
 
 ```bash
-python scripts/package_skill.py --output-dir /absolute/path/you/select/skill-package
+package_directory="/absolute/path/you/select/skill-package"
+package_output="$(python scripts/package_skill.py --output-dir "$package_directory")"
+archive_path="$(printf '%s\n' "$package_output" | sed -n '1p')"
+manifest_path="$(printf '%s\n' "$package_output" | sed -n '2p')"
+test -f "$archive_path"
+test -f "$manifest_path"
 python scripts/install_local.py \
-  /absolute/path/you/select/skill-package/clinical-data-research-navigator-0.3.0.zip \
+  "$archive_path" \
   --destination "$HOME/.agents/skills"
 ```
 
-目的目錄為 `$HOME/.agents/skills/clinical-data-research-navigator`。只有先檢查
-並確認要取代這個安裝時，才使用 `--overwrite`。封裝與安裝程式屬於貢獻者／
-發布工具，因此這條路徑需要 Python 3.11 及
+本機封裝器會先驗證 Skill，再依序輸出實際 archive 與 manifest 路徑；將它
+回報的 archive 交給安裝器，就不會綁死未來的版本常數。目的目錄為
+`$HOME/.agents/skills/clinical-data-research-navigator`。只有先檢查並確認要取代
+這個安裝時，才使用 `--overwrite`；上方指令未使用 `--overwrite`，所以遇到
+既有目的目錄時會拒絕安裝。封裝與安裝程式屬於貢獻者／發布工具，因此這條
+路徑需要 Python 3.11 及
 [CONTRIBUTING.md](../CONTRIBUTING.md) 所述的環境。
 
 ## 疑難排解

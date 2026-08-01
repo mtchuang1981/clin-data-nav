@@ -46,13 +46,14 @@ not invented schema or production code.
 
 In Codex CLI or the IDE extension, use `/skills` for discovery and
 `$clinical-data-research-navigator` for explicit invocation. The ChatGPT
-desktop app has a separate installation surface: open `Plugins > Skills` to
-access, upload, or install a Skill when your plan and workspace allow it. The
-project-local `npx` command writes to `.agents/skills`; it does not install it
-into ChatGPT or establish a public Plugin-directory listing. Check OpenAI's
-[current Skills guidance](https://help.openai.com/en/articles/20001066) before
-using the ChatGPT installation surface because availability depends on the
-product and workspace.
+desktop app has a separate installation surface: open `Skills` in the sidebar;
+some interfaces place it under **Plugins → Skills**. When your plan and
+workspace allow uploads, choose **Create**, then upload the Skill from your
+computer. Check both OpenAI's [Help Center Skills
+guide](https://help.openai.com/en/articles/20001066) and [Build Skills
+documentation](https://learn.chatgpt.com/docs/build-skills) for the current
+surface. The project-local `npx` command writes to `.agents/skills`; it does
+not install it into ChatGPT or establish a public Plugin-directory listing.
 
 ## Update a project-local installation
 
@@ -125,17 +126,25 @@ beside the ZIP. The installer verifies the archive hash, member manifest, size
 limits, paths, and extracted Skill before installation.
 
 ```bash
-python scripts/package_skill.py --output-dir /absolute/path/you/select/skill-package
+package_directory="/absolute/path/you/select/skill-package"
+package_output="$(python scripts/package_skill.py --output-dir "$package_directory")"
+archive_path="$(printf '%s\n' "$package_output" | sed -n '1p')"
+manifest_path="$(printf '%s\n' "$package_output" | sed -n '2p')"
+test -f "$archive_path"
+test -f "$manifest_path"
 python scripts/install_local.py \
-  /absolute/path/you/select/skill-package/clinical-data-research-navigator-0.3.0.zip \
+  "$archive_path" \
   --destination "$HOME/.agents/skills"
 ```
 
-The destination is
+The local packager validates the Skill and prints the exact archive path,
+followed by its manifest path. Passing that reported archive avoids coupling
+the instructions to a future version constant. The destination is
 `$HOME/.agents/skills/clinical-data-research-navigator`. Use `--overwrite`
 only after you have inspected that exact installation and intentionally chosen
-to replace it. The packager and installer are contributor/release tooling, so
-this path requires Python 3.11 and the setup in
+to replace it; the command above omits `--overwrite`, so an existing target is
+refused. The packager and installer are contributor/release tooling, so this
+path requires Python 3.11 and the setup in
 [CONTRIBUTING.md](../CONTRIBUTING.md).
 
 ## Troubleshooting
