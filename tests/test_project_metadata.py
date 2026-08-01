@@ -475,24 +475,104 @@ def test_pyproject_declares_explicit_setuptools_package_boundary():
 
 def test_ci_has_dual_platform_read_only_jobs_and_required_commands():
     workflow_path = ROOT / ".github/workflows/validate.yml"
-    workflow = yaml.safe_load(workflow_path.read_text(encoding="utf-8"))
+    workflow = yaml.load(
+        workflow_path.read_text(encoding="utf-8"),
+        Loader=yaml.BaseLoader,
+    )
     job = workflow["jobs"]["test"]
 
     assert workflow["permissions"] == {"contents": "read"}
+    assert workflow["on"] == {
+        "pull_request": "",
+        "push": {"branches": ["main"]},
+    }
     assert job["runs-on"] == "${{ matrix.os }}"
-    assert set(job["strategy"]["matrix"]["os"]) == {
+    assert job["strategy"]["matrix"]["os"] == [
         "ubuntu-latest",
         "windows-latest",
-    }
-    rendered = workflow_path.read_text(encoding="utf-8")
-    for command in (
-        'python -m pip install -e ".[dev]"',
+    ]
+
+    steps = job["steps"]
+    gate_commands = (
         "python -m pytest -q",
         "python scripts/validate_skill.py",
         "python scripts/check_public_boundary.py",
         "python scripts/package_skill.py --check-reproducible",
-    ):
-        assert command in rendered
+    )
+    run_commands = [step["run"] for step in steps if "run" in step]
+    gate_indices = [run_commands.index(command) for command in gate_commands]
+    build_index = run_commands.index(
+        "python scripts/package_skill.py --output-dir dist"
+    )
+    assert gate_indices == sorted(gate_indices)
+    assert max(gate_indices) < build_index
+
+    upload_steps = [
+        (index, step)
+        for index, step in enumerate(steps)
+        if step.get("uses", "").startswith("actions/upload-artifact@")
+    ]
+    assert len(upload_steps) == 1
+    upload_index, upload_step = upload_steps[0]
+    assert upload_index > next(
+        index
+        for index, step in enumerate(steps)
+        if step.get("run") == "python scripts/package_skill.py --output-dir dist"
+    )
+    assert upload_step["with"] == {
+        "name": "package-${{ runner.os }}-${{ github.sha }}",
+        "path": "dist/*.zip\ndist/*.manifest.json\n",
+        "if-no-files-found": "error",
+        "retention-days": "1",
+    }
+
+    compare_job = workflow["jobs"]["compare-packages"]
+    assert compare_job["needs"] == "test"
+    assert compare_job["runs-on"] == "ubuntu-latest"
+    assert compare_job["permissions"] == {"contents": "read"}
+    compare_steps = compare_job["steps"]
+    checkout = next(
+        step
+        for step in compare_steps
+        if step.get("uses", "").startswith("actions/checkout@")
+    )
+    assert checkout["with"] == {
+        "ref": "${{ github.sha }}",
+        "persist-credentials": "false",
+    }
+    setup_python = next(
+        step
+        for step in compare_steps
+        if step.get("uses", "").startswith("actions/setup-python@")
+    )
+    assert setup_python["with"] == {"python-version": "3.11"}
+    downloads = [
+        step["with"]
+        for step in compare_steps
+        if step.get("uses", "").startswith("actions/download-artifact@")
+    ]
+    assert downloads == [
+        {
+            "name": "package-Linux-${{ github.sha }}",
+            "path": "candidate-packages/Linux",
+        },
+        {
+            "name": "package-Windows-${{ github.sha }}",
+            "path": "candidate-packages/Windows",
+        },
+    ]
+    compare_runs = [step["run"] for step in compare_steps if "run" in step]
+    assert compare_runs == [
+        "python scripts/compare_packages.py --first candidate-packages/Linux --second candidate-packages/Windows"
+    ]
+    assert all("pip" not in command for command in compare_runs)
+
+    for candidate_job in workflow["jobs"].values():
+        assert candidate_job.get("permissions", {"contents": "read"}) == {
+            "contents": "read"
+        }
+
+    rendered = workflow_path.read_text(encoding="utf-8")
     assert "continue-on-error" not in rendered
     assert "secrets." not in rendered
 
@@ -526,6 +606,48 @@ def test_workflows_pin_official_actions_to_full_commit_shas():
             assert separator == "@"
             assert action in allowed_actions
             assert re.fullmatch(r"[0-9a-f]{40}", commit)
+
+
+def test_validation_workflow_uses_verified_node24_action_pins():
+    path = ROOT / ".github/workflows/validate.yml"
+    rendered = path.read_text(encoding="utf-8")
+    workflow = yaml.load(rendered, Loader=yaml.BaseLoader)
+    expected_pins = {
+        "actions/checkout": (
+            "3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "v7.0.1",
+        ),
+        "actions/setup-python": (
+            "5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "v7.0.0",
+        ),
+        "actions/upload-artifact": (
+            "043fb46d1a93c77aae656e7c1c64a875d1fc6a0a",
+            "v7.0.1",
+        ),
+        "actions/download-artifact": (
+            "3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c",
+            "v8.0.1",
+        ),
+    }
+    references = [
+        step["uses"]
+        for job in workflow["jobs"].values()
+        for step in job["steps"]
+        if "uses" in step
+    ]
+
+    for action, (commit, version) in expected_pins.items():
+        matching_references = [
+            reference
+            for reference in references
+            if reference.startswith(f"{action}@")
+        ]
+        assert matching_references
+        assert set(matching_references) == {f"{action}@{commit}"}
+        assert rendered.count(f"{action}@{commit} # {version}") == len(
+            matching_references
+        )
 
 
 def test_release_workflow_is_manual_fail_closed_and_least_privilege():
