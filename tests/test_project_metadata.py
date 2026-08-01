@@ -49,6 +49,28 @@ TRADITIONAL_CHINESE_ONBOARDING_CONTRACT = {
     "clarification_phrase": "問題釐清",
     "missing_information_phrase": "缺少資訊清單",
 }
+GLOSSARY_TERM_KEYS = (
+    "clinical-research",
+    "cdisc",
+    "sdtm",
+    "adam",
+    "omop-cdm",
+    "rwd",
+    "rwe",
+    "pico",
+    "target-trial-emulation",
+    "estimand",
+    "phenotype",
+    "data-contract",
+    "governing-artifact",
+    "sas",
+    "validation-gap",
+)
+LEARNING_PATH_IDS = (
+    "learn-the-terms",
+    "assess-the-evidence",
+    "prepare-an-implementation",
+)
 
 
 def _assert_readme_onboarding_contract(
@@ -124,6 +146,130 @@ def _assert_readme_onboarding_contract(
         )
         for sentence in sentences
     ), "Codex inputs must be identified together as non-terminal inputs"
+
+
+def _document_anchor_ids(text: str) -> tuple[str, ...]:
+    return tuple(re.findall(r'^<a id="([a-z0-9-]+)"></a>$', text, re.MULTILINE))
+
+
+def _sections_after_anchors(
+    text: str,
+    anchors: tuple[str, ...],
+) -> dict[str, str]:
+    sections = {}
+    for index, anchor in enumerate(anchors):
+        start_marker = f'<a id="{anchor}"></a>'
+        start = text.index(start_marker) + len(start_marker)
+        if index + 1 < len(anchors):
+            end = text.index(f'<a id="{anchors[index + 1]}"></a>', start)
+        else:
+            end = len(text)
+        sections[anchor] = text[start:end]
+    return sections
+
+
+def test_beginner_glossaries_have_aligned_term_keys_and_authoritative_sources():
+    english = (ROOT / "docs/glossary.md").read_text(encoding="utf-8")
+    traditional_chinese = (ROOT / "docs/glossary.zh-TW.md").read_text(
+        encoding="utf-8"
+    )
+
+    assert _document_anchor_ids(english) == GLOSSARY_TERM_KEYS
+    assert _document_anchor_ids(traditional_chinese) == GLOSSARY_TERM_KEYS
+    for text in (english, traditional_chinese):
+        for official_url in (
+            "https://www.cdisc.org/standards/foundational/sdtm",
+            "https://www.cdisc.org/standards/foundational/adam",
+            "https://ohdsi.github.io/CommonDataModel/",
+            (
+                "https://www.fda.gov/science-research/"
+                "science-and-research-special-topics/real-world-evidence"
+            ),
+            (
+                "https://www.fda.gov/regulatory-information/"
+                "search-fda-guidance-documents/e9r1-statistical-principles-"
+                "clinical-trials-addendum-estimands-and-sensitivity-analysis-"
+                "clinical"
+            ),
+            (
+                "https://www.nice.org.uk/corporate/ecd9/chapter/"
+                "methods-for-real-world-studies-of-comparative-effects"
+            ),
+        ):
+            assert official_url in text
+
+
+def test_beginner_glossaries_explain_model_purposes_and_validation_boundary():
+    english = " ".join(
+        (ROOT / "docs/glossary.md").read_text(encoding="utf-8").split()
+    )
+    traditional_chinese = " ".join(
+        (ROOT / "docs/glossary.zh-TW.md").read_text(encoding="utf-8").split()
+    )
+
+    for phrase in (
+        "SDTM organizes study data for regulatory submission",
+        "ADaM supports analysis",
+        "OMOP CDM standardizes observational data",
+        "None of these standards makes source data automatically valid.",
+    ):
+        assert phrase in english
+    for phrase in (
+        "SDTM 會整理提交主管機關的研究資料",
+        "ADaM 支援分析",
+        "OMOP CDM 將觀察性資料標準化",
+        "這些標準都不會讓來源資料自動變成有效資料。",
+    ):
+        assert phrase in traditional_chinese
+
+
+def test_beginner_learning_paths_are_aligned_and_do_not_require_code():
+    documents = (
+        (
+            (ROOT / "docs/learning-paths.md").read_text(encoding="utf-8"),
+            (
+                "Goal",
+                "Starting prompt",
+                "Expected depth",
+                "Next reading",
+                "Stop or escalate when",
+            ),
+            ":",
+            ("./glossary.md", "./installation.md"),
+            "Not every path ends in code.",
+        ),
+        (
+            (ROOT / "docs/learning-paths.zh-TW.md").read_text(encoding="utf-8"),
+            ("目標", "起始提示", "預期深度", "接著閱讀", "停止或升級條件"),
+            "：",
+            ("./glossary.zh-TW.md", "./installation.zh-TW.md"),
+            "不是每條路徑都要以程式碼收尾。",
+        ),
+    )
+
+    for text, field_labels, colon, local_links, no_code_claim in documents:
+        assert _document_anchor_ids(text) == LEARNING_PATH_IDS
+        sections = _sections_after_anchors(text, LEARNING_PATH_IDS)
+        for section in sections.values():
+            for label in field_labels:
+                assert section.count(f"**{label}{colon}**") == 1
+        for local_link in local_links:
+            assert local_link in text
+        assert "../examples/" in text
+        assert (
+            "../skills/clinical-data-research-navigator/references/"
+            in text
+        )
+        assert no_code_claim in text
+
+    assert "`quick explanation`" in documents[0][0]
+    assert "`evidence navigation`" in documents[0][0]
+    assert "`research design`" in documents[0][0]
+    assert "`implementation specification`" in documents[0][0]
+    assert "`quick explanation`" in documents[1][0]
+    assert "`evidence navigation`" in documents[1][0]
+    assert "`research design`" in documents[1][0]
+    assert "`implementation specification`" in documents[1][0]
 
 
 def test_pyproject_declares_explicit_setuptools_package_boundary():
