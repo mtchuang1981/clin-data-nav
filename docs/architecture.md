@@ -35,6 +35,11 @@ checks the repository for prohibited private material and likely secrets; and
 the evaluator applies the repository's offline rubric to supplied responses.
 For packaging, only validator is the packager's direct dependency: the packager
 validates the Skill and creates a deterministic archive plus manifest.
+Before hashing and archiving, it canonicalizes CRLF and CR to LF for files
+that are valid UTF-8 text and contain no NUL byte. Opaque or binary files keep
+their original bytes when they contain a NUL byte or are not valid UTF-8.
+Manifest file hashes and sizes describe these canonical archive bytes, so a
+Windows or POSIX checkout does not change a text file's packaged representation.
 Producing a ZIP does not imply that the boundary scan or evaluator passed; run
 those gates separately before accepting or distributing an artifact.
 

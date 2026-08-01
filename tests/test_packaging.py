@@ -1,5 +1,6 @@
 from pathlib import Path
 import json
+from zipfile import ZipFile
 
 from scripts.package_skill import build_package
 
@@ -34,6 +35,45 @@ def test_same_skill_produces_identical_archive_bytes(tmp_path):
 
     assert first.archive.read_bytes() == second.archive.read_bytes()
     assert first.manifest.read_bytes() == second.manifest.read_bytes()
+
+
+def test_text_line_endings_do_not_change_package_bytes(tmp_path):
+    skill = tmp_path / "clinical-data-research-navigator"
+    _write_minimal_skill(skill)
+
+    text_files = (skill / "SKILL.md", skill / "agents" / "openai.yaml")
+    for path in text_files:
+        lf_bytes = (
+            path.read_bytes().replace(b"\r\n", b"\n").replace(b"\r", b"\n")
+        )
+        path.write_bytes(lf_bytes)
+    lf_result = build_package(skill, tmp_path / "lf")
+
+    for path in text_files:
+        path.write_bytes(path.read_bytes().replace(b"\n", b"\r\n"))
+    crlf_result = build_package(skill, tmp_path / "crlf")
+
+    assert lf_result.archive.read_bytes() == crlf_result.archive.read_bytes()
+    assert lf_result.manifest.read_bytes() == crlf_result.manifest.read_bytes()
+
+
+def test_non_text_package_files_keep_original_bytes(tmp_path):
+    skill = tmp_path / "clinical-data-research-navigator"
+    _write_minimal_skill(skill)
+    assets = skill / "assets"
+    assets.mkdir()
+    expected = {
+        "assets/contains-nul.bin": b"header\x00line\r\nend",
+        "assets/invalid-utf8.bin": b"\xffline\r\nend",
+    }
+    for relative_name, data in expected.items():
+        (skill / relative_name).write_bytes(data)
+
+    result = build_package(skill, tmp_path / "output")
+
+    with ZipFile(result.archive) as archive:
+        actual = {name: archive.read(name) for name in expected}
+    assert actual == expected
 
 
 def test_package_excludes_repository_files(tmp_path):

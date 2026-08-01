@@ -40,6 +40,18 @@ def _package_files(skill_dir: Path) -> tuple[Path, ...]:
     return tuple(sorted(files, key=lambda path: path.relative_to(skill_dir).as_posix()))
 
 
+def _canonical_package_bytes(path: Path) -> bytes:
+    """Return checkout-independent bytes for UTF-8 text package files."""
+    data = path.read_bytes()
+    if b"\x00" in data:
+        return data
+    try:
+        text = data.decode("utf-8")
+    except UnicodeDecodeError:
+        return data
+    return text.replace("\r\n", "\n").replace("\r", "\n").encode("utf-8")
+
+
 def build_package(skill_dir: Path, output_dir: Path) -> PackageResult:
     """Validate and package *skill_dir* with reproducible metadata."""
     skill_dir = skill_dir.resolve()
@@ -56,7 +68,7 @@ def build_package(skill_dir: Path, output_dir: Path) -> PackageResult:
     for path, relative_name in zip(files, relative_names, strict=True):
         if path.is_symlink() or not path.resolve().is_relative_to(skill_dir):
             raise ValueError(f"package file must be inside Skill: {relative_name}")
-        data = path.read_bytes()
+        data = _canonical_package_bytes(path)
         file_bytes[relative_name] = data
         file_records.append(
             {

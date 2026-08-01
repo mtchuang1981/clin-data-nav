@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- Canonicalize UTF-8 text line endings before hashing and archiving so Windows
+  and POSIX checkouts produce the same package bytes for equivalent content.
+
 ## 0.2.2 - 2026-07-29
 
 ### Fixed

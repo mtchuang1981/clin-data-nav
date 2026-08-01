@@ -22,6 +22,11 @@ GitHub publishing is given.
 5. Run `python scripts/verify_release.py artifacts` against those two files and
    manually review the public contents.
 
+The packager canonicalizes UTF-8 text line endings to LF before hashing and
+archiving; files containing a NUL byte or invalid UTF-8 retain their original
+bytes. The manifest therefore records the bytes inside the ZIP, which may
+intentionally differ from CRLF text bytes in a Windows checkout.
+
 Stop here. Do not push, create or move a tag, dispatch a workflow, or create a
 GitHub Release without separate explicit approval.
 
