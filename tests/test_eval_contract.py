@@ -4,23 +4,35 @@ import re
 import pytest
 import yaml
 
+from scripts import evaluate_response as response_evaluator
 from scripts.evaluate_response import evaluate_response, validate_catalog
 
 
 ROOT = Path(__file__).resolve().parents[1]
-CASE_IDS = {
-    "teae-sas-spec",
-    "sas-optimization-lexjansen",
-    "institutional-sql-without-dictionary",
-    "stale-codingbook",
-    "cdisc-variable-definition",
-    "omop-phenotype",
-    "tmucrd-public-profile",
-    "descriptive-rwd-no-tte",
-    "causal-rwd-tte-handoff",
-    "causal-rwd-incomplete-readiness",
-    "build-rwe-sap-unavailable",
+CASE_OUTPUT_DEPTHS = {
+    "adam-quick-explanation": "quick explanation",
+    "cdisc-variable-definition": "quick explanation",
+    "sas-optimization-lexjansen": "evidence navigation",
+    "tmucrd-public-profile": "evidence navigation",
+    "descriptive-rwd-no-tte": "research design",
+    "causal-rwd-tte-handoff": "research design",
+    "causal-rwd-incomplete-readiness": "research design",
+    "teae-sas-spec": "implementation specification",
+    "institutional-sql-without-dictionary": "implementation specification",
+    "stale-codingbook": "implementation specification",
+    "omop-phenotype": "implementation specification",
+    "build-rwe-sap-unavailable": "implementation specification",
 }
+
+
+def test_output_depths_are_limited_to_the_public_response_contract():
+    """Adding an internal or alias label would make catalog output ambiguous."""
+    assert response_evaluator.OUTPUT_DEPTHS == {
+        "quick explanation",
+        "evidence navigation",
+        "research design",
+        "implementation specification",
+    }
 
 
 def test_eval_readme_distinguishes_catalog_from_scored_fixture_pairs():
@@ -52,17 +64,20 @@ def test_eval_readme_distinguishes_catalog_from_scored_fixture_pairs():
 def test_each_case_uses_the_public_eval_schema():
     data = yaml.safe_load((ROOT / "evals/cases.yaml").read_text(encoding="utf-8"))
     cases = data["cases"]
-    assert {case["id"] for case in cases} == CASE_IDS
+    assert {case["id"] for case in cases} == set(CASE_OUTPUT_DEPTHS)
+    assert {case["id"]: case["output_depth"] for case in cases} == CASE_OUTPUT_DEPTHS
     for case in cases:
         assert set(case) == {
             "id",
             "prompt",
+            "output_depth",
             "required",
             "forbidden",
             "required_sections",
         }
         assert isinstance(case["id"], str) and case["id"]
         assert isinstance(case["prompt"], str) and case["prompt"]
+        assert case["output_depth"] in response_evaluator.OUTPUT_DEPTHS
         for field in ("required", "forbidden", "required_sections"):
             assert isinstance(case[field], list) and all(
                 isinstance(value, str) and value for value in case[field]
@@ -351,7 +366,32 @@ def test_catalog_validation_rejects_missing_case_key():
         "cases": [{"id": "test", "prompt": "x", "required": [], "forbidden": []}]
     }
     errors = validate_catalog(catalog, _valid_rubric())
-    assert "case test: missing keys: required_sections" in errors
+    assert "case test: missing keys: output_depth, required_sections" in errors
+
+
+@pytest.mark.parametrize(
+    ("output_depth", "expected_error"),
+    [
+        ("", "case test: output_depth must be a non-empty string"),
+        (None, "case test: output_depth must be a non-empty string"),
+        (
+            "Quick Explanation",
+            "case test: output_depth must be one of: evidence navigation, implementation specification, quick explanation, research design",
+        ),
+        (
+            "summary",
+            "case test: output_depth must be one of: evidence navigation, implementation specification, quick explanation, research design",
+        ),
+    ],
+)
+def test_catalog_validation_rejects_non_exact_output_depths(
+    output_depth, expected_error
+):
+    """Missing validation would let a mislabeled response contract into the catalog."""
+    case = _valid_case()
+    case["output_depth"] = output_depth
+
+    assert expected_error in validate_catalog({"cases": [case]}, _valid_rubric())
 
 
 def test_catalog_validation_requires_schema_version():
@@ -368,6 +408,7 @@ def test_catalog_validation_rejects_duplicate_ids_and_empty_prompts():
     case = {
         "id": "duplicate",
         "prompt": " ",
+        "output_depth": "quick explanation",
         "required": [],
         "forbidden": [],
         "required_sections": [],
@@ -413,6 +454,7 @@ def _valid_case():
     return {
         "id": "test",
         "prompt": "valid prompt",
+        "output_depth": "quick explanation",
         "required": ["required"],
         "forbidden": [],
         "required_sections": ["Section"],

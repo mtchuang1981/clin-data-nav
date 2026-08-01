@@ -13,7 +13,20 @@ import yaml
 
 
 ROOT = Path(__file__).resolve().parents[1]
-CASE_KEYS = {"id", "prompt", "required", "forbidden", "required_sections"}
+OUTPUT_DEPTHS = {
+    "quick explanation",
+    "evidence navigation",
+    "research design",
+    "implementation specification",
+}
+CASE_KEYS = {
+    "id",
+    "prompt",
+    "output_depth",
+    "required",
+    "forbidden",
+    "required_sections",
+}
 RUBRIC_KEYS = {"schema_version", "pass_threshold", "scoring", "normalization"}
 REQUIRED_RUBRIC_KEYS = RUBRIC_KEYS
 SCORING_KEYS = {"required_pattern", "required_section", "forbidden_pattern"}
@@ -168,6 +181,14 @@ def validate_catalog(catalog: dict, rubric: dict) -> list[str]:
             ids.add(case_id)
         if not isinstance(case["prompt"], str) or not case["prompt"].strip():
             errors.append(f"case {label}: prompt must not be empty")
+        output_depth = case["output_depth"]
+        if not isinstance(output_depth, str) or not output_depth.strip():
+            errors.append(f"case {label}: output_depth must be a non-empty string")
+        elif output_depth not in OUTPUT_DEPTHS:
+            errors.append(
+                f"case {label}: output_depth must be one of: "
+                + ", ".join(sorted(OUTPUT_DEPTHS))
+            )
         for field in ("required", "forbidden", "required_sections"):
             values = case[field]
             if not isinstance(values, list) or not all(

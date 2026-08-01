@@ -1,6 +1,6 @@
 # Offline Eval Results
 
-`cases.yaml` defines 11 catalog cases. The table below covers only the 3 scored fixture pairs
+`cases.yaml` defines 12 catalog cases. The table below covers only the 3 scored fixture pairs
 that currently have both a checked-in baseline response and a
 checked-in forward response.
 
@@ -14,4 +14,4 @@ Scores are deterministic outputs of `scripts/evaluate_response.py` using the
 catalog and rubric in this directory. They are regression evidence for the
 three checked-in response pairs,
 not proof of semantic correctness or clinical validity and not complete
-coverage of all 11 catalog cases.
+coverage of all 12 catalog cases.

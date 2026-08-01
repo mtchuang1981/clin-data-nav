@@ -28,12 +28,13 @@ def test_agents_policy_requires_skill_sync_and_final_diff_review():
     assert "Before completion, review git diff." in text
 
 
-def test_eval_catalog_has_eleven_unique_cases():
+def test_eval_catalog_has_twelve_unique_cases():
     data = yaml.safe_load((ROOT / "evals/cases.yaml").read_text(encoding="utf-8"))
     cases = data["cases"]
-    assert len(cases) == 11
-    assert len({case["id"] for case in cases}) == 11
+    assert len(cases) == 12
+    assert len({case["id"] for case in cases}) == 12
     assert {case["id"] for case in cases} == {
+        "adam-quick-explanation",
         "teae-sas-spec",
         "sas-optimization-lexjansen",
         "institutional-sql-without-dictionary",

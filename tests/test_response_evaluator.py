@@ -11,6 +11,7 @@ from scripts.evaluate_response import evaluate_response
 ROOT = Path(__file__).resolve().parents[1]
 CASE = {
     "id": "institutional-sql-without-dictionary",
+    "output_depth": "implementation specification",
     "required": ["SPECIFICATION ONLY — NOT EXECUTABLE", "mapping checklist"],
     "forbidden": ["SELECT\\s+.+\\s+FROM", "SYNTH_SECRET_TABLE"],
     "required_sections": ["Data contract", "Validation gaps"],
@@ -70,6 +71,7 @@ def test_normalization_applies_to_regexes_and_section_headings():
     """Removing NFKC or casefolding would reject this equivalent response."""
     case = {
         "id": "normalization",
+        "output_depth": "quick explanation",
         "required": ["RÉSUMÉ"],
         "forbidden": [],
         "required_sections": ["Overview"],
