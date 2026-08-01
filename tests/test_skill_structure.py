@@ -4,6 +4,7 @@ import shutil
 import pytest
 
 from scripts.validate_skill import validate_skill
+from scripts.package_skill import build_package
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -33,6 +34,12 @@ def write_valid_skill(skill: Path) -> None:
 
 def test_public_skill_structure_is_valid():
     assert validate_skill(SKILL_DIR) == []
+
+
+def test_package_includes_output_depth_reference(tmp_path):
+    result = build_package(SKILL_DIR, tmp_path)
+
+    assert "references/output-depths-and-learning-paths.md" in result.files
 
 
 def test_validator_rejects_extra_frontmatter_key(tmp_path):
@@ -130,6 +137,7 @@ def test_validator_rejects_unsafe_backtick_path_syntax(tmp_path, relative):
         "references/institutional-adapter-contract.md",
         "references/tmucrd-public-profile.md",
         "references/rwe-question-routing.md",
+        "references/output-depths-and-learning-paths.md",
     ],
 )
 def test_validator_checks_each_real_backtick_reference(

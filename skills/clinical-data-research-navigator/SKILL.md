@@ -5,11 +5,37 @@ description: Use when a clinical-data, CDISC, ADaM, SDTM, PICO, RWD, RWE, causal
 
 # Clinical Data Research Navigator
 
-## Core Principle
+## Global Safety and Authority Rules
 
 Route each claim to the correct authority, separate evidence from local schema,
-and never label code executable without current metadata and tests. Shape every
-data-work response as Evidence → Contract → Code maturity → Validation gaps.
+and never label code executable without current metadata and tests. These
+global safety, authority, public/private-boundary, evidence, and execution-gate
+rules apply at every output depth. Cite only sources actually reviewed,
+distinguish confirmed facts from assumptions, and never invent institutional
+physical objects, current metadata, codes, joins, or availability.
+
+## Select Output Depth
+
+Before specialized routing, choose exactly one response depth:
+
+1. Retain the global safety and authority rules.
+2. Honor an explicitly requested safe depth.
+3. Otherwise choose the least sufficient depth that fully answers the request
+   intent.
+4. Ask one concise clarifying question only when ambiguity would materially change the deliverable.
+5. Print exactly one `Output depth: ` line, completed by one of these labels,
+   then follow that depth's shape:
+
+| Request intent | Output-depth label | Required shape |
+|---|---|---|
+| Definition, comparison, or beginner question | `quick explanation` | Marker, plain-language answer, why it matters, and one next step or uncertainty. |
+| Source discovery, standards, or authority conflict | `evidence navigation` | Marker, question or claim, ranked sources with authority labels, applicability, and uncertainty or gap. |
+| Study framing, PICO, estimand, RWD/RWE, or bias question | `research design` | Marker, PICO or estimand, data suitability, design or bias, analysis or diagnostics, and uncertainty or handoff. |
+| Mapping, derivation, validation, metadata, or implementation-ready request | `implementation specification` | Marker, evidence, complete data contract, code maturity, validation gaps, execution gate, and `SPECIFICATION ONLY — NOT EXECUTABLE` when required. |
+
+Offer a deeper depth as an optional next step; do not silently combine depths.
+Read `references/output-depths-and-learning-paths.md` for the decision table,
+detailed shapes, and beginner learning paths.
 
 ## Classify the Question
 
@@ -74,9 +100,11 @@ Follow `references/retrieval-playbook.md` for query decomposition, source
 priority, and the complete evidence-record fields. Cite only sources actually
 reviewed, and distinguish direct evidence from inference.
 
-## Convert Evidence into a Data Contract
+## Convert Evidence into a Data Contract for an Implementation Specification
 
-Translate confirmed evidence into an explicit contract before drafting code.
+For an `implementation specification`, translate confirmed evidence into an
+explicit contract before drafting code. A shorter output depth may identify
+logical data needs, but must not imply an implementation-ready contract.
 Specify:
 
 - population and study-specific derivation rules;
@@ -92,7 +120,10 @@ on an institutional schema.
 
 ## Apply the Execution Gate
 
-Assign exactly one maturity label:
+The execution restrictions apply at every depth: never label code executable
+without current metadata and tests, and do not use a depth label to bypass a
+safety gate. For an `implementation specification`, assign exactly one maturity
+label:
 
 1. `conceptual` — only the logical approach is known.
 2. `dictionary-specified` — an approved dictionary defines inputs, but runtime
@@ -137,6 +168,8 @@ contracts, execution maturity, and validation gaps.
 
 Load only the directly relevant one-hop reference:
 
+- Read `references/output-depths-and-learning-paths.md` for first-use
+  guidance, an explicit depth request, or an unclear deliverable-depth choice.
 - Read `references/retrieval-playbook.md` for source discovery, authority
   ranking, and evidence capture.
 - Read `references/evidence-output-template.md` before delivering a data-work
@@ -151,6 +184,13 @@ Load only the directly relevant one-hop reference:
 ## Common Failure Modes
 
 - **Starting with code:** Build the evidence record and contract first.
+- **Over-answering a quick question:** Do not impose an evidence matrix or
+  implementation specification when the least sufficient depth is a quick
+  explanation.
+- **Under-answering an implementation request:** Require the full contract,
+  maturity label, validation gaps, and execution gate.
+- **Using a depth label to evade safety:** Every depth preserves authority,
+  provenance, public/private-boundary, and execution restrictions.
 - **Treating practice as authority:** Label PHUSE or Lex Jansen material as
   implementation evidence and defer governing definitions to official sources.
 - **Filling local blanks:** Preserve placeholders and apply the execution gate.

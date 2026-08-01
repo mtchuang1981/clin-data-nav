@@ -3,9 +3,15 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SKILL = ROOT / "skills/clinical-data-research-navigator"
+OUTPUT_DEPTHS = {
+    "quick explanation",
+    "evidence navigation",
+    "research design",
+    "implementation specification",
+}
 
 
-def test_skill_routes_all_five_references():
+def test_skill_routes_all_six_references():
     text = (SKILL / "SKILL.md").read_text(encoding="utf-8")
     for name in (
         "retrieval-playbook.md",
@@ -13,8 +19,58 @@ def test_skill_routes_all_five_references():
         "institutional-adapter-contract.md",
         "tmucrd-public-profile.md",
         "rwe-question-routing.md",
+        "output-depths-and-learning-paths.md",
     ):
         assert f"references/{name}" in text
+
+
+def test_skill_selects_one_safe_least_sufficient_output_depth():
+    text = (SKILL / "SKILL.md").read_text(encoding="utf-8")
+
+    for depth in OUTPUT_DEPTHS:
+        assert f"`{depth}`" in text
+    assert "Honor an explicitly requested safe depth" in text
+    assert "least sufficient depth" in text
+    assert "materially change the deliverable" in text
+    assert "exactly one `Output depth: ` line" in text
+
+
+def test_output_depth_reference_has_all_shapes_and_learning_paths():
+    reference = SKILL / "references/output-depths-and-learning-paths.md"
+    text = reference.read_text(encoding="utf-8")
+
+    for depth in OUTPUT_DEPTHS:
+        assert f"## {depth.title()}" in text
+    for path in (
+        "learn the terms",
+        "assess the evidence",
+        "prepare an implementation",
+    ):
+        assert path in text
+
+
+def test_quick_shape_stays_light_and_implementation_shape_is_complete():
+    reference = SKILL / "references/output-depths-and-learning-paths.md"
+    text = reference.read_text(encoding="utf-8")
+    quick_shape = text.split("## Quick Explanation", 1)[1].split(
+        "## Evidence Navigation", 1
+    )[0].lower()
+    implementation_shape = text.split(
+        "## Implementation Specification", 1
+    )[1].lower()
+
+    assert "data contract" not in quick_shape
+    for required in (
+        "governing artifact",
+        "grain",
+        "keys",
+        "time anchor",
+        "missingness",
+        "terminology",
+        "validation",
+        "specification only — not executable",
+    ):
+        assert required in implementation_shape
 
 
 def test_build_rwe_sap_is_optional():

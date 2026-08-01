@@ -1,52 +1,63 @@
 # Evidence Output Template
 
-Use this exact section order for clinical-data navigation and implementation
-specifications.
+Use one template only. Start every response with exactly one `Output depth: `
+line. Keep confirmed facts, assumptions, limitations, and sources distinct;
+cite only sources actually reviewed. The selected depth changes the response
+shape, not authority, provenance, public/private-boundary, or execution-gate
+requirements.
 
-## Decision
+## Quick Explanation
 
-State the answer, governing authority, execution outcome, and the single code
-maturity label. Distinguish confirmed facts from assumptions.
+```text
+Output depth: quick explanation
+Plain-language answer: [direct definition or comparison]
+Why it matters: [user-context relevance]
+Next step or uncertainty: [one safe follow-up or limit]
+Sources: [governing authority actually reviewed]
+```
+
+## Evidence Navigation
+
+```text
+Output depth: evidence navigation
+Question or claim: [scope]
+Ranked sources: [source — authority label — why it applies]
+Applicability: [population, setting, or implementation boundary]
+Uncertainty or gap: [conflict, missing review, or limitation]
+```
+
+## Research Design
+
+```text
+Output depth: research design
+PICO or estimand: [design-appropriate fields]
+Data suitability: [fitness and boundaries]
+Design or bias: [design route, confounding, and missing-design risks]
+Analysis or diagnostics: [planned checks, not an executable analysis]
+Uncertainty or handoff: [limits and optional downstream status]
+```
 
 ## Research question and study-design routing
 
-State the primary intent. For intervention or exposure questions, record the
-population, intervention or exposure, comparator, outcomes, time zero,
-follow-up, setting, data source, intended use, and target estimand when causal.
-Distinguish RWD from RWE, report TTE readiness only for causal comparative
-questions, and state optional `build-rwe-sap` status as
-available, unavailable, or incompatible.
+For intervention or exposure questions, record the population, intervention or
+exposure, comparator, outcomes, time zero, follow-up, setting, data source,
+intended use, and target estimand when causal. Distinguish RWD from RWE, report
+TTE readiness only for causal comparative questions, and state optional
+`build-rwe-sap` status as available, unavailable, or incompatible.
 
-## Evidence table
-
-| Claim | Source | Authority level | Publication date | Version or snapshot | Applicability | Limitations |
-|---|---|---|---|---|---|---|
-| `SYNTH_CLAIM` | `SYNTH_SOURCE` | `SYNTH_AUTHORITY` | `SYNTH_DATE` | `SYNTH_SNAPSHOT` | `SYNTH_SCOPE` | `SYNTH_LIMITATION` |
-
-Include one row per material claim. Cite only sources actually reviewed.
-
-## Data contract
-
-Define the population, logical input roles, grain, keys, join cardinality,
-coverage, types, time precision, code systems, parameter slots, output
-constraints, lineage, and acceptance fixtures. Preserve placeholders for all
-unverified institutional values.
-
-## Code maturity
-
-Choose exactly one of `conceptual`, `dictionary-specified`, `parameterized`,
-`executable`, or `validated`. If the execution gate is unmet, include:
+## Implementation Specification
 
 ```text
+Output depth: implementation specification
+Evidence: [decision and governing artifact]
+Data contract: [logical roles, grain, keys, joins, coverage, types, time anchors,
+code systems, terminology, missingness, precedence, lineage, and acceptance fixtures]
+Code maturity: [one existing maturity label]
+Validation gaps: [each unmet approval, metadata, parameter, fixture, or review]
+Execution gate: [met or unmet]
 SPECIFICATION ONLY — NOT EXECUTABLE
 ```
 
-## Validation gaps
-
-List every missing approval, version, mapping, parameter, live metadata check,
-fixture, edge case, or result review that blocks the next maturity level.
-
-## Sources
-
-List stable citations or owner-approved document identifiers. Include access
-dates for changing web sources and versions or snapshots where available.
+Include implementation or pseudocode only when the execution gate permits it.
+Otherwise preserve logical placeholders and do not emit SQL-, SAS-, or R-shaped
+code that could be mistaken for a physical institutional object.
