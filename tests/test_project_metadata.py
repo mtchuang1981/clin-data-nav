@@ -650,6 +650,48 @@ def test_validation_workflow_uses_verified_node24_action_pins():
         )
 
 
+def test_release_workflow_uses_verified_node24_action_pins():
+    path = ROOT / ".github/workflows/release.yml"
+    rendered = path.read_text(encoding="utf-8")
+    workflow = yaml.load(rendered, Loader=yaml.BaseLoader)
+    expected_pins = {
+        "actions/checkout": (
+            "3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "v7.0.1",
+        ),
+        "actions/setup-python": (
+            "5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "v7.0.0",
+        ),
+        "actions/upload-artifact": (
+            "043fb46d1a93c77aae656e7c1c64a875d1fc6a0a",
+            "v7.0.1",
+        ),
+        "actions/download-artifact": (
+            "3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c",
+            "v8.0.1",
+        ),
+    }
+    references = [
+        step["uses"]
+        for job in workflow["jobs"].values()
+        for step in job["steps"]
+        if "uses" in step
+    ]
+
+    for action, (commit, version) in expected_pins.items():
+        matching_references = [
+            reference
+            for reference in references
+            if reference.startswith(f"{action}@")
+        ]
+        assert matching_references
+        assert set(matching_references) == {f"{action}@{commit}"}
+        assert rendered.count(f"{action}@{commit} # {version}") == len(
+            matching_references
+        )
+
+
 def test_release_workflow_is_manual_fail_closed_and_least_privilege():
     path = ROOT / ".github/workflows/release.yml"
     rendered = path.read_text(encoding="utf-8")
@@ -684,6 +726,12 @@ def test_release_workflow_is_manual_fail_closed_and_least_privilege():
         "validate",
         "build",
     }
+    validate_job = workflow["jobs"]["validate"]
+    assert validate_job["runs-on"] == "${{ matrix.os }}"
+    assert validate_job["strategy"]["matrix"]["os"] == [
+        "ubuntu-latest",
+        "windows-latest",
+    ]
     for job_name in ("preflight", "validate", "build"):
         checkout = next(
             step
@@ -701,10 +749,93 @@ def test_release_workflow_is_manual_fail_closed_and_least_privilege():
             "${{ needs.preflight.outputs.commit }}"
         )
 
-    build_steps = workflow["jobs"]["build"]["steps"]
-    build_rendered = "\n".join(
-        step.get("run", "") for step in build_steps
+    validate_steps = validate_job["steps"]
+    validate_runs = [step["run"] for step in validate_steps if "run" in step]
+    gate_commands = (
+        "python -m pytest -q",
+        "python scripts/validate_skill.py",
+        "python scripts/check_public_boundary.py",
+        "python scripts/package_skill.py --check-reproducible",
     )
+    gate_indices = [validate_runs.index(command) for command in gate_commands]
+    candidate_build = "python scripts/package_skill.py --output-dir dist"
+    candidate_build_index = validate_runs.index(candidate_build)
+    assert gate_indices == sorted(gate_indices)
+    assert max(gate_indices) < candidate_build_index
+    validate_upload_index, validate_upload = next(
+        (index, step)
+        for index, step in enumerate(validate_steps)
+        if step.get("uses", "").startswith("actions/upload-artifact@")
+    )
+    assert validate_upload_index > next(
+        index
+        for index, step in enumerate(validate_steps)
+        if step.get("run") == candidate_build
+    )
+    assert validate_upload["with"] == {
+        "name": (
+            "package-${{ runner.os }}-"
+            "${{ needs.preflight.outputs.commit }}"
+        ),
+        "path": "dist/*.zip\ndist/*.manifest.json\n",
+        "if-no-files-found": "error",
+        "retention-days": "1",
+    }
+
+    assert workflow["jobs"]["build"]["permissions"] == {"contents": "read"}
+    build_steps = workflow["jobs"]["build"]["steps"]
+    build_runs = [step["run"] for step in build_steps if "run" in step]
+    build_rendered = "\n".join(build_runs)
+    setup_python = next(
+        step
+        for step in build_steps
+        if step.get("uses", "").startswith("actions/setup-python@")
+    )
+    assert setup_python["with"] == {"python-version": "3.11"}
+    downloads = [
+        step["with"]
+        for step in build_steps
+        if step.get("uses", "").startswith("actions/download-artifact@")
+    ]
+    assert downloads == [
+        {
+            "name": (
+                "package-Linux-${{ needs.preflight.outputs.commit }}"
+            ),
+            "path": "candidate-packages/Linux",
+        },
+        {
+            "name": (
+                "package-Windows-${{ needs.preflight.outputs.commit }}"
+            ),
+            "path": "candidate-packages/Windows",
+        },
+    ]
+    compare_index = next(
+        index
+        for index, command in enumerate(build_runs)
+        if "python scripts/compare_packages.py" in command
+    )
+    verify_index = next(
+        index
+        for index, command in enumerate(build_runs)
+        if "python scripts/verify_release.py artifacts" in command
+    )
+    assert compare_index < verify_index
+    assert (
+        "python scripts/compare_packages.py "
+        "--first candidate-packages/Linux "
+        "--second candidate-packages/Windows"
+    ) in build_runs[compare_index]
+    assert 'candidate-packages/Linux/$archive' in build_runs[verify_index]
+    assert 'candidate-packages/Linux/$manifest' in build_runs[verify_index]
+    assert 'cp "candidate-packages/Linux/$archive"' in build_runs[verify_index]
+    assert 'cp "candidate-packages/Linux/$manifest"' in build_runs[verify_index]
+    assert 'test "$VERSION" = "0.3.0"' in build_runs[verify_index]
+    assert 'notes="docs/releases/0.3.0.md"' in build_runs[verify_index]
+    assert "python scripts/package_skill.py" not in build_rendered
+    assert all("pip " not in command for command in build_runs)
+    assert "dist/" not in build_rendered
     upload_step = next(
         step
         for step in build_steps
@@ -712,17 +843,22 @@ def test_release_workflow_is_manual_fail_closed_and_least_privilege():
     )
     assert upload_step["id"] == "upload"
     assert upload_step["with"]["if-no-files-found"] == "error"
-    assert "python scripts/package_skill.py" in build_rendered
     assert "python scripts/verify_release.py artifacts" in build_rendered
     assert "release-notes.md" in build_rendered
     assert "release-bundle.sha256" in build_rendered
 
     publish_steps = workflow["jobs"]["publish"]["steps"]
+    publish_rendered = "\n".join(
+        step.get("run", "") for step in publish_steps
+    )
     assert all(
         not step.get("uses", "").startswith(
             ("actions/checkout@", "actions/setup-python@")
         )
         for step in publish_steps
+    )
+    assert not re.search(
+        r"\b(?:python(?:3(?:\.\d+)?)?|pip(?:3)?)\b", publish_rendered
     )
     assert not any(
         forbidden in step.get("run", "")
@@ -769,7 +905,13 @@ def test_release_workflow_is_manual_fail_closed_and_least_privilege():
     )
     assert release_step["run"].index("/releases/tags/$TAG") < release_step[
         "run"
-    ].index("gh release create")
+    ].index("git ls-remote")
+    assert release_step["run"].index("git ls-remote") < release_step[
+        "run"
+    ].index('test "$remote_tag_object" = "$VERIFIED_TAG_OBJECT"')
+    assert release_step["run"].index(
+        'test "$remote_commit" = "$VERIFIED_COMMIT"'
+    ) < release_step["run"].index("gh release create")
     assert rendered.count("GH_TOKEN:") == 1
     assert rendered.count("contents: write") == 1
     assert "python scripts/verify_release.py ref" in rendered
@@ -785,6 +927,11 @@ def test_release_workflow_is_manual_fail_closed_and_least_privilege():
     assert "continue-on-error" not in rendered
     assert "release edit" not in rendered
     assert "git tag -f" not in rendered
+    assert all(
+        job.get("permissions", {"contents": "read"}) == {"contents": "read"}
+        for name, job in workflow["jobs"].items()
+        if name != "publish"
+    )
 
 
 def test_citation_and_license_metadata():
