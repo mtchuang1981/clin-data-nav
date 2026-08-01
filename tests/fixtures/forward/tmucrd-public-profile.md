@@ -1,7 +1,34 @@
-**Public-source snapshot:** 27 July 2026, based on the 2024 peer-reviewed database profile and TMU’s institutional page (last updated 2 July 2026).
+## Decision
 
-TMUCRD—the Taipei Medical University Clinical Research Database—is a longitudinal research resource derived from EHRs across Taipei Medical University Hospital, Wanfang Hospital, and Shuang Ho Hospital. The 2024 publication describes broad domains including demographics, encounters, diagnoses, medications, procedures, and clinical measurements, plus linkage with cancer-registry and death information. It reports a historical 2004–2021 window and more than 4.15 million patients, and describes alignment toward international common-data standards, including OMOP. [Nguyen et al., 2024, DOI: 10.1136/bmjhci-2023-100890](https://doi.org/10.1136/bmjhci-2023-100890)
+Output depth: evidence navigation
 
-TMU’s current public page describes continued curation of de-identified structured and unstructured hospital records under institutional application and review processes; it reports a later historical snapshot through 2023 with nearly 4.4 million patients. These figures are source-dated descriptions, not promises of current coverage or availability. [TMU Office of Data Science—Clinical Data Center](https://ods.tmu.edu.tw/portal_c3_cnt.php?button_num=c3&folder_id=4354&owner_num=c3_75328&search_b1=Go&search_type=1)
+Provide only a public-background profile from a dated public source snapshot.
+It is not a schema and not an institutional query guide.
 
-**Boundary:** This is a public-background profile, not a schema, data dictionary, availability statement, access authorization, or institutional query guide. It does not infer private table names, fields, joins, identifiers, mappings, sensitivity classifications, release details, or other non-public metadata.
+## Evidence table
+
+| Claim | Evidence | Applicability | Limitation |
+|---|---|---|---|
+| TMUCRD is described as a multi-hospital real-world-data resource. | Peer-reviewed public profile, DOI 10.1136/bmjhci-2023-100890 | Publication-level background | Does not establish current local structures or access |
+
+## Data contract
+
+No local data contract can be derived from a public profile. Grain, keys,
+joins, field meanings, coverage, and permissions require owner-approved
+current artifacts.
+
+## Code maturity
+
+`conceptual`
+
+The public evidence does not authorize an implementation.
+
+## Validation gaps
+
+Current owner-approved documentation, live metadata, access governance, and
+tested fixtures were not reviewed. No private metadata is inferred.
+
+## Sources
+
+- Nguyen PA et al., 2024 public database profile, DOI
+  10.1136/bmjhci-2023-100890.

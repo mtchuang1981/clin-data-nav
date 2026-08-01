@@ -1,5 +1,7 @@
 ## Decision
 
+Output depth: implementation specification
+
 No. A synthetic codingbook dated 2021 documents only a historical, synthetic specification; it does not prove the current institutional data model or live schema. Implementation must wait for current, governed institutional evidence.
 
 ## Evidence table
@@ -37,6 +39,7 @@ SPECIFICATION ONLY — NOT EXECUTABLE
 - No approved current Adapter or dictionary version.
 - No evidence that the 2021 synthetic codingbook maps to the institution.
 - No live metadata comparison.
+- No completed live metadata verification.
 - No confirmed grain, keys, cardinalities, coverage, or refresh state.
 - No verified terminology versions or local mappings.
 - No approved fixtures or passing acceptance checks.

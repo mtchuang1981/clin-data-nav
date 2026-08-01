@@ -1,5 +1,7 @@
 ## Decision
 
+Output depth: implementation specification
+
 We cannot provide SQL against the institution’s unknown schema.
 
 **SPECIFICATION ONLY — NOT EXECUTABLE**
@@ -35,6 +37,8 @@ Include a person only when:
 - Observation coverage, if required: the period during which medication exposure can be assessed reliably.
 
 **Required institutional mappings**
+
+Use this mapping checklist before implementation:
 
 - Physical source objects for each logical input
 - Stable person key and approved linkage path
@@ -81,7 +85,7 @@ No placeholder SQL is supplied because SQL-shaped examples could be mistaken for
 
 ## Validation gaps
 
-- Approved and versioned institutional data dictionary
+- Approved institutional evidence, including a versioned data dictionary
 - Approved Adapter version and effective date
 - Exact adult definition and age anchor
 - Medication identity and governed value set

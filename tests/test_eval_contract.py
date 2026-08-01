@@ -1,5 +1,8 @@
 from pathlib import Path
 import re
+import shutil
+import subprocess
+import sys
 
 import pytest
 import yaml
@@ -35,30 +38,156 @@ def test_output_depths_are_limited_to_the_public_response_contract():
     }
 
 
-def test_eval_readme_distinguishes_catalog_from_scored_fixture_pairs():
-    case_ids = {
-        case["id"]
-        for case in yaml.safe_load(
-            (ROOT / "evals/cases.yaml").read_text(encoding="utf-8")
-        )["cases"]
-    }
+GENERATED_START = "<!-- BEGIN GENERATED EVAL SUMMARY -->"
+GENERATED_END = "<!-- END GENERATED EVAL SUMMARY -->"
+
+
+def test_all_catalog_cases_have_paired_response_only_fixture_evidence():
+    catalog = yaml.safe_load(
+        (ROOT / "evals/cases.yaml").read_text(encoding="utf-8")
+    )
+    rubric = yaml.safe_load(
+        (ROOT / "evals/rubric.yaml").read_text(encoding="utf-8")
+    )
+    cases = catalog["cases"]
+    case_ids = {case["id"] for case in cases}
     baseline_ids = {
         path.stem for path in (ROOT / "tests/fixtures/baseline").glob("*.md")
     }
     forward_ids = {
         path.stem for path in (ROOT / "tests/fixtures/forward").glob("*.md")
     }
-    paired_ids = baseline_ids & forward_ids
+
+    assert len(case_ids) == 12
+    assert baseline_ids == case_ids
+    assert forward_ids == case_ids
+
+    forbidden_fixture_markers = (
+        "prompt:",
+        "rubric:",
+        "expected answer:",
+        "score:",
+        "test commentary:",
+        "system prompt",
+        "hidden reasoning",
+    )
+    for case in cases:
+        baseline_text = (
+            ROOT / "tests/fixtures/baseline" / f"{case['id']}.md"
+        ).read_text(encoding="utf-8")
+        forward_text = (
+            ROOT / "tests/fixtures/forward" / f"{case['id']}.md"
+        ).read_text(encoding="utf-8")
+        baseline = evaluate_response(case, rubric, baseline_text)
+        forward = evaluate_response(case, rubric, forward_text)
+
+        assert baseline.score < rubric["pass_threshold"], case["id"]
+        assert not baseline.passed, case["id"]
+        assert forward.score >= rubric["pass_threshold"], case["id"]
+        assert forward.passed, case["id"]
+        assert not [
+            rule
+            for rule in forward.results
+            if rule.rule.startswith("forbidden:") and not rule.passed
+        ], case["id"]
+        assert re.findall(
+            r"^Output depth: (.+)$", forward_text, flags=re.MULTILINE
+        ) == [case["output_depth"]]
+
+        for text in (baseline_text, forward_text):
+            assert text.strip(), case["id"]
+            lowered = text.lower()
+            assert not any(marker in lowered for marker in forbidden_fixture_markers)
+
+
+def test_rendered_eval_summary_matches_checked_in_generated_block():
+    renderer = ROOT / "scripts/render_eval_summary.py"
+    assert renderer.is_file()
+    from scripts.render_eval_summary import render_summary
+
+    catalog = yaml.safe_load(
+        (ROOT / "evals/cases.yaml").read_text(encoding="utf-8")
+    )
+    rubric = yaml.safe_load(
+        (ROOT / "evals/rubric.yaml").read_text(encoding="utf-8")
+    )
     readme = (ROOT / "evals/README.md").read_text(encoding="utf-8")
-    table_ids = set(
-        re.findall(r"^\| `([^`]+)` \|", readme, flags=re.MULTILINE)
+    generated_block = readme.split(GENERATED_START, 1)[1].split(
+        GENERATED_END, 1
+    )[0].strip("\n")
+    rendered = render_summary(ROOT)
+
+    assert rendered == generated_block
+    assert rendered.count("\n| `") == len(catalog["cases"])
+    for case in catalog["cases"]:
+        case_id = case["id"]
+        baseline = evaluate_response(
+            case,
+            rubric,
+            (ROOT / "tests/fixtures/baseline" / f"{case_id}.md").read_text(
+                encoding="utf-8"
+            ),
+        )
+        forward = evaluate_response(
+            case,
+            rubric,
+            (ROOT / "tests/fixtures/forward" / f"{case_id}.md").read_text(
+                encoding="utf-8"
+            ),
+        )
+        baseline_status = "PASS" if baseline.passed else "FAIL"
+        forward_status = "PASS" if forward.passed else "FAIL"
+        assert (
+            f"| `{case_id}` | {case['output_depth']} | "
+            f"{baseline.score} {baseline_status} | "
+            f"{forward.score} {forward_status} |"
+        ) in rendered
+    assert "repository behavior contracts" in rendered
+    assert "not clinical validity or real-world effectiveness" in rendered
+    assert "not proof of semantic correctness or clinical validity" in readme
+
+
+def test_eval_summary_cli_check_is_idempotent():
+    result = subprocess.run(
+        [sys.executable, str(ROOT / "scripts/render_eval_summary.py"), "--check"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
     )
 
-    assert f"{len(case_ids)} catalog cases" in readme
-    assert f"{len(paired_ids)} scored fixture pairs" in readme
-    assert paired_ids <= case_ids
-    assert table_ids == paired_ids
-    assert "not proof of semantic correctness or clinical validity" in readme
+    assert result.returncode == 0, result.stderr
+
+
+def test_eval_summary_check_detects_staleness_and_rewrites_only_generated_block(
+    tmp_path,
+):
+    from scripts import render_eval_summary
+
+    shutil.copytree(ROOT / "evals", tmp_path / "evals")
+    shutil.copytree(ROOT / "tests/fixtures", tmp_path / "tests/fixtures")
+    prefix = "# Preserved prefix\n\n"
+    suffix = "\nPreserved suffix.\n"
+    readme_path = tmp_path / "evals/README.md"
+    readme_path.write_text(
+        prefix
+        + GENERATED_START
+        + "\nstale\n"
+        + GENERATED_END
+        + suffix,
+        encoding="utf-8",
+        newline="\n",
+    )
+
+    assert render_eval_summary.main(["--check"], root=tmp_path) == 1
+    assert readme_path.read_text(encoding="utf-8").startswith(prefix)
+    assert readme_path.read_text(encoding="utf-8").endswith(suffix)
+
+    assert render_eval_summary.main([], root=tmp_path) == 0
+    rewritten = readme_path.read_text(encoding="utf-8")
+    assert rewritten.startswith(prefix)
+    assert rewritten.endswith(suffix)
+    assert render_eval_summary.main(["--check"], root=tmp_path) == 0
 
 
 def test_each_case_uses_the_public_eval_schema():
@@ -306,58 +435,6 @@ def test_broader_forbidden_rules_allow_legitimate_historical_caveats(
         re.search(pattern, safe_response)
         for pattern in case["forbidden"]
     )
-
-
-@pytest.mark.parametrize(
-    ("case_id", "expected_score"),
-    [
-        ("institutional-sql-without-dictionary", 80),
-        ("stale-codingbook", 90),
-        ("tmucrd-public-profile", 30),
-    ],
-)
-def test_forward_fixture_scores_remain_below_the_fixed_threshold(
-    case_id,
-    expected_score,
-):
-    case = _catalog_case(case_id)
-    rubric = yaml.safe_load(
-        (ROOT / "evals/rubric.yaml").read_text(encoding="utf-8")
-    )
-    response = (
-        ROOT / "tests/fixtures/forward" / f"{case_id}.md"
-    ).read_text(encoding="utf-8")
-
-    result = evaluate_response(case, rubric, response)
-
-    assert rubric["pass_threshold"] == 100
-    assert result.score == expected_score
-    assert result.passed is False
-
-
-def test_controls_are_saved_as_response_only_baselines():
-    fixture_dir = ROOT / "tests/fixtures/baseline"
-    fixture_ids = {
-        "institutional-sql-without-dictionary",
-        "stale-codingbook",
-        "tmucrd-public-profile",
-    }
-    assert {path.stem for path in fixture_dir.glob("*.md")} == fixture_ids
-    for fixture_id in fixture_ids:
-        text = (fixture_dir / f"{fixture_id}.md").read_text(encoding="utf-8")
-        assert text.strip()
-        lowered = text.lower()
-        for marker in (
-            "prompt:",
-            "rubric:",
-            "expected answer:",
-            "private dictionary:",
-            "existing skill:",
-            "system prompt",
-            "hidden reasoning",
-        ):
-            assert marker not in lowered
-        assert not lowered.startswith("public-background text (safe to reuse):")
 
 
 def test_catalog_validation_rejects_missing_case_key():
