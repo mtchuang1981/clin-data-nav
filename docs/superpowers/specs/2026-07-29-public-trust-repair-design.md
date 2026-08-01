@@ -320,3 +320,108 @@ The implementation may be committed locally after verification. Push, tag,
 workflow dispatch, and GitHub Release creation remain separate external
 actions requiring explicit user approval after the implementation evidence is
 reviewed.
+
+## 12. As-built amendments and post-release follow-up
+
+- **Amendment date:** 2026-08-01
+- **Original design commit:** `6150412`
+- **Status:** As-built clarification plus an Unreleased follow-up
+
+This section preserves Sections 1–11 as the design and authorization boundary
+approved on 2026-07-29. It records later hardening and publication evidence
+without presenting those changes as part of the original approval.
+
+### 12.1 As-built Release trust boundary
+
+The three logical boundaries in Section 4.4 were implemented as four jobs:
+
+1. **`preflight` with read-only permissions** verifies the annotated tag,
+   version, peeled commit, reachability from `origin/main`, and absence of an
+   existing Release. Checkout credentials are not persisted.
+2. **`validate` with read-only permissions** checks out the verified commit and
+   runs the four-command verification set independently on Ubuntu and Windows.
+3. **`build` with read-only permissions** checks out the verified commit,
+   builds and verifies the ZIP and manifest, copies static Release notes, writes
+   transit checksums, and uploads the bundle under the returned artifact ID.
+4. **`publish` is the only job with `contents: write`**. It has no source
+   checkout, Python setup, dependency installation, or repository-code
+   execution. It downloads the exact artifact ID, verifies the checksum-file
+   digest and every bundled file, rechecks the remote annotated tag object and
+   peeled commit, refuses an existing Release, and then creates a new Release.
+
+Third-party GitHub Actions are pinned to full commit SHAs. The writer cannot
+rebuild source, edit an existing Release, or publish after a tag, transit,
+asset, or remote-state mismatch. This subsection supersedes Section 4.4 only
+as the description of the final as-built workflow; it does not rewrite the
+original implementation scope.
+
+### 12.2 Publication result
+
+After separate explicit approval, annotated tag `v0.2.2` was published on
+2026-08-01 through the guarded workflow. The tag object
+`fcb2c0151a267a392f844f670342253dd3a6781d` peels to commit
+`3da87f2e0b08b1a0c331d5a606bc59d099e9f3c8`. The successful workflow and
+public Release are:
+
+- <https://github.com/mtchuang1981/clin-data-nav/actions/runs/30700016113>
+- <https://github.com/mtchuang1981/clin-data-nav/releases/tag/v0.2.2>
+
+The Release contains exactly the ZIP and manifest. Independent download and
+verification confirmed ZIP SHA-256
+`f2c2ea5e354b866e2d4f62f6e8ab99981be156d210a96b9bb10b1efa71c7e7ca`
+and manifest SHA-256
+`6632e310e9c7c637a5dc8f4c8f53b155029e5e2d1c3a99a663854624604641c1`.
+The complete command and job evidence remains in
+`docs/verification/2026-07-29-v0.2.1-assessment.md`.
+
+Branch protection was separately checked and remained unconfigured. No
+repository setting, published tag, Release, or Release asset was overwritten.
+
+### 12.3 Post-release canonical packaging
+
+The published Ubuntu artifact used LF source bytes, but the original packager
+at the `v0.2.2` tag read checkout bytes directly. A Windows checkout therefore
+produced different package hashes for six CRLF text files even though each
+platform independently passed `--check-reproducible`.
+
+Post-release maintenance commit
+`35587f0699be4c0e8737a299fa9a7a02e01ceddc` addresses the root cause by
+canonicalizing CRLF and CR to LF for valid UTF-8 files without NUL bytes before
+hashing and archiving. Files containing a NUL byte or invalid UTF-8 retain
+their original bytes. Manifest file hashes and sizes describe the canonical
+bytes stored inside the ZIP, not necessarily the raw bytes in a Windows
+checkout.
+
+Regression tests require byte-identical ZIP and manifest output for equivalent
+LF and CRLF Skills and require both non-text cases to remain byte-identical to
+their sources. A native-Windows build from the maintenance commit reproduced
+both published Ubuntu hashes in Section 12.2 exactly. At amendment time this
+commit was Unreleased and had not been pushed; it is not part of the immutable
+`v0.2.2` tag.
+
+### 12.4 Reproducibility acceptance layers
+
+Future verification and claims must distinguish three levels:
+
+1. **Same-checkout repeatability:** two builds from one checkout produce
+   byte-identical ZIP and manifest files. The existing
+   `--check-reproducible` gate enforces this level.
+2. **Checkout line-ending independence:** equivalent LF and CRLF UTF-8 inputs
+   produce byte-identical packages while NUL-containing or invalid UTF-8 files
+   remain unchanged. The post-release regression tests enforce this level.
+3. **Cross-runner artifact identity:** Windows and Ubuntu jobs upload their
+   built artifacts and a dependent CI job compares them directly. This remains
+   P2 before making a general guarantee across future Python and zlib runner
+   combinations.
+
+The native-Windows versus published-Ubuntu hash match proves Levels 1 and 2
+for the current seven-file payload. It is evidence for the current package,
+not a substitute for the continuing Level 3 CI control.
+
+### 12.5 Change control
+
+The historical baseline, original in-scope and out-of-scope lists, and
+publication approval boundary remain unchanged. Any GitHub Release that
+represents the post-release packaging fix must use a new patch version and
+repeat the guarded release process after explicit approval; the published
+`v0.2.2` tag and Release must never be moved or overwritten.
