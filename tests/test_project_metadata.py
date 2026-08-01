@@ -235,31 +235,92 @@ def test_beginner_learning_paths_are_aligned_and_do_not_require_code():
                 "Stop or escalate when",
             ),
             ":",
-            ("./glossary.md", "./installation.md"),
+            {
+                "learn-the-terms": (
+                    "./glossary.md#cdisc",
+                    "./installation.md",
+                    "../examples/teae-to-sas-spec.md",
+                    (
+                        "../skills/clinical-data-research-navigator/"
+                        "references/output-depths-and-learning-paths.md"
+                    ),
+                ),
+                "assess-the-evidence": (
+                    "./glossary.md#rwd",
+                    "./installation.md",
+                    "../examples/omop-phenotype-to-sql-spec.md",
+                    (
+                        "../skills/clinical-data-research-navigator/"
+                        "references/rwe-question-routing.md"
+                    ),
+                ),
+                "prepare-an-implementation": (
+                    "./glossary.md#data-contract",
+                    "./installation.md",
+                    "../examples/synthetic-institutional-mapping.md",
+                    (
+                        "../skills/clinical-data-research-navigator/"
+                        "references/institutional-adapter-contract.md"
+                    ),
+                    (
+                        "../skills/clinical-data-research-navigator/"
+                        "references/evidence-output-template.md"
+                        "#implementation-specification"
+                    ),
+                ),
+            },
             "Not every path ends in code.",
         ),
         (
             (ROOT / "docs/learning-paths.zh-TW.md").read_text(encoding="utf-8"),
             ("目標", "起始提示", "預期深度", "接著閱讀", "停止或升級條件"),
             "：",
-            ("./glossary.zh-TW.md", "./installation.zh-TW.md"),
+            {
+                "learn-the-terms": (
+                    "./glossary.zh-TW.md#cdisc",
+                    "./installation.zh-TW.md",
+                    "../examples/teae-to-sas-spec.md",
+                    (
+                        "../skills/clinical-data-research-navigator/"
+                        "references/output-depths-and-learning-paths.md"
+                    ),
+                ),
+                "assess-the-evidence": (
+                    "./glossary.zh-TW.md#rwd",
+                    "./installation.zh-TW.md",
+                    "../examples/omop-phenotype-to-sql-spec.md",
+                    (
+                        "../skills/clinical-data-research-navigator/"
+                        "references/rwe-question-routing.md"
+                    ),
+                ),
+                "prepare-an-implementation": (
+                    "./glossary.zh-TW.md#data-contract",
+                    "./installation.zh-TW.md",
+                    "../examples/synthetic-institutional-mapping.md",
+                    (
+                        "../skills/clinical-data-research-navigator/"
+                        "references/institutional-adapter-contract.md"
+                    ),
+                    (
+                        "../skills/clinical-data-research-navigator/"
+                        "references/evidence-output-template.md"
+                        "#implementation-specification"
+                    ),
+                ),
+            },
             "不是每條路徑都要以程式碼收尾。",
         ),
     )
 
-    for text, field_labels, colon, local_links, no_code_claim in documents:
+    for text, field_labels, colon, expected_links, no_code_claim in documents:
         assert _document_anchor_ids(text) == LEARNING_PATH_IDS
         sections = _sections_after_anchors(text, LEARNING_PATH_IDS)
-        for section in sections.values():
+        for path_id, section in sections.items():
             for label in field_labels:
                 assert section.count(f"**{label}{colon}**") == 1
-        for local_link in local_links:
-            assert local_link in text
-        assert "../examples/" in text
-        assert (
-            "../skills/clinical-data-research-navigator/references/"
-            in text
-        )
+            for expected_link in expected_links[path_id]:
+                assert expected_link in section
         assert no_code_claim in text
 
     assert "`quick explanation`" in documents[0][0]
