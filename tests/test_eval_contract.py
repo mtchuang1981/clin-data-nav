@@ -309,6 +309,21 @@ def test_eval_summary_cli_check_is_idempotent():
     assert result.returncode == 0, result.stderr
 
 
+def test_eval_summary_check_accepts_clean_windows_crlf_checkout(tmp_path):
+    """A clean checkout with core.autocrlf=true must remain current."""
+    from scripts import render_eval_summary
+
+    shutil.copytree(ROOT / "evals", tmp_path / "evals")
+    shutil.copytree(ROOT / "tests/fixtures", tmp_path / "tests/fixtures")
+    readme_path = tmp_path / "evals/README.md"
+    lf_data = readme_path.read_bytes().replace(b"\r\n", b"\n")
+    crlf_data = lf_data.replace(b"\n", b"\r\n")
+    readme_path.write_bytes(crlf_data)
+
+    assert render_eval_summary.main(["--check"], root=tmp_path) == 0
+    assert readme_path.read_bytes() == crlf_data
+
+
 def test_eval_summary_check_detects_staleness_and_rewrites_only_generated_block(
     tmp_path,
 ):

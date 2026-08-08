@@ -70,6 +70,13 @@ def _generated_block_bounds(data: bytes) -> tuple[int, int]:
     return start, end
 
 
+def _generated_block_newline(data: bytes, start: int) -> bytes:
+    """Return the checkout's newline style at the generated block boundary."""
+    if data[start : start + 2] == b"\r\n":
+        return b"\r\n"
+    return b"\n"
+
+
 def main(argv: list[str] | None = None, *, root: Path = ROOT) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -83,7 +90,10 @@ def main(argv: list[str] | None = None, *, root: Path = ROOT) -> int:
     try:
         data = readme_path.read_bytes()
         start, end = _generated_block_bounds(data)
+        newline = _generated_block_newline(data, start)
         expected = ("\n" + render_summary(root) + "\n").encode("utf-8")
+        if newline == b"\r\n":
+            expected = expected.replace(b"\n", b"\r\n")
     except (OSError, ValueError, yaml.YAMLError) as error:
         parser.error(str(error))
 
