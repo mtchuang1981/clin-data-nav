@@ -176,8 +176,18 @@ GLOSSARY_TERM_KEYS = (
     "target-trial-emulation",
     "estimand",
     "phenotype",
+    "authority-level",
     "data-contract",
+    "execution-gate",
+    "code-maturity",
+    "fixture",
+    "adapter",
     "governing-artifact",
+    "provenance",
+    "grain",
+    "key-and-join-cardinality",
+    "time-zero",
+    "specification-only-versus-executable",
     "sas",
     "validation-gap",
 )
@@ -256,6 +266,31 @@ def _nonblank_line_index(text: str, marker: str) -> int:
     return next(
         index for index, line in enumerate(nonblank_lines) if marker in line
     )
+
+
+def _assert_first_success_order(
+    text: str,
+    *,
+    prompt: str,
+    marker: str,
+    summary_lines: tuple[str, str],
+) -> None:
+    """Require the six onboarding elements in the approved first-success order."""
+    sequence = (
+        VALIDATION_BADGE_IMAGE,
+        "npx skills add mtchuang1981/clin-data-nav",
+        prompt,
+        marker,
+        *summary_lines,
+    )
+    positions = []
+    for element in sequence:
+        assert element in text
+        position = _nonblank_line_index(text, element)
+        assert position < 30
+        positions.append(position)
+    assert positions == sorted(positions)
+    assert len(set(positions)) == len(positions)
 
 
 def _markdown_link_targets(text: str) -> set[str]:
@@ -351,14 +386,39 @@ def test_beginner_glossaries_explain_model_purposes_and_validation_boundary():
         assert phrase in traditional_chinese
 
 
+def test_bilingual_rwd_definitions_preserve_the_varied_source_authority_meaning():
+    """The zh-TW definition must not narrow RWD to routine care alone."""
+    english_document = (ROOT / "docs/glossary.md").read_text(encoding="utf-8")
+    chinese_document = (ROOT / "docs/glossary.zh-TW.md").read_text(
+        encoding="utf-8"
+    )
+    english = english_document.split('<a id="rwd"></a>', 1)[1].split(
+        '<a id="rwe"></a>', 1
+    )[0]
+    traditional_chinese = chinese_document.split(
+        '<a id="rwd"></a>', 1
+    )[1].split('<a id="rwe"></a>', 1)[0]
+
+    for phrase in (
+        "routinely collected",
+        "patient health status",
+        "health-care delivery",
+    ):
+        assert phrase in english
+    for phrase in ("多種來源", "例行收集", "病人健康狀態", "醫療服務提供"):
+        assert phrase in traditional_chinese
+
+
 def test_beginner_learning_paths_are_aligned_and_do_not_require_code():
     documents = (
         (
             (ROOT / "docs/learning-paths.md").read_text(encoding="utf-8"),
             (
                 "Goal",
+                "Prerequisites",
                 "Starting prompt",
                 "Expected depth",
+                "Cannot prove",
                 "Next reading",
                 "Stop or escalate when",
             ),
@@ -401,7 +461,15 @@ def test_beginner_learning_paths_are_aligned_and_do_not_require_code():
         ),
         (
             (ROOT / "docs/learning-paths.zh-TW.md").read_text(encoding="utf-8"),
-            ("目標", "起始提示", "預期深度", "接著閱讀", "停止或升級條件"),
+            (
+                "目標",
+                "先備條件",
+                "起始提示",
+                "預期深度",
+                "無法證明",
+                "接著閱讀",
+                "停止或升級條件",
+            ),
             "：",
             {
                 "learn-the-terms": (
@@ -1054,18 +1122,54 @@ def test_v030_release_notes_are_static_bilingual_and_uploadable():
 
 
 def test_readmes_put_a_real_first_success_path_in_the_first_30_nonblank_lines():
-    first_success_markers = (
-        "npx skills add mtchuang1981/clin-data-nav",
-        "$clinical-data-research-navigator",
-        "Output depth: quick explanation",
+    documents = (
+        (
+            "README.md",
+            "$clinical-data-research-navigator What is ADaM",
+            "Expected first line: `Output depth: quick explanation`",
+            (
+                "- A direct plain-language definition and why ADaM matters in context.",
+                "- One or two common confusions or limits, followed by a short governing-source list.",
+            ),
+        ),
+        (
+            "README.zh-TW.md",
+            "$clinical-data-research-navigator ADaM 是什麼",
+            "預期第一行：`Output depth: quick explanation`",
+            (
+                "- 直接用白話定義 ADaM，並說明它在此情境的重要性。",
+                "- 列出一至兩項常見混淆或限制，再附上精簡的主導來源清單。",
+            ),
+        ),
     )
 
-    for relative_path in ("README.md", "README.zh-TW.md"):
+    for relative_path, prompt, marker, summary_lines in documents:
         text = (ROOT / relative_path).read_text(encoding="utf-8")
         assert f"[![Validation]({VALIDATION_BADGE_IMAGE})]({VALIDATION_BADGE_LINK})" in text
-        assert _nonblank_line_index(text, VALIDATION_BADGE_IMAGE) < 30
-        for marker in first_success_markers:
-            assert _nonblank_line_index(text, marker) < 30
+        _assert_first_success_order(
+            text,
+            prompt=prompt,
+            marker=marker,
+            summary_lines=summary_lines,
+        )
+
+
+def test_readme_first_success_guard_rejects_a_missing_expected_summary_line():
+    """The old three-marker guard missed a partially deleted expected result."""
+    text = (ROOT / "README.md").read_text(encoding="utf-8")
+    summary_lines = (
+        "- A direct plain-language definition and why ADaM matters in context.",
+        "- One or two common confusions or limits, followed by a short governing-source list.",
+    )
+    mutated = text.replace(summary_lines[1], "")
+
+    with pytest.raises(AssertionError):
+        _assert_first_success_order(
+            mutated,
+            prompt="$clinical-data-research-navigator What is ADaM",
+            marker="Expected first line: `Output depth: quick explanation`",
+            summary_lines=summary_lines,
+        )
 
 
 def test_readmes_identify_the_installable_agent_skill_without_a_plugin_listing_claim():
@@ -1191,6 +1295,33 @@ def test_installation_guides_preserve_codex_and_chatgpt_activation_routes():
     assert "不會把它安裝到 ChatGPT" in traditional_chinese
     assert "https://help.openai.com/en/articles/20001066" in traditional_chinese
     assert "https://learn.chatgpt.com/docs/build-skills" in traditional_chinese
+
+
+def test_installation_guides_use_the_current_chatgpt_upload_path_in_order():
+    documents = (
+        (
+            "docs/installation.md",
+            "interface may vary",
+            "plan and workspace allow uploads",
+        ),
+        (
+            "docs/installation.zh-TW.md",
+            "介面可能不同",
+            "方案與工作區允許上傳",
+        ),
+    )
+    upload_path = "Plugins → Skills → Create → Upload from computer"
+    official_url = (
+        "https://help.openai.com/en/articles/"
+        "20001066-skills-in-chatgpt"
+    )
+
+    for relative_path, variation_note, permission_note in documents:
+        text = " ".join((ROOT / relative_path).read_text(encoding="utf-8").split())
+        assert upload_path in text
+        assert official_url in text
+        assert variation_note in text
+        assert permission_note in text
 
 
 def test_source_checkout_uses_packager_output_and_refuses_an_existing_target(
@@ -1476,6 +1607,31 @@ def test_repository_settings_is_a_post_change_operator_checklist_not_state_evide
     assert "no DOI is claimed without a verified deposition" in normalized
     assert "gh api" in settings
     assert "Settings" in settings
+
+
+def test_repository_settings_require_all_stable_validation_check_names():
+    """Omitting the comparator would permit merges before package identity is proven."""
+    workflow = yaml.load(
+        (ROOT / ".github/workflows/validate.yml").read_text(encoding="utf-8"),
+        Loader=yaml.BaseLoader,
+    )
+    assert "compare-packages" in workflow["jobs"]
+
+    settings = (ROOT / "docs/repository-settings.md").read_text(encoding="utf-8")
+    required_checks = (
+        "test (ubuntu-latest)",
+        "test (windows-latest)",
+        "compare-packages",
+    )
+    for check in required_checks:
+        assert f"`{check}`" in settings
+    positions = [settings.index(f"`{check}`") for check in required_checks]
+    assert positions == sorted(positions)
+    required_section = settings.split("## Required status checks", 1)[1].split(
+        "## Repository topics", 1
+    )[0]
+    for check in required_checks:
+        assert f"- `{check}`" in required_section
 
 
 def test_readmes_use_the_official_skill_and_plugin_product_boundary():

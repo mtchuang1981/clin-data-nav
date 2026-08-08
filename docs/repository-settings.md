@@ -15,10 +15,11 @@ approved change procedure explicitly says otherwise.
 Before changing a branch rule or ruleset, confirm that the target workflow has
 completed successfully on `main`, that an administrator recovery route exists,
 and that the check names shown by GitHub are exact. The required status checks
-for Ubuntu and Windows are:
+include both platform checks and the package-identity comparator:
 
 - `test (ubuntu-latest)`
 - `test (windows-latest)`
+- `compare-packages`
 
 GitHub UI path: **Settings → Rules → Rulesets** (or **Settings → Branches** for
 an existing branch-protection rule) → the rule targeting `main` → **Require
@@ -33,9 +34,11 @@ gh api --method GET repos/mtchuang1981/clin-data-nav/branches/main/protection \
 gh api --method GET repos/mtchuang1981/clin-data-nav/rulesets
 ```
 
-Also re-open the rule in the UI and verify that both the Ubuntu and Windows
-checks are required. A successful workflow run alone does not prove that a
-branch rule requires it.
+Also re-open the rule in the UI and verify that the Ubuntu, Windows, and
+`compare-packages` checks are all required. The comparator is the stable
+workflow job name that proves the two package candidates are byte-identical.
+A successful workflow run alone does not prove that a branch rule requires
+these checks.
 
 ## Repository topics
 

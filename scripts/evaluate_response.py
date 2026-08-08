@@ -19,6 +19,69 @@ OUTPUT_DEPTHS = {
     "research design",
     "implementation specification",
 }
+COMMON_HEADER_PATTERNS = (
+    r"(?:^|\n)[ \t]*Decision:[ \t]+\S",
+    r"(?:^|\n)[ \t]*Confirmed facts:[ \t]+\S",
+    r"(?:^|\n)[ \t]*Assumptions:[ \t]+\S",
+    r"(?:^|\n)[ \t]*Limitations:[ \t]+\S",
+    r"(?:^|\n)[ \t]*Sources actually consulted:[ \t]+\S",
+)
+_DEPTH_REQUIRED_SECTIONS = {
+    "quick explanation": (
+        "Direct answer",
+        "Why it matters",
+        "Common confusions or limits",
+    ),
+    "evidence navigation": (
+        "Search scope",
+        "Authority-ordered route",
+        "Evidence table",
+        "Conflicts and unreviewed gaps",
+    ),
+    "research design": (
+        "Primary intent and design route",
+        "Design fields and time anchors",
+        "Data suitability and claim boundary",
+        "Bias and validation gaps",
+        "Analysis or diagnostics",
+    ),
+    "implementation specification": (
+        "Governing evidence",
+        "Data contract",
+        "Code maturity",
+        "Validation gaps",
+        "Execution gate",
+    ),
+}
+_DEPTH_OPTIONAL_SECTIONS = {
+    "quick explanation": (),
+    "evidence navigation": (),
+    "research design": ("Handoff status",),
+    "implementation specification": (),
+}
+_ALL_DEPTH_SECTIONS = frozenset(
+    section
+    for sections in _DEPTH_REQUIRED_SECTIONS.values()
+    for section in sections
+) | frozenset(
+    section
+    for sections in _DEPTH_OPTIONAL_SECTIONS.values()
+    for section in sections
+)
+DEPTH_SECTION_CONTRACTS = {
+    depth: {
+        "required": required,
+        "allowed": required + _DEPTH_OPTIONAL_SECTIONS[depth],
+        "forbidden": tuple(
+            sorted(
+                _ALL_DEPTH_SECTIONS
+                - set(required)
+                - set(_DEPTH_OPTIONAL_SECTIONS[depth])
+            )
+        ),
+    }
+    for depth, required in _DEPTH_REQUIRED_SECTIONS.items()
+}
 CASE_KEYS = {
     "id",
     "prompt",
@@ -58,14 +121,138 @@ def normalize(text: str, rubric: dict) -> str:
     return value
 
 
+def _normalize_regex(pattern: str, rubric: dict) -> str:
+    """Normalize regex literals without changing case-sensitive escapes."""
+    form = rubric["normalization"]["unicode_form"]
+    return unicodedata.normalize(form, pattern)
+
+
+def _regex_flags(rubric: dict, flags: int = 0) -> int:
+    """Apply the rubric's case policy without casefolding regex syntax."""
+    if not rubric["normalization"]["case_sensitive"]:
+        flags |= re.IGNORECASE
+    return flags
+
+
+def strip_markdown_code(text: str) -> str:
+    """Remove fenced and indented code while preserving line boundaries."""
+    visible_lines: list[str] = []
+    fence_character: str | None = None
+    fence_length = 0
+
+    for line in text.splitlines(keepends=True):
+        content = line.rstrip("\r\n")
+        line_ending = line[len(content):]
+
+        if fence_character is not None:
+            closing_fence = rf"^ {{0,3}}{re.escape(fence_character)}{{{fence_length},}}[ \t]*$"
+            if re.match(closing_fence, content):
+                fence_character = None
+                fence_length = 0
+            visible_lines.append(line_ending)
+            continue
+
+        opening_fence = re.match(r"^ {0,3}(?P<fence>`{3,}|~{3,}).*$", content)
+        if opening_fence:
+            fence = opening_fence.group("fence")
+            fence_character = fence[0]
+            fence_length = len(fence)
+            visible_lines.append(line_ending)
+            continue
+
+        if re.match(r"^(?: {4,}|\t)", content):
+            visible_lines.append(line_ending)
+            continue
+
+        visible_lines.append(line)
+
+    return "".join(visible_lines)
+
+
+def _h2_pattern(section: str, rubric: dict) -> str:
+    """Return a strict top-level Markdown H2 pattern for *section*."""
+    normalized_section = re.escape(normalize(section, rubric))
+    return rf"^ {{0,3}}##[ \t]+{normalized_section}[ \t]*$"
+
+
 def evaluate_response(case: dict, rubric: dict, response: str) -> Evaluation:
     """Score one response using required, heading, then forbidden rules."""
     normalized_response = normalize(response, rubric)
+    normalized_positive_response = normalize(strip_markdown_code(response), rubric)
     scoring = rubric["scoring"]
     results: list[RuleResult] = []
 
+    for pattern in COMMON_HEADER_PATTERNS:
+        matched = bool(
+            re.search(
+                _normalize_regex(pattern, rubric),
+                normalized_positive_response,
+                flags=_regex_flags(rubric),
+            )
+        )
+        points = scoring["required_pattern"] if matched else 0
+        results.append(
+            RuleResult(
+                rule=f"common-header:{pattern}",
+                passed=matched,
+                points=points,
+                message=(
+                    "common header field matched"
+                    if matched
+                    else "common header field missing"
+                ),
+            )
+        )
+
+    depth_contract = DEPTH_SECTION_CONTRACTS[case["output_depth"]]
+    for section in depth_contract["required"]:
+        heading = _h2_pattern(section, rubric)
+        matched = bool(
+            re.search(
+                heading,
+                normalized_positive_response,
+                flags=re.MULTILINE,
+            )
+        )
+        points = scoring["required_section"] if matched else 0
+        results.append(
+            RuleResult(
+                rule=f"depth-section:{section}",
+                passed=matched,
+                points=points,
+                message="depth section matched" if matched else "depth section missing",
+            )
+        )
+
+    response_sections = {
+        heading.strip()
+        for heading in re.findall(
+            r"^ {0,3}#{1,6}[ \t]+(.+?)[ \t]*#*[ \t]*$",
+            normalized_positive_response,
+            re.MULTILINE,
+        )
+    }
+    allowed_sections = {
+        normalize(section, rubric) for section in depth_contract["allowed"]
+    }
+    for section in sorted(response_sections - allowed_sections):
+        results.append(
+            RuleResult(
+                rule=f"forbidden-section:{section}",
+                passed=False,
+                points=scoring["forbidden_pattern"],
+                message="section is not allowed at the selected output depth",
+            )
+        )
+
     for pattern in case["required"]:
-        matched = bool(re.search(normalize(pattern, rubric), normalized_response))
+        matched = bool(
+            re.search(
+                _normalize_regex(pattern, rubric),
+                normalized_positive_response,
+                flags=_regex_flags(rubric),
+            )
+        )
         points = scoring["required_pattern"] if matched else 0
         results.append(
             RuleResult(
@@ -77,8 +264,14 @@ def evaluate_response(case: dict, rubric: dict, response: str) -> Evaluation:
         )
 
     for section in case["required_sections"]:
-        heading = rf"^\s*##\s+{re.escape(normalize(section, rubric))}\s*$"
-        matched = bool(re.search(heading, normalized_response, flags=re.MULTILINE))
+        heading = _h2_pattern(section, rubric)
+        matched = bool(
+            re.search(
+                heading,
+                normalized_positive_response,
+                flags=re.MULTILINE,
+            )
+        )
         points = scoring["required_section"] if matched else 0
         results.append(
             RuleResult(
@@ -90,7 +283,13 @@ def evaluate_response(case: dict, rubric: dict, response: str) -> Evaluation:
         )
 
     for pattern in case["forbidden"]:
-        matched = bool(re.search(normalize(pattern, rubric), normalized_response))
+        matched = bool(
+            re.search(
+                _normalize_regex(pattern, rubric),
+                normalized_response,
+                flags=_regex_flags(rubric),
+            )
+        )
         points = scoring["forbidden_pattern"] if matched else 0
         results.append(
             RuleResult(
@@ -103,12 +302,34 @@ def evaluate_response(case: dict, rubric: dict, response: str) -> Evaluation:
 
     score = sum(item.points for item in results)
     forbidden_matched = any(
-        item.rule.startswith("forbidden:") and not item.passed for item in results
+        (
+            item.rule.startswith("forbidden:")
+            or item.rule.startswith("forbidden-section:")
+        )
+        and not item.passed
+        for item in results
+    )
+    depth_contract_missing = any(
+        (
+            item.rule.startswith("common-header:")
+            or item.rule.startswith("depth-section:")
+        )
+        and not item.passed
+        for item in results
+    )
+    required_content_missing = any(
+        item.rule.startswith("required:") and not item.passed
+        for item in results
     )
     return Evaluation(
         case_id=case["id"],
         score=score,
-        passed=score >= rubric["pass_threshold"] and not forbidden_matched,
+        passed=(
+            score >= rubric["pass_threshold"]
+            and not forbidden_matched
+            and not depth_contract_missing
+            and not required_content_missing
+        ),
         results=results,
     )
 
@@ -200,13 +421,24 @@ def validate_catalog(catalog: dict, rubric: dict) -> list[str]:
                 continue
             for pattern in values:
                 try:
-                    re.compile(normalize(pattern, rubric))
+                    re.compile(
+                        _normalize_regex(pattern, rubric),
+                        flags=_regex_flags(rubric),
+                    )
                 except re.error:
                     errors.append(f"case {label}: invalid {field} regex: {pattern}")
         if all(isinstance(case[field], list) for field in ("required", "required_sections")):
             maximum = (
                 len(case["required"]) * scoring["required_pattern"]
                 + len(case["required_sections"]) * scoring["required_section"]
+                + len(COMMON_HEADER_PATTERNS) * scoring["required_pattern"]
+                + len(
+                    DEPTH_SECTION_CONTRACTS.get(
+                        case.get("output_depth"),
+                        {},
+                    ).get("required", ())
+                )
+                * scoring["required_section"]
             )
             if threshold > maximum:
                 errors.append(

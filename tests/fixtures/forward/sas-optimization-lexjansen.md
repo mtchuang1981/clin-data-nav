@@ -1,34 +1,29 @@
-## Decision
-
 Output depth: evidence navigation
+Decision: Search for and review paper-level evidence before proposing a SAS optimization.
+Confirmed facts: Lex Jansen is secondary implementation evidence, not a governing standard.
+Assumptions: The legacy program and target platform were not supplied.
+Limitations: No network access or target-environment benchmark is available in this fixture.
+Sources actually consulted: The current synthetic request and the project retrieval playbook; no external paper was reviewed.
 
-Search `site:lexjansen.com` for the technique, then review each specific paper
-as secondary implementation evidence rather than governing authority.
+## Search scope
+
+Use `site:lexjansen.com` for the specific technique, then review the specific paper
+and the official SAS documentation relevant to the target platform.
+
+## Authority-ordered route
+
+Start with official study requirements and SAS documentation. For each paper,
+record title, author or authors, conference, publication year, stable URL, and
+access date before treating it as implementation evidence.
 
 ## Evidence table
 
-For each reviewed item, record title, author or authors, conference,
-publication year, stable URL, access date, method, applicability, and target
-platform limitations. A search result is only a discovery lead.
+Capture source and code provenance, applicability, platform caveats, and
+copyright, license, permission, or reuse terms. If permission is unclear, use
+a clean-room implementation based on the described method.
 
-## Data contract
+## Conflicts and unreviewed gaps
 
-Record source and code provenance plus copyright, license, permission, or
-reuse terms. If reuse permission is unclear, use a clean-room implementation
-based on the described method and the governing study requirements.
-
-## Code maturity
-
-Keep maturity `conceptual` until the proposed change has traceable evidence,
-reviewed mappings, fixtures, and target-environment results.
-
-## Validation gaps
-
-When network access is unavailable, say that the paper was not reviewed.
+When network access is unavailable, state that the paper was not reviewed.
 Require correctness checks and performance validation in the target
-environment before calling an implementation optimized.
-
-## Sources
-
-Cite the specific paper actually reviewed, not an index snippet; list its
-stable URL and access date with the official study and platform sources.
+environment before describing the change as optimized.

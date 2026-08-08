@@ -1,27 +1,28 @@
-## Decision
+Output depth: implementation specification
+Decision: Keep this as a logical specification.
+Confirmed facts: The requested cohort needs a governed medication definition.
+Assumptions: None about physical objects.
+Limitations: The versioned data dictionary and live metadata verification are absent.
+Sources actually consulted: Current synthetic request only.
 
-**SPECIFICATION ONLY — NOT EXECUTABLE**
+SPECIFICATION ONLY — NOT EXECUTABLE
 
-## Evidence table
+## Governing evidence
 
-The request has no approved institutional Adapter, source mappings, or
-fixtures.
+Approved institutional artifacts are required.
 
 ## Data contract
 
-An approved versioned data dictionary is required before implementation.
+Use a mapping checklist for logical roles, grain, keys, joins, timing, and terminology.
 
 ## Code maturity
 
-The proposed work remains conceptual until governed evidence is supplied.
+`conceptual`
 
 ## Validation gaps
 
-Live metadata verification and passing fixtures are required before any
-executable implementation.
+Current mappings and passing fixtures are missing.
 
-## Sources
+## Execution gate
 
-The mapping checklist must confirm governed source objects, stable person keys,
-approved linkage paths, adult definitions, medication value sets, timing rules,
-and output controls.
+Unmet; no executable query is supplied.

@@ -1,25 +1,28 @@
-## Decision
+Output depth: implementation specification
+Decision: Keep this as a logical specification.
+Confirmed facts: The requested cohort needs a governed medication definition.
+Assumptions: None about physical objects.
+Limitations: The versioned data dictionary and live metadata verification are absent.
+Sources actually consulted: Current synthetic request only.
 
-**SPECIFICATION ONLY — NOT EXECUTABLE**
+SPECIFICATION ONLY — NOT EXECUTABLE
 
-## Evidence table
+## Governing evidence
 
-The required institutional evidence is missing.
+Approved institutional artifacts are required.
 
 ## Data contract
 
-An approved versioned data dictionary is required.
+Use a mapping checklist for logical roles, grain, keys, joins, timing, and terminology.
 
 ## Code maturity
 
-The proposed work remains conceptual.
+`conceptual`
 
 ## Validation gaps
 
-Live metadata verification is required.
+Current mappings and passing fixtures are missing.
 
-## Sources
+## Execution gate
 
-The mapping checklist is incomplete.
-
-SELECT patient_id FROM patient
+SELECT patient_id FROM SYNTH_SECRET_TABLE

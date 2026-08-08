@@ -42,10 +42,11 @@ npx skills add mtchuang1981/clin-data-nav
 
 在 Codex CLI 或 IDE 擴充功能中，請用 `/skills` 確認是否已找到 Skill，再用
 `$clinical-data-research-navigator` 明確叫用。ChatGPT 桌面版採用另一套安裝
-介面：請開啟 `Skills`；部分介面會將它放在 **Plugins → Skills**。若方案與
-工作區允許上傳，請選擇 **Create**，再從電腦上傳 Skill。介面可能更新，請
+介面：請依 **Plugins → Skills → Create → Upload from computer** 開啟 `Skills`
+並從電腦上傳。介面可能不同，且會受方案、工作區權限或分批推出影響；只有在
+方案與工作區允許上傳時才繼續。請
 同時查核 OpenAI 的 [Help Center Skills
-說明](https://help.openai.com/en/articles/20001066)與[建立 Skills
+說明](https://help.openai.com/en/articles/20001066-skills-in-chatgpt)與[建立 Skills
 文件](https://learn.chatgpt.com/docs/build-skills)。專案內的 `npx` 指令只會
 寫入 `.agents/skills`，不會把它安裝到 ChatGPT，也不能證明它已刊登於公開
 Plugin 目錄。

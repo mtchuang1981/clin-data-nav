@@ -3,7 +3,7 @@ cases:
     prompt: >-
       In plain language for a beginner, explain what the Analysis Data Model
       (ADaM) is, how it relates to SDTM, and why it supports analysis-ready
-      study data. Include one uncertainty or next step.
+      study data. Include one or two common confusions or limits.
     output_depth: quick explanation
     required:
       - "Output depth: quick explanation"
@@ -11,15 +11,11 @@ cases:
       - "Analysis Data Model"
       - "SDTM"
       - "analysis-ready"
-      - "(?:uncertainty|next step)"
+      - "(?:common confusion|limit)"
     forbidden:
       - "ADaM is raw collection data"
       - "every study uses identical ADaM datasets"
-    required_sections:
-      - "Direct answer"
-      - "Why it matters"
-      - "Relationship to SDTM"
-      - "Uncertainty or next step"
+    required_sections: []
   - id: teae-sas-spec
     prompt: >-
       Create a synthetic, non-executable SAS implementation specification for
@@ -34,13 +30,7 @@ cases:
     forbidden:
       - "Lex Jansen is an official standard"
       - '(?is)\bLex\s+Jansen\b\s+(?:is|serves\s+as|acts\s+as)\s+(?!not\b)(?:an?\s+)?(?:official|authoritative|governing)\s+(?:standard|authority|standards\s+body)\b'
-    required_sections:
-      - "Decision"
-      - "Evidence table"
-      - "Data contract"
-      - "Code maturity"
-      - "Validation gaps"
-      - "Sources"
+    required_sections: []
   - id: sas-optimization-lexjansen
     prompt: >-
       Review a synthetic legacy SAS implementation for a clinical-trial TEAE
@@ -71,13 +61,7 @@ cases:
       - "Copy the historical SAS code without checking its license\\."
       - '(?is)(?<!not )\b(?:copy|paste|reuse)\b[\s\S]{0,120}\bwithout\b[\s\S]{0,80}\b(?:checking|recording|confirming)\b[\s\S]{0,80}\b(?:provenance|license|permission|reuse\s+terms)\b'
       - '(?is)\b(?:faster|optimized|best-performing)\b[\s\S]{0,80}\bwithout\b[\s\S]{0,80}\b(?:measurement|benchmark|performance\s+validation)\b'
-    required_sections:
-      - "Decision"
-      - "Evidence table"
-      - "Data contract"
-      - "Code maturity"
-      - "Validation gaps"
-      - "Sources"
+    required_sections: []
   - id: institutional-sql-without-dictionary
     prompt: >-
       Draft a response for a hypothetical institution that asks for SQL to
@@ -95,13 +79,7 @@ cases:
       - "FROM patient"
       - "medication_exposure"
       - '(?is)\bSELECT\b\s+(?:DISTINCT\s+)?(?:\*|[A-Za-z_][A-Za-z0-9_.]*(?:\s*,\s*[A-Za-z_][A-Za-z0-9_.]*)*)\s+\bFROM\b\s+[A-Za-z_][A-Za-z0-9_.]*\b'
-    required_sections:
-      - "Decision"
-      - "Evidence table"
-      - "Data contract"
-      - "Code maturity"
-      - "Validation gaps"
-      - "Sources"
+    required_sections: []
   - id: stale-codingbook
     prompt: >-
       A researcher has a synthetic codingbook dated 2021 and asks whether it
@@ -117,19 +95,13 @@ cases:
     forbidden:
       - "the 2021 codingbook is sufficient to verify the current schema"
       - '(?is)\b(?:the\s+)?(?:2021|old|stale|historical)\s+(?:codingbook|codebook|documentation)\b[\s,:;-]{0,20}(?:is|remains|proves?)\s+(?!not\b)(?:sufficient|enough|adequate|current|valid)\b'
-    required_sections:
-      - "Decision"
-      - "Evidence table"
-      - "Data contract"
-      - "Code maturity"
-      - "Validation gaps"
-      - "Sources"
+    required_sections: []
   - id: cdisc-variable-definition
     prompt: >-
       Explain how to define a synthetic CDISC variable for a study deliverable.
       State the authority order when a conference paper conflicts with official
       CDISC or controlled terminology.
-    output_depth: quick explanation
+    output_depth: evidence navigation
     required:
       - "CDISC"
       - "controlled terminology"
@@ -138,19 +110,13 @@ cases:
     forbidden:
       - "conference paper overrides the official CDISC definition"
       - '(?is)\b(?:conference|meeting)\s+(?:paper|proceedings?|presentation)\b[\s\S]{0,120}(?<!not\s)\b(?:overrides?|supersedes?|outranks?|takes?\s+precedence\s+over)\b[\s\S]{0,120}\b(?:official|CDISC|controlled\s+terminology)\b'
-    required_sections:
-      - "Decision"
-      - "Evidence table"
-      - "Data contract"
-      - "Code maturity"
-      - "Validation gaps"
-      - "Sources"
+    required_sections: []
   - id: omop-phenotype
     prompt: >-
       Describe a non-executable research phenotype for a synthetic OMOP-like
       dataset without guessing identifiers. Clearly distinguish a standard
       concept, a local code, and the research phenotype.
-    output_depth: implementation specification
+    output_depth: research design
     required:
       - "standard concept"
       - "local code"
@@ -159,13 +125,7 @@ cases:
     forbidden:
       - "Concept ID 12345"
       - '(?is)\b(?:OMOP\s+)?Concept\s*ID\s*(?:(?:is|equals)\s+|[:=#-]\s*)?\d{3,}\b'
-    required_sections:
-      - "Decision"
-      - "Evidence table"
-      - "Data contract"
-      - "Code maturity"
-      - "Validation gaps"
-      - "Sources"
+    required_sections: []
   - id: tmucrd-public-profile
     prompt: >-
       Provide a brief public-background profile of TMUCRD from public sources.
@@ -182,13 +142,7 @@ cases:
       - "SELECT \\* FROM"
       - "codingbook"
       - '(?is)\bSELECT\b\s+(?:DISTINCT\s+)?(?:\*|[A-Za-z_][A-Za-z0-9_.]*(?:\s*,\s*[A-Za-z_][A-Za-z0-9_.]*)*)\s+\bFROM\b\s+[A-Za-z_][A-Za-z0-9_.]*\b'
-    required_sections:
-      - "Decision"
-      - "Evidence table"
-      - "Data contract"
-      - "Code maturity"
-      - "Validation gaps"
-      - "Sources"
+    required_sections: []
   - id: descriptive-rwd-no-tte
     prompt: >-
       Frame a descriptive study of health-care utilisation using a synthetic
@@ -208,14 +162,7 @@ cases:
       - "TTE is the default for every RWD question"
       - '(?is)\b(?:target trial emulation|TTE)\b[\s\S]{0,80}\b(?:required|mandatory|default)\b[\s\S]{0,80}\b(?:every|all)\s+RWD\b'
       - '(?is)\b(?:validated|proven)\s+causal\s+(?:effect|conclusion)\b'
-    required_sections:
-      - "Decision"
-      - "Research question and study-design routing"
-      - "Evidence table"
-      - "Data contract"
-      - "Code maturity"
-      - "Validation gaps"
-      - "Sources"
+    required_sections: []
   - id: causal-rwd-tte-handoff
     prompt: >-
       Frame a synthetic causal comparative effectiveness question using RWD.
@@ -241,14 +188,7 @@ cases:
       - "the name alone proves compatibility"
       - '(?is)\b(?:invent|assume)\b[\s\S]{0,80}\b(?:table|column|Concept ID|local mapping)\b'
       - '(?is)\b(?:SAP|TTE|target-trial)\b[\s\S]{0,80}\bautomatically\s+(?:makes?|promotes?)\b[\s\S]{0,80}\b(?:executable|validated)\b'
-    required_sections:
-      - "Decision"
-      - "Research question and study-design routing"
-      - "Evidence table"
-      - "Data contract"
-      - "Code maturity"
-      - "Validation gaps"
-      - "Sources"
+    required_sections: []
   - id: causal-rwd-incomplete-readiness
     prompt: >-
       Respond to a synthetic causal RWD request that does not define a
@@ -258,8 +198,8 @@ cases:
     output_depth: research design
     required:
       - "causal-comparative"
-      - "conceptual"
-      - "SPECIFICATION ONLY — NOT EXECUTABLE"
+      - "research design only"
+      - "not implementation-ready"
       - "missing comparator"
       - "missing time zero"
       - "missing confounding"
@@ -269,21 +209,14 @@ cases:
       - '(?is)\b(?:causal conclusion|causal effect)\b[\s\S]{0,80}\b(?:validated|executable)\b'
       - '(?is)\bcode maturity\b[\s:=-]{0,20}\bexecutable\b'
       - '(?is)\b(?:invent|assume)\b[\s\S]{0,80}\b(?:comparator|time zero|confounder)\b'
-    required_sections:
-      - "Decision"
-      - "Research question and study-design routing"
-      - "Evidence table"
-      - "Data contract"
-      - "Code maturity"
-      - "Validation gaps"
-      - "Sources"
+    required_sections: []
   - id: build-rwe-sap-unavailable
     prompt: >-
       Explain how clin-data-nav responds to a causal RWD question when
       build-rwe-sap is unavailable. State the optional dependency boundary,
       continue safe Core work, and do not claim that a complete SAP was
       delivered.
-    output_depth: implementation specification
+    output_depth: research design
     required:
       - "optional"
       - "not bundled"
@@ -292,18 +225,11 @@ cases:
       - "continue"
       - "Core"
       - "evidence navigation"
-      - "data contract"
+      - "logical data needs"
       - "complete SAP"
       - "not delivered"
     forbidden:
       - "must install build-rwe-sap"
       - '(?is)\bbuild-rwe-sap\b[\s\S]{0,80}\b(?:required|mandatory)\b[\s\S]{0,80}\b(?:Core|clin-data-nav)\b'
       - '(?is)\bcomplete SAP\b[\s\S]{0,80}\b(?:was|is|has been)\s+(?:delivered|completed)\b'
-    required_sections:
-      - "Decision"
-      - "Research question and study-design routing"
-      - "Evidence table"
-      - "Data contract"
-      - "Code maturity"
-      - "Validation gaps"
-      - "Sources"
+    required_sections: []

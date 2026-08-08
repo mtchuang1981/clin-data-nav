@@ -14,7 +14,7 @@ from scripts.evaluate_response import evaluate_response, validate_catalog
 ROOT = Path(__file__).resolve().parents[1]
 CASE_OUTPUT_DEPTHS = {
     "adam-quick-explanation": "quick explanation",
-    "cdisc-variable-definition": "quick explanation",
+    "cdisc-variable-definition": "evidence navigation",
     "sas-optimization-lexjansen": "evidence navigation",
     "tmucrd-public-profile": "evidence navigation",
     "descriptive-rwd-no-tte": "research design",
@@ -23,8 +23,77 @@ CASE_OUTPUT_DEPTHS = {
     "teae-sas-spec": "implementation specification",
     "institutional-sql-without-dictionary": "implementation specification",
     "stale-codingbook": "implementation specification",
-    "omop-phenotype": "implementation specification",
-    "build-rwe-sap-unavailable": "implementation specification",
+    "omop-phenotype": "research design",
+    "build-rwe-sap-unavailable": "research design",
+}
+
+COMMON_HEADER_PATTERNS = (
+    r"^Decision:",
+    r"^Confirmed facts:",
+    r"^Assumptions:",
+    r"^Limitations:",
+    r"^Sources actually consulted:",
+)
+DEPTH_SECTION_CONTRACTS = {
+    "quick explanation": {
+        "required": {
+            "Direct answer",
+            "Why it matters",
+            "Common confusions or limits",
+        },
+        "allowed": {
+            "Direct answer",
+            "Why it matters",
+            "Common confusions or limits",
+        },
+    },
+    "evidence navigation": {
+        "required": {
+            "Search scope",
+            "Authority-ordered route",
+            "Evidence table",
+            "Conflicts and unreviewed gaps",
+        },
+        "allowed": {
+            "Search scope",
+            "Authority-ordered route",
+            "Evidence table",
+            "Conflicts and unreviewed gaps",
+        },
+    },
+    "research design": {
+        "required": {
+            "Primary intent and design route",
+            "Design fields and time anchors",
+            "Data suitability and claim boundary",
+            "Bias and validation gaps",
+            "Analysis or diagnostics",
+        },
+        "allowed": {
+            "Primary intent and design route",
+            "Design fields and time anchors",
+            "Data suitability and claim boundary",
+            "Bias and validation gaps",
+            "Analysis or diagnostics",
+            "Handoff status",
+        },
+    },
+    "implementation specification": {
+        "required": {
+            "Governing evidence",
+            "Data contract",
+            "Code maturity",
+            "Validation gaps",
+            "Execution gate",
+        },
+        "allowed": {
+            "Governing evidence",
+            "Data contract",
+            "Code maturity",
+            "Validation gaps",
+            "Execution gate",
+        },
+    },
 }
 
 
@@ -36,6 +105,18 @@ def test_output_depths_are_limited_to_the_public_response_contract():
         "research design",
         "implementation specification",
     }
+
+
+def test_evaluator_enforces_the_approved_required_allowed_and_forbidden_sections():
+    """Changing a depth contract must not silently turn its label decorative."""
+    all_sections = set().union(
+        *(contract["allowed"] for contract in DEPTH_SECTION_CONTRACTS.values())
+    )
+    for depth, expected in DEPTH_SECTION_CONTRACTS.items():
+        actual = response_evaluator.DEPTH_SECTION_CONTRACTS[depth]
+        assert set(actual["required"]) == expected["required"]
+        assert set(actual["allowed"]) == expected["allowed"]
+        assert set(actual["forbidden"]) == all_sections - expected["allowed"]
 
 
 GENERATED_START = "<!-- BEGIN GENERATED EVAL SUMMARY -->"
@@ -101,6 +182,36 @@ def test_all_catalog_cases_have_paired_response_only_fixture_evidence():
             lowered = text.lower()
             assert not any(marker in lowered for marker in forbidden_fixture_markers)
             assert not lowered.startswith("public-background text (safe to reuse):")
+
+
+def test_forward_fixtures_follow_depth_specific_required_allowed_and_forbidden_shapes():
+    """A depth label alone must not let a fixture use another depth's shape."""
+    cases = yaml.safe_load(
+        (ROOT / "evals/cases.yaml").read_text(encoding="utf-8")
+    )["cases"]
+    all_mode_sections = set().union(
+        *(contract["allowed"] for contract in DEPTH_SECTION_CONTRACTS.values())
+    )
+
+    for case in cases:
+        response = (
+            ROOT / "tests/fixtures/forward" / f"{case['id']}.md"
+        ).read_text(encoding="utf-8")
+        for pattern in COMMON_HEADER_PATTERNS:
+            assert re.search(pattern, response, flags=re.MULTILINE), case["id"]
+
+        headings = set(re.findall(r"^##\s+(.+?)\s*$", response, re.MULTILINE))
+        contract = DEPTH_SECTION_CONTRACTS[case["output_depth"]]
+        forbidden = all_mode_sections - contract["allowed"]
+        assert contract["required"] <= headings, case["id"]
+        assert headings <= contract["allowed"], case["id"]
+        assert not headings & forbidden, case["id"]
+
+        if case["output_depth"] == "quick explanation":
+            assert len(response.split()) <= 220, case["id"]
+            limits = response.split("## Common confusions or limits", 1)[1]
+            bullets = re.findall(r"^-\s+\S", limits, flags=re.MULTILINE)
+            assert 1 <= len(bullets) <= 2, case["id"]
 
 
 def test_original_control_fixtures_keep_response_only_protections():
@@ -272,35 +383,25 @@ def test_catalog_is_valid_and_each_case_can_reach_the_fixed_threshold():
     rubric = yaml.safe_load((ROOT / "evals/rubric.yaml").read_text(encoding="utf-8"))
     assert validate_catalog(catalog, rubric) == []
     for case in catalog["cases"]:
-        assert len(case["required"]) + len(case["required_sections"]) >= 10
+        positive_rules = (
+            len(case["required"])
+            + len(case["required_sections"])
+            + len(response_evaluator.COMMON_HEADER_PATTERNS)
+            + len(
+                response_evaluator.DEPTH_SECTION_CONTRACTS[
+                    case["output_depth"]
+                ]["required"]
+            )
+        )
+        assert positive_rules >= 10
 
 
 def test_sas_optimization_case_requires_traceable_paper_level_evidence():
     case = _catalog_case("sas-optimization-lexjansen")
     rubric = yaml.safe_load((ROOT / "evals/rubric.yaml").read_text(encoding="utf-8"))
-    complete_response = """
-# Decision
-Search site:lexjansen.com for the specific SAS technique, then review the
-specific paper. Treat it as secondary implementation evidence.
-
-# Evidence table
-Record the title, authors, conference, publication year, stable URL, and
-access date, together with applicability and platform caveats.
-
-# Data contract
-Record code provenance and copyright, license, or reuse terms. Use a
-clean-room implementation when permission is unclear.
-
-# Code maturity
-Keep the execution gate; a historical example cannot make code executable.
-
-# Validation gaps
-If network access is unavailable, state that the paper was not reviewed.
-Require performance validation in the target environment.
-
-# Sources
-Cite the specific reviewed paper rather than a search snippet.
-"""
+    complete_response = (
+        ROOT / "tests/fixtures/forward/sas-optimization-lexjansen.md"
+    ).read_text(encoding="utf-8")
     incomplete_response = """
 # Decision
 Use Lex Jansen examples to optimize the SAS program.
@@ -353,7 +454,8 @@ def test_rwe_routing_cases_enforce_safe_boundaries():
             component.lower() in pattern.lower()
             for pattern in causal["required"]
         )
-    assert "conceptual" in incomplete["required"]
+    assert "research design only" in incomplete["required"]
+    assert "not implementation-ready" in incomplete["required"]
     assert any("executable" in pattern for pattern in incomplete["forbidden"])
     for phrase in (
         "optional",
@@ -557,11 +659,11 @@ def test_catalog_validation_records_invalid_unicode_form_without_normalizing():
 def test_catalog_validation_rejects_unreachable_threshold():
     """A threshold above every positive rule's total cannot produce a passing result."""
     case = _valid_case()
-    case["required"] = [f"requirement {number}" for number in range(9)]
+    case["required"] = []
     case["required_sections"] = []
     rubric = _valid_rubric()
-    rubric["pass_threshold"] = 100
-    assert "pass threshold 100 exceeds maximum possible score 90" in validate_catalog(
+    rubric["pass_threshold"] = 90
+    assert "pass threshold 90 exceeds maximum possible score 80" in validate_catalog(
         {"cases": [case]}, rubric
     )
 

@@ -1,38 +1,31 @@
-## Decision
+Output depth: research design
+Decision: Define a non-executable research phenotype without guessing identifiers.
+Confirmed facts: A standard concept, a local code, and a research phenotype are distinct layers.
+Assumptions: No approved vocabulary release or local mapping was supplied.
+Limitations: The phenotype is not implementation-ready and no numeric identifier is selected.
+Sources actually consulted: The current synthetic request and the project authority-routing reference.
 
-Output depth: implementation specification
+## Primary intent and design route
 
-Describe a non-executable research phenotype without selecting numeric
-identifiers. A standard concept is a vocabulary-governed meaning, a local code
-is a source-specific value, and the research phenotype is the reviewed rule
-that combines concepts, timing, exclusions, and validation criteria.
+Use a phenotype-design route that begins with the clinical state and intended
+research use, then defines operational inclusion and exclusion logic.
 
-## Evidence table
+## Design fields and time anchors
 
-| Item | Governing evidence | Limitation |
-|---|---|---|
-| Clinical definition | Protocol and domain guidance | Requires clinical review |
-| Standard vocabulary choice | Current vocabulary release | Identifier selection awaits review |
-| Source mapping | Approved local mapping artifact | Not supplied |
+Specify entry, exit, event timing, observation window, washout, recurrence,
+and any index-date relationship relevant to the phenotype.
 
-## Data contract
+## Data suitability and claim boundary
 
-Define event grain, stable person and event keys, join cardinality, observation
-coverage, event types and dates, vocabulary versions, inclusion and exclusion
-logic, missingness, precedence, lineage, and synthetic acceptance fixtures.
+Assess event capture, vocabulary coverage, local-code mapping, missingness,
+and portability before treating the definition as fit for purpose.
 
-## Code maturity
+## Bias and validation gaps
 
-`conceptual`
+Clinical adjudication, vocabulary review, source-to-standard mapping, coverage,
+and external validation remain unresolved.
 
-SPECIFICATION ONLY — NOT EXECUTABLE.
+## Analysis or diagnostics
 
-## Validation gaps
-
-Clinical adjudication, vocabulary review, source-to-standard mapping, coverage
-assessment, sensitivity analysis, and fixture validation remain incomplete.
-
-## Sources
-
-- Approved research protocol and phenotype review record, when available.
-- Current official vocabulary documentation, version to be confirmed.
+Plan synthetic edge cases, sensitivity variants, prevalence checks, and chart
+review or another approved validation route where available.

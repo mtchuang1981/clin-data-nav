@@ -1,63 +1,113 @@
 # Evidence Output Template
 
-Use one template only. Start every response with exactly one `Output depth: `
-line. Keep confirmed facts, assumptions, limitations, and sources distinct;
-cite only sources actually reviewed. The selected depth changes the response
-shape, not authority, provenance, public/private-boundary, or execution-gate
-requirements.
+Use exactly one template. The selected depth changes the response shape, not
+authority, provenance, public/private-boundary, or execution-gate rules. Do
+not list a source unless it was actually consulted.
+
+## Common Header
+
+Keep this header compact and complete at every depth:
+
+```text
+Output depth: [one approved depth]
+Decision: [direct answer or routing decision]
+Confirmed facts: [facts supported by the request or reviewed sources]
+Assumptions: [assumptions, or "None"]
+Limitations: [known limits, or "None identified"]
+Sources actually consulted: [reviewed sources, or "Current request only"]
+```
 
 ## Quick Explanation
 
 ```text
-Output depth: quick explanation
-Plain-language answer: [direct definition or comparison]
-Why it matters: [user-context relevance]
-Next step or uncertainty: [one safe follow-up or limit]
-Sources: [governing authority actually reviewed]
+## Direct answer
+[plain-language definition or comparison]
+
+## Why it matters
+[brief relevance to the user's context]
+
+## Common confusions or limits
+- [one common confusion or limit]
+- [optional second confusion or limit]
 ```
+
+Keep this response short. Do not add an Evidence table, Data contract, or Code
+maturity section unless the user asks for a deeper output.
 
 ## Evidence Navigation
 
 ```text
-Output depth: evidence navigation
-Question or claim: [scope]
-Ranked sources: [source — authority label — why it applies]
-Applicability: [population, setting, or implementation boundary]
-Uncertainty or gap: [conflict, missing review, or limitation]
+## Search scope
+[decision, claim, and boundaries]
+
+## Authority-ordered route
+[governing sources first; discovery leads clearly labelled]
+
+## Evidence table
+[source, authority level, provenance, applicability, and limitation]
+
+## Conflicts and unreviewed gaps
+[conflicts, limits, and sources not yet reviewed]
 ```
+
+Search results and snippets are leads, not reviewed evidence. Do not add a
+Data contract or Code maturity section.
 
 ## Research Design
 
 ```text
-Output depth: research design
-PICO or estimand: [design-appropriate fields]
-Data suitability: [fitness and boundaries]
-Design or bias: [design route, confounding, and missing-design risks]
-Analysis or diagnostics: [planned checks, not an executable analysis]
-Uncertainty or handoff: [limits and optional downstream status]
+## Primary intent and design route
+[descriptive, predictive, causal-comparative, measurement, or phenotype route]
+
+## Design fields and time anchors
+[PICO-informed or design-appropriate fields, time zero, follow-up, and outcome where relevant]
+
+## Data suitability and claim boundary
+[data source, intended use, RWD fitness, and RWE boundary where relevant]
+
+## Bias and validation gaps
+[bias, confounding, missing-design, and validation gaps]
+
+## Analysis or diagnostics
+[planned methods and diagnostics, not an executable analysis]
+
+## Handoff status
+[optional downstream status when applicable]
 ```
 
-## Research question and study-design routing
+Report TTE readiness only for causal-comparative questions. This depth may
+state logical data needs but must not add a full Data contract, Code maturity,
+or Execution gate section or imply a complete SAP, causal result, or program.
 
-For intervention or exposure questions, record the population, intervention or
+### Research question and study-design routing
+
+For intervention or exposure questions, record population, intervention or
 exposure, comparator, outcomes, time zero, follow-up, setting, data source,
-intended use, and target estimand when causal. Distinguish RWD from RWE, report
-TTE readiness only for causal comparative questions, and state optional
-`build-rwe-sap` status as available, unavailable, or incompatible.
+intended use, and target estimand when causal. Distinguish RWD from RWE and
+state optional `build-rwe-sap` status as available, unavailable, or incompatible
+only when relevant.
 
 ## Implementation Specification
 
 ```text
-Output depth: implementation specification
-Evidence: [decision and governing artifact]
-Data contract: [logical roles, grain, keys, joins, coverage, types, time anchors,
-code systems, terminology, missingness, precedence, lineage, and acceptance fixtures]
-Code maturity: [one existing maturity label]
-Validation gaps: [each unmet approval, metadata, parameter, fixture, or review]
-Execution gate: [met or unmet]
+## Governing evidence
+[decision, governing artifact, and applicability]
+
+## Data contract
+[logical roles, grain, keys, joins, coverage, types, time anchors, code systems,
+terminology, missingness, precedence, lineage, and acceptance fixtures]
+
+## Code maturity
+[exactly one existing maturity label]
+
+## Validation gaps
+[each unmet approval, metadata, parameter, fixture, or review]
+
+## Execution gate
+[met or unmet; include implementation only when permitted]
 SPECIFICATION ONLY — NOT EXECUTABLE
 ```
 
-Include implementation or pseudocode only when the execution gate permits it.
-Otherwise preserve logical placeholders and do not emit SQL-, SAS-, or R-shaped
-code that could be mistaken for a physical institutional object.
+Without the required Adapter, current metadata, parameters, and fixtures,
+retain the specification-only marker and do not emit SQL-, SAS-, R-, or
+Python-shaped placeholders that could be mistaken for physical objects.

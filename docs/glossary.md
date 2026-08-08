@@ -125,6 +125,14 @@ recorded data. A code list may be one input, but timing, inclusion, exclusion,
 entry, and exit logic can also matter. A phenotype must be reviewed and
 validated for its intended question and data source.
 
+<a id="authority-level"></a>
+## Authority level
+
+An authority level states how strongly a source governs a particular claim.
+For example, an applicable official standard can govern a definition, while a
+conference paper may only explain implementation practice. It is a routing
+label, not a guarantee that every statement in a source is correct or current.
+
 <a id="data-contract"></a>
 ## Data contract
 
@@ -134,6 +142,38 @@ is the logical agreement an implementation must satisfy: grain, keys, joins,
 coverage, types, time anchors, terminology, missingness, precedence, lineage,
 and acceptance fixtures. It describes what is required without inventing an
 institution's physical table or column names.
+
+<a id="execution-gate"></a>
+## Execution gate
+
+The execution gate is the minimum evidence required before code can be called
+executable: an approved Adapter, current metadata, supplied parameters, and
+passing fixtures in the target environment. If any item is missing, the work
+stays a logical specification.
+
+<a id="code-maturity"></a>
+## Code maturity
+
+Code maturity is one label describing how far an implementation has been
+verified: `conceptual`, `dictionary-specified`, `parameterized`, `executable`,
+or `validated`. The label cannot advance merely because code was written; its
+evidence and checks must also advance.
+
+<a id="fixture"></a>
+## Fixture
+
+A fixture is a small controlled input with an expected result used to test a
+rule. A safe public example might use `SYNTH_PERSON_A` at an age boundary and
+state whether that synthetic record should be included. A fixture is test
+evidence, not real patient data.
+
+<a id="adapter"></a>
+## Adapter
+
+An Adapter is an approved, versioned private contract that maps logical roles
+to an institution's governed implementation and verification steps. This
+public repository describes what an Adapter must prove; it does not contain or
+guess an institution's Adapter.
 
 <a id="governing-artifact"></a>
 ## Governing artifact
@@ -145,6 +185,45 @@ such as an applicable standard, regulator guidance, protocol, SAP, or approved
 institutional metadata. A search result, tutorial, or older implementation
 paper may help discovery, but it cannot silently override the governing
 artifact. Record its identity, version or date, applicability, and provenance.
+
+<a id="provenance"></a>
+## Provenance
+
+Provenance records where a claim, data element, or code technique came from,
+including source identity, version or snapshot, access or review date, and any
+transformation or reuse constraint. A search result is provenance for a lead,
+not proof that the underlying source was reviewed.
+
+<a id="grain"></a>
+## Grain
+
+Grain states what one row or record logically represents, such as one
+synthetic medication event per person. Defining grain first prevents counts,
+deduplication, and joins from silently changing meaning.
+
+<a id="key-and-join-cardinality"></a>
+## Key and join cardinality
+
+A key identifies a logical record. Join cardinality describes how records are
+expected to relate—one-to-one, one-to-many, or many-to-many—and what
+multiplication or loss must be checked. Names alone do not prove that a field
+is unique or safe to join.
+
+<a id="time-zero"></a>
+## Time zero
+
+Time zero is the defined moment when eligibility, treatment or exposure
+assignment, and follow-up align for a study. Misaligned time zero can introduce
+selection or immortal-time bias; it is required when relevant to the design,
+not invented from whichever date happens to be available.
+
+<a id="specification-only-versus-executable"></a>
+## Specification-only versus executable
+
+Specification-only output states the logical requirements and unresolved
+checks; it is not safe to run. Executable output has passed the execution gate
+for a named, current target environment. `SPECIFICATION ONLY — NOT EXECUTABLE`
+is therefore a safety status, not unfinished code disguised as a program.
 
 <a id="sas"></a>
 ## SAS

@@ -58,9 +58,9 @@ SDTM、ADaM 與 OMOP CDM 只會標準化資料呈現方式，或支援特定用�
 
 [真實世界資料（real-world data，
 RWD）](https://www.fda.gov/science-research/science-and-research-special-topics/real-world-evidence)
-是日常照護中例行收集的病人健康狀態或醫療服務資料，例如電子健康紀錄、申報
-資料、登錄資料及數位健康科技資料。「真實世界」說明資料的產生情境，不代表
-資料品質已通過驗證，也不代表適合特定研究問題。
+是從多種來源例行收集、與病人健康狀態及／或醫療服務提供相關的資料，例如
+電子健康紀錄、申報資料、登錄資料及數位健康科技資料。「真實世界」說明資料
+的產生情境，不代表資料品質已通過驗證，也不代表適合特定研究問題。
 
 <a id="rwe"></a>
 ## RWE
@@ -106,6 +106,13 @@ definition](https://ohdsi.github.io/TheBookOfOhdsi/Cohorts.html)描述要辨識�
 輸入；時間、納入、排除、進入與離開條件也可能影響定義。Phenotype 需依
 預定研究問題及資料來源審查與驗證。
 
+<a id="authority-level"></a>
+## 權威層級（authority level）
+
+權威層級表示某項來源對特定主張有多大的主導力。例如，適用的官方標準可主導
+名詞定義；研討會論文通常只能補充實作經驗。這是選擇來源的標示，不保證來源
+中的每句話都正確或仍適用。
+
 <a id="data-contract"></a>
 ## 資料契約（data contract）
 
@@ -113,6 +120,34 @@ definition](https://ohdsi.github.io/TheBookOfOhdsi/Cohorts.html)描述要辨識�
 是實作必須符合的邏輯約定，包括資料粒度、鍵值、連結、涵蓋範圍、型別、時間
 錨點、術語、遺漏值、優先順序、資料沿襲及驗收 fixture。它說明需要哪些條件，
 但不會臆造機構的實體資料表或欄位名稱。
+
+<a id="execution-gate"></a>
+## 執行閘門（execution gate）
+
+執行閘門是把程式標示為可執行前必須具備的最低證據：核准的 Adapter、現行
+詮釋資料、已提供的參數，以及在目標環境通過的 fixture。缺少任何一項時，
+工作都應停在邏輯規格。
+
+<a id="code-maturity"></a>
+## 程式成熟度（code maturity）
+
+程式成熟度用一個標籤說明實作已驗證到哪個階段：`conceptual`、
+`dictionary-specified`、`parameterized`、`executable` 或 `validated`。
+不能只因為程式已寫出來就提高成熟度；相關證據與檢查也必須完成。
+
+<a id="fixture"></a>
+## 測試案例（fixture）
+
+Fixture 是一小組受控輸入與預期結果，用來測試規則。公開的安全範例可以用
+`SYNTH_PERSON_A` 測試年齡邊界，並明列這筆合成紀錄是否應納入。Fixture 是
+測試證據，不是真實病人資料。
+
+<a id="adapter"></a>
+## Adapter
+
+Adapter 是經核准且具版本控管的私有契約，用來把邏輯角色對應到機構受治理的
+實作與查核步驟。本公開儲存庫只說明 Adapter 必須證明什麼，不包含也不臆測
+任何機構的 Adapter。
 
 <a id="governing-artifact"></a>
 ## 主導依據（governing artifact）
@@ -123,6 +158,39 @@ artifact](../skills/clinical-data-research-navigator/references/retrieval-playbo
 機關指引、試驗計畫書、SAP 或經核准的機構詮釋資料。搜尋結果、教學文章或
 舊版實作論文可作為找資料的線索，但不能逕自推翻主導依據。引用時要記錄文件
 識別資訊、版本或日期、適用範圍及來源。
+
+<a id="provenance"></a>
+## 來源脈絡（provenance）
+
+來源脈絡記錄主張、資料元素或程式技巧從哪裡來，包括來源識別、版本或快照、
+存取或審閱日期，以及轉換或再利用限制。搜尋結果只能證明找到一條線索，不能
+證明已審閱線索指向的原始來源。
+
+<a id="grain"></a>
+## 資料粒度（grain）
+
+資料粒度說明一列或一筆紀錄在邏輯上代表什麼，例如每位合成人物的一次用藥
+事件。先定義粒度，可避免計數、去重與連結在不知不覺中改變意義。
+
+<a id="key-and-join-cardinality"></a>
+## 鍵值與連結基數（key and join cardinality）
+
+鍵值用來識別邏輯紀錄；連結基數說明紀錄預期是一對一、一對多或多對多，並
+指出要檢查的筆數膨脹或遺失。欄位名稱本身不能證明它具有唯一性或可安全連結。
+
+<a id="time-zero"></a>
+## 起始時間點（time zero）
+
+Time zero 是讓納入資格、治療或暴露分派與追蹤起點對齊的明確時點。對齊錯誤
+可能造成選擇偏差或不死時間偏差；設計需要時必須先定義，不能拿任一現成日期
+代替。
+
+<a id="specification-only-versus-executable"></a>
+## 僅規格與可執行輸出（specification-only versus executable）
+
+僅規格輸出會列出邏輯需求與尚未完成的檢查，不能直接執行。可執行輸出則已在
+指定的現行目標環境通過執行閘門。因此 `SPECIFICATION ONLY — NOT EXECUTABLE`
+是安全狀態，不是把未完成的規格包裝成程式。
 
 <a id="sas"></a>
 ## SAS

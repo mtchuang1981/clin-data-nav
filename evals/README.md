@@ -6,18 +6,18 @@ has a checked-in baseline response and forward response.
 <!-- BEGIN GENERATED EVAL SUMMARY -->
 | Case | Output depth | Baseline | Forward |
 | --- | --- | ---: | ---: |
-| `adam-quick-explanation` | quick explanation | 0 FAIL | 100 PASS |
-| `teae-sas-spec` | implementation specification | 0 FAIL | 100 PASS |
-| `sas-optimization-lexjansen` | evidence navigation | 10 FAIL | 210 PASS |
-| `institutional-sql-without-dictionary` | implementation specification | 10 FAIL | 100 PASS |
-| `stale-codingbook` | implementation specification | 20 FAIL | 100 PASS |
-| `cdisc-variable-definition` | quick explanation | 10 FAIL | 100 PASS |
-| `omop-phenotype` | implementation specification | 0 FAIL | 100 PASS |
-| `tmucrd-public-profile` | evidence navigation | 30 FAIL | 100 PASS |
-| `descriptive-rwd-no-tte` | research design | 0 FAIL | 140 PASS |
-| `causal-rwd-tte-handoff` | research design | 10 FAIL | 200 PASS |
-| `causal-rwd-incomplete-readiness` | research design | 0 FAIL | 150 PASS |
-| `build-rwe-sap-unavailable` | implementation specification | 20 FAIL | 170 PASS |
+| `adam-quick-explanation` | quick explanation | 0 FAIL | 140 PASS |
+| `teae-sas-spec` | implementation specification | 0 FAIL | 140 PASS |
+| `sas-optimization-lexjansen` | evidence navigation | 10 FAIL | 240 PASS |
+| `institutional-sql-without-dictionary` | implementation specification | 10 FAIL | 140 PASS |
+| `stale-codingbook` | implementation specification | 20 FAIL | 140 PASS |
+| `cdisc-variable-definition` | evidence navigation | 10 FAIL | 130 PASS |
+| `omop-phenotype` | research design | 0 FAIL | 140 PASS |
+| `tmucrd-public-profile` | evidence navigation | 30 FAIL | 130 PASS |
+| `descriptive-rwd-no-tte` | research design | 0 FAIL | 170 PASS |
+| `causal-rwd-tte-handoff` | research design | 10 FAIL | 230 PASS |
+| `causal-rwd-incomplete-readiness` | research design | 0 FAIL | 180 PASS |
+| `build-rwe-sap-unavailable` | research design | 20 FAIL | 200 PASS |
 
 > These keyword fixtures test repository behavior contracts, not clinical validity or real-world effectiveness.
 <!-- END GENERATED EVAL SUMMARY -->

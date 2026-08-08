@@ -1,39 +1,36 @@
-## Decision
-
 Output depth: research design
+Decision: Treat the request as causal-comparative and assess target-trial readiness before handoff.
+Confirmed facts: The optional build-rwe-sap status must be recorded as available, unavailable, or incompatible.
+Assumptions: No institutional mappings or compatibility evidence were supplied.
+Limitations: The Skill name alone does not establish compatibility or a complete SAP.
+Sources actually consulted: The current synthetic request and the project RWE-routing reference.
 
-Route the request as causal-comparative and assess target-trial readiness
-before any implementation or optional handoff.
+## Primary intent and design route
 
-## Research question and study-design routing
+Frame a causal-comparative question and expose unresolved target-trial design
+decisions before any downstream work.
 
-Confirm eligibility criteria, treatment strategies, assignment procedure,
-time zero, follow-up, outcome, causal contrast and estimand, censoring, and the
-analysis plan. The compatible `build-rwe-sap` status must be recorded as
-available, unavailable, or incompatible; its name alone establishes nothing.
+## Design fields and time anchors
 
-## Evidence table
+Confirm eligibility, treatment strategies, assignment, time zero, follow-up,
+outcome, causal contrast, estimand, censoring, and analysis plan.
 
-Separate confirmed requester decisions, governing methods, source fitness
-evidence, and unresolved assumptions with provenance and applicability.
+## Data suitability and claim boundary
 
-## Data contract
+Record data sources, measured confounders, provenance, coverage, and data limitations.
+RWD fitness must be assessed for the intended RWE claim.
 
-Record logical grain, cohort keys, exposure and outcome joins, observation
-coverage, temporal anchors, terminology releases, measured confounders,
-missingness, precedence, lineage, synthetic fixtures, and data limitations.
+## Bias and validation gaps
 
-## Code maturity
+Assess positivity, confounding control, measurement error, immortal-time risk,
+loss to follow-up, missingness, and unresolved validation gaps.
 
-`conceptual`; handoff fields remain a design record, not an executable SAP.
+## Analysis or diagnostics
 
-## Validation gaps
+Plan diagnostics for balance, overlap, censoring, missing data, model fit, and
+sensitivity analyses without claiming a completed causal result.
 
-List validation gaps for positivity, confounding control, measurement error,
-immortal-time risk, loss to follow-up, missing data, model diagnostics, and
-source fitness. Handoff only confirmed fields and explicit unknowns.
+## Handoff status
 
-## Sources
-
-- Approved protocol and causal methods guidance, when supplied.
-- Current source-provenance and fitness evidence, when supplied.
+Handoff only confirmed fields and explicit unknowns to a compatible optional
+`build-rwe-sap`; record its status before use.

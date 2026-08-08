@@ -46,11 +46,11 @@ not invented schema or production code.
 
 In Codex CLI or the IDE extension, use `/skills` for discovery and
 `$clinical-data-research-navigator` for explicit invocation. The ChatGPT
-desktop app has a separate installation surface: open `Skills` in the sidebar;
-some interfaces place it under **Plugins → Skills**. When your plan and
-workspace allow uploads, choose **Create**, then upload the Skill from your
-computer. Check both OpenAI's [Help Center Skills
-guide](https://help.openai.com/en/articles/20001066) and [Build Skills
+desktop app has a separate installation surface: open `Skills` through
+**Plugins → Skills → Create → Upload from computer**. This interface may vary
+by plan, workspace permissions, or rollout; continue only when your plan and
+workspace allow uploads. Check both OpenAI's [Help Center Skills
+guide](https://help.openai.com/en/articles/20001066-skills-in-chatgpt) and [Build Skills
 documentation](https://learn.chatgpt.com/docs/build-skills) for the current
 surface. The project-local `npx` command writes to `.agents/skills`; it does
 not install it into ChatGPT or establish a public Plugin-directory listing.

@@ -28,12 +28,16 @@ Before specialized routing, choose exactly one response depth:
 
 | Request intent | Output-depth label | Required shape |
 |---|---|---|
-| Definition, comparison, or beginner question | `quick explanation` | Marker, plain-language answer, why it matters, and one next step or uncertainty. |
-| Source discovery, standards, or authority conflict | `evidence navigation` | Marker, question or claim, ranked sources with authority labels, applicability, and uncertainty or gap. |
-| Study framing, PICO, estimand, RWD/RWE, or bias question | `research design` | Marker, PICO or estimand, data suitability, design or bias, analysis or diagnostics, and uncertainty or handoff. |
-| Mapping, derivation, validation, metadata, or implementation-ready request | `implementation specification` | Marker, evidence, complete data contract, code maturity, validation gaps, execution gate, and `SPECIFICATION ONLY — NOT EXECUTABLE` when required. |
+| Definition, comparison, or beginner question | `quick explanation` | Common header, direct answer, why it matters, and one or two common confusions or limits. |
+| Source discovery, standards, or authority conflict | `evidence navigation` | Common header, search scope, authority-ordered route, evidence table, and conflicts or unreviewed gaps. |
+| Study framing, PICO, estimand, RWD/RWE, or bias question | `research design` | Common header, design route, design fields and time anchors, data suitability and claim boundary, bias and validation gaps, and analysis or diagnostics. |
+| Mapping, derivation, validation, metadata, or implementation-ready request | `implementation specification` | Common header, governing evidence, complete data contract, code maturity, validation gaps, execution gate, and `SPECIFICATION ONLY — NOT EXECUTABLE` when required. |
 
 Offer a deeper depth as an optional next step; do not silently combine depths.
+Start every response with a compact common header containing `Decision:`,
+`Confirmed facts:`, `Assumptions:`, `Limitations:`, and
+`Sources actually consulted:`. Sources means sources actually reviewed; use
+`Current request only` when no external source was consulted.
 Read `references/output-depths-and-learning-paths.md` for the decision table,
 detailed shapes, and beginner learning paths.
 

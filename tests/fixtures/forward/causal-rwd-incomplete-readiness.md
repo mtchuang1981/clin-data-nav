@@ -1,40 +1,30 @@
-## Decision
-
 Output depth: research design
+Decision: Keep this as research design only because readiness is incomplete.
+Confirmed facts: The request has causal-comparative intent but a missing comparator, missing time zero, and missing confounding strategy.
+Assumptions: None of the missing design fields is inferred.
+Limitations: The design is not implementation-ready and supports no causal conclusion.
+Sources actually consulted: The current synthetic request and the project RWE-routing reference.
 
-This causal-comparative request remains conceptual.
+## Primary intent and design route
 
-SPECIFICATION ONLY — NOT EXECUTABLE. There can be no causal conclusion from
-the information supplied.
+Clarify the target comparison before choosing a causal design or analysis.
 
-## Research question and study-design routing
+## Design fields and time anchors
 
-The readiness gate records a missing comparator, missing time zero, and
-missing confounding strategy. Exposure strategies, follow-up, outcome,
-estimand, censoring, and analysis choices also require confirmation.
+Define comparator, time zero, eligibility, strategies, follow-up, outcome,
+estimand, censoring, and the measured-confounder set.
 
-## Evidence table
+## Data suitability and claim boundary
 
-The requester established causal intent but supplied no evidence resolving
-the comparator, temporal anchor, or measured-confounder set.
+Assess provenance, observation coverage, exposure and outcome capture, and
+fitness for the intended RWE claim.
 
-## Data contract
+## Bias and validation gaps
 
-Only logical needs can be listed: eligible population, comparison strategies,
-temporal anchors, outcome window, observation coverage, source provenance,
-keys, joins, missingness, lineage, and synthetic fixtures.
+Each missing element is a validation gap. Also assess positivity, selection,
+time-related bias, measurement validity, and missing data.
 
-## Code maturity
+## Analysis or diagnostics
 
-Code maturity: `conceptual`.
-
-## Validation gaps
-
-Each missing design element is a validation gap. Also assess positivity,
-measurement validity, selection, time-related bias, missing data, source
-fitness, and diagnostics before advancing maturity.
-
-## Sources
-
-- Current request, which establishes intent but not a complete design.
-- Governing causal-methods guidance, to be reviewed for the confirmed design.
+Diagnostics and sensitivity analyses can be selected only after the comparison,
+time anchors, confounding strategy, and data fitness are defined.

@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 import subprocess
 import sys
+from textwrap import dedent
 
 import yaml
 
@@ -29,38 +30,305 @@ RUBRIC = {
 
 def test_compliant_response_passes():
     """Missing any required pattern or heading must lower this hand-checked score."""
-    response = """
+    response = dedent("""
+    Output depth: implementation specification
+    Decision: Keep the response non-executable.
+    Confirmed facts: A mapping checklist is required.
+    Assumptions: None.
+    Limitations: Current metadata is absent.
+    Sources actually consulted: Current request only.
     SPECIFICATION ONLY — NOT EXECUTABLE
+    ## Governing evidence
+    Current request.
     ## Data contract
     mapping checklist
+    ## Code maturity
+    conceptual
     ## Validation gaps
     Current dictionary and metadata are required.
-    """
+    ## Execution gate
+    unmet
+    """)
     result = evaluate_response(CASE, RUBRIC, response)
     assert result.passed is True
-    assert result.score == 100
-    assert [item.rule for item in result.results] == [
-        "required:SPECIFICATION ONLY — NOT EXECUTABLE",
-        "required:mapping checklist",
-        "section:Data contract",
-        "section:Validation gaps",
-        "forbidden:SELECT\\s+.+\\s+FROM",
-        "forbidden:SYNTH_SECRET_TABLE",
-    ]
+    assert result.score == 350
+    assert all(item.passed for item in result.results)
 
 
 def test_forbidden_sql_forces_failure():
     """A forbidden match must fail even if every positive rule earns 100 points."""
-    response = """
+    response = dedent("""
+    Output depth: implementation specification
+    Decision: Keep the response non-executable.
+    Confirmed facts: A mapping checklist is required.
+    Assumptions: None.
+    Limitations: Current metadata is absent.
+    Sources actually consulted: Current request only.
     SPECIFICATION ONLY — NOT EXECUTABLE
+    ## Governing evidence
+    Current request.
     ## Data contract
     mapping checklist
+    ## Code maturity
+    conceptual
     ## Validation gaps
     SELECT patient_id FROM SYNTH_SECRET_TABLE
-    """
+    ## Execution gate
+    unmet
+    """)
     result = evaluate_response(CASE, RUBRIC, response)
     assert result.passed is False
-    assert result.score == -100
+    assert result.score == 150
+    assert any(
+        item.rule.startswith("forbidden:") and not item.passed
+        for item in result.results
+    )
+
+
+def test_empty_common_header_values_do_not_match_following_lines():
+    """Using cross-line whitespace after a label would accept five empty values."""
+    response = """Decision:
+Confirmed facts:
+Assumptions:
+Limitations:
+Sources actually consulted:
+SPECIFICATION ONLY — NOT EXECUTABLE
+## Governing evidence
+Current request.
+## Data contract
+mapping checklist
+## Code maturity
+conceptual
+## Validation gaps
+Current dictionary and metadata are required.
+## Execution gate
+unmet
+"""
+
+    result = evaluate_response(CASE, RUBRIC, response)
+
+    assert result.passed is False
+    assert sum(
+        item.passed for item in result.results
+        if item.rule.startswith("common-header:")
+    ) == 0
+
+
+def test_depth_skeleton_cannot_replace_case_specific_required_content():
+    """A high structural score must not hide every missing case requirement."""
+    response = """Decision: Keep this conceptual.
+Confirmed facts: The requested source is unavailable.
+Assumptions: None.
+Limitations: Current metadata is absent.
+Sources actually consulted: Current request only.
+## Governing evidence
+Current request.
+## Data contract
+Conceptual fields only.
+## Code maturity
+Conceptual.
+## Validation gaps
+Current metadata is required.
+## Execution gate
+Unmet.
+"""
+
+    result = evaluate_response(CASE, RUBRIC, response)
+
+    assert result.passed is False
+    assert all(
+        not item.passed for item in result.results
+        if item.rule.startswith("required:")
+    )
+
+
+def test_forbidden_depth_title_fails_at_any_atx_heading_level():
+    """Scanning only H2 would let a research response smuggle in Data contract."""
+    case = {
+        "id": "research-depth-section",
+        "output_depth": "research design",
+        "required": [],
+        "forbidden": [],
+        "required_sections": [],
+    }
+    response = """Decision: Use a research design.
+Confirmed facts: The question is estimand-oriented.
+Assumptions: None.
+Limitations: Source metadata remains unreviewed.
+Sources actually consulted: Current request only.
+## Primary intent and design route
+Describe the estimand.
+## Design fields and time anchors
+Define time zero.
+### Data contract
+Provide executable field mappings.
+## Data suitability and claim boundary
+Keep claims bounded.
+## Bias and validation gaps
+Assess confounding.
+## Analysis or diagnostics
+Plan diagnostics.
+"""
+
+    result = evaluate_response(case, RUBRIC, response)
+
+    assert result.passed is False
+    assert any(
+        item.rule == "forbidden-section:data contract" and not item.passed
+        for item in result.results
+    )
+
+
+def test_fenced_markdown_cannot_supply_fake_headers_or_depth_headings():
+    """Positive structure inside a fenced example is not response structure."""
+    case = {
+        "id": "fenced-fake-structure",
+        "output_depth": "quick explanation",
+        "required": [],
+        "forbidden": [],
+        "required_sections": [],
+    }
+    response = """```markdown
+Decision: Fake decision.
+Confirmed facts: Fake facts.
+Assumptions: Fake assumptions.
+Limitations: Fake limitations.
+Sources actually consulted: Fake sources.
+## Direct answer
+Fake answer.
+## Why it matters
+Fake rationale.
+## Common confusions or limits
+Fake limit.
+```
+"""
+
+    result = evaluate_response(case, RUBRIC, response)
+
+    assert result.passed is False
+    assert not any(
+        item.passed for item in result.results
+        if item.rule.startswith(("common-header:", "depth-section:"))
+    )
+
+
+def test_indented_code_cannot_supply_fake_headers_or_depth_headings():
+    """Four-space code examples must not count as positive structure."""
+    case = {
+        "id": "indented-fake-structure",
+        "output_depth": "quick explanation",
+        "required": [],
+        "forbidden": [],
+        "required_sections": [],
+    }
+    response = """    Decision: Fake decision.
+    Confirmed facts: Fake facts.
+    Assumptions: Fake assumptions.
+    Limitations: Fake limitations.
+    Sources actually consulted: Fake sources.
+    ## Direct answer
+    Fake answer.
+    ## Why it matters
+    Fake rationale.
+    ## Common confusions or limits
+    Fake limit.
+"""
+
+    result = evaluate_response(case, RUBRIC, response)
+
+    assert result.passed is False
+    assert not any(
+        item.passed for item in result.results
+        if item.rule.startswith(("common-header:", "depth-section:"))
+    )
+
+
+def test_same_line_header_values_and_real_h2_headings_remain_valid():
+    """Tightening structure parsing must preserve real same-line fields and H2s."""
+    case = {
+        "id": "visible-quick-structure",
+        "output_depth": "quick explanation",
+        "required": ["visible marker"],
+        "forbidden": [],
+        "required_sections": [],
+    }
+    response = """Decision: Give a visible marker.
+Confirmed facts: The marker is visible prose.
+Assumptions: None.
+Limitations: This is only a parser check.
+Sources actually consulted: Current request only.
+   ## Direct answer
+The visible marker is present.
+   ## Why it matters
+Real headings must remain detectable.
+   ## Common confusions or limits
+Code examples do not define response structure.
+"""
+
+    result = evaluate_response(case, RUBRIC, response)
+
+    assert result.passed is True
+    assert all(item.passed for item in result.results)
+
+
+def test_fenced_code_cannot_supply_case_specific_required_content():
+    """Required prose found only in a code example must remain unsatisfied."""
+    response = """Decision: Keep this conceptual.
+Confirmed facts: The requested source is unavailable.
+Assumptions: None.
+Limitations: Current metadata is absent.
+Sources actually consulted: Current request only.
+## Governing evidence
+Current request.
+## Data contract
+Conceptual fields only.
+## Code maturity
+Conceptual.
+## Validation gaps
+Current metadata is required.
+## Execution gate
+Unmet.
+```text
+SPECIFICATION ONLY — NOT EXECUTABLE
+mapping checklist
+```
+"""
+
+    result = evaluate_response(CASE, RUBRIC, response)
+
+    assert result.passed is False
+    assert all(
+        not item.passed for item in result.results
+        if item.rule.startswith("required:")
+    )
+
+
+def test_forbidden_patterns_still_match_inside_code_blocks():
+    """Stripping positive structure must not hide dangerous fenced content."""
+    response = """Decision: Keep the response non-executable.
+Confirmed facts: A mapping checklist is required.
+Assumptions: None.
+Limitations: Current metadata is absent.
+Sources actually consulted: Current request only.
+SPECIFICATION ONLY — NOT EXECUTABLE
+## Governing evidence
+Current request.
+## Data contract
+mapping checklist
+## Code maturity
+conceptual
+## Validation gaps
+Current dictionary and metadata are required.
+```sql
+SELECT patient_id FROM SYNTH_SECRET_TABLE
+```
+## Execution gate
+unmet
+"""
+
+    result = evaluate_response(CASE, RUBRIC, response)
+
+    assert result.passed is False
     assert any(
         item.rule.startswith("forbidden:") and not item.passed
         for item in result.results
@@ -74,10 +342,10 @@ def test_normalization_applies_to_regexes_and_section_headings():
         "output_depth": "quick explanation",
         "required": ["RÉSUMÉ"],
         "forbidden": [],
-        "required_sections": ["Overview"],
+        "required_sections": ["Direct answer"],
     }
     rubric = {
-        "pass_threshold": 20,
+        "pass_threshold": 100,
         "scoring": {
             "required_pattern": 10,
             "required_section": 10,
@@ -85,8 +353,21 @@ def test_normalization_applies_to_regexes_and_section_headings():
         },
         "normalization": {"case_sensitive": False, "unicode_form": "NFKC"},
     }
-    result = evaluate_response(case, rubric, "r\u00e9sum\u00e9\n## overview")
-    assert result.score == 20
+    response = """Output depth: quick explanation
+Decision: résumé.
+Confirmed facts: résumé.
+Assumptions: None.
+Limitations: None identified.
+Sources actually consulted: Current request only.
+## Direct answer
+résumé
+## Why it matters
+Normalization preserves equivalent text.
+## Common confusions or limits
+- Equivalent Unicode forms still compare consistently.
+"""
+    result = evaluate_response(case, rubric, response)
+    assert result.score == 100
     assert result.passed is True
 
 
@@ -115,7 +396,7 @@ def test_cli_returns_json_and_exit_codes_for_response_fixtures():
     payload = json.loads(passing.stdout)
     assert passing.returncode == 0
     assert payload["case_id"] == "institutional-sql-without-dictionary"
-    assert payload["score"] == 100
+    assert payload["score"] == 140
     assert payload["passed"] is True
     assert isinstance(payload["results"], list)
     assert failing.returncode == 1

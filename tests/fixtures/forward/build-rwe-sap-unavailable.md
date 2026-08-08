@@ -1,40 +1,36 @@
-## Decision
+Output depth: research design
+Decision: Continue safe Core research design when build-rwe-sap is unavailable.
+Confirmed facts: The optional Skill is not bundled and not automatically installed.
+Assumptions: Compatibility and availability have not been established.
+Limitations: A complete SAP is not delivered.
+Sources actually consulted: The current synthetic request and the project RWE-routing reference.
 
-Output depth: implementation specification
+## Primary intent and design route
 
-`build-rwe-sap` is an optional capability, not bundled and not automatically installed.
-Its status is unavailable, so continue the safe Core workflow.
-A complete SAP is not delivered.
+Clarify causal intent and continue the Core workflow without making the
+optional Skill mandatory.
 
-## Research question and study-design routing
+## Design fields and time anchors
 
-Clarify causal intent, population, strategies, comparator, outcomes, time zero,
-follow-up, estimand, measured confounders, and data limitations. Preserve
-unknowns for later handoff.
+Record population, strategies, comparator, outcomes, time zero, follow-up,
+estimand, measured confounders, and data limitations.
 
-## Evidence table
+## Data suitability and claim boundary
 
-Continue evidence navigation for governing methods and source-fitness evidence.
-Record provenance, applicability, conflicts, and unreviewed gaps.
+Continue evidence navigation for governing methods and source fitness, and
+record the logical data needs without mapping physical objects.
 
-## Data contract
+## Bias and validation gaps
 
-Prepare a logical data contract covering grain, keys, joins, coverage, types,
-time anchors, terminology, missingness, precedence, lineage, and acceptance
-fixtures; do not map physical institutional objects.
+Availability, compatibility, design completeness, provenance, data fitness,
+and validation remain open.
 
-## Code maturity
+## Analysis or diagnostics
 
-`conceptual`
+Plan appropriate diagnostics only after the causal question and data fitness
+are sufficiently defined; no completed analysis is claimed.
 
-SPECIFICATION ONLY — NOT EXECUTABLE.
+## Handoff status
 
-## Validation gaps
-
-The optional Skill's availability and compatibility, complete design fields,
-approved metadata, source fitness, mappings, fixtures, and review remain open.
-
-## Sources
-
-- Current request and the Clinical Data Research Navigator Core workflow.
-- Governing methods and institutional artifacts when supplied and reviewed.
+`build-rwe-sap` is unavailable. Continue the safe Core work and revisit the
+optional handoff only if a compatible interface later becomes available.

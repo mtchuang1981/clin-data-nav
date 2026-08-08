@@ -9,6 +9,13 @@ OUTPUT_DEPTHS = {
     "research design",
     "implementation specification",
 }
+COMMON_HEADER_FIELDS = (
+    "Decision:",
+    "Confirmed facts:",
+    "Assumptions:",
+    "Limitations:",
+    "Sources actually consulted:",
+)
 
 
 def test_skill_routes_all_six_references():
@@ -55,11 +62,12 @@ def test_quick_shape_stays_light_and_implementation_shape_is_complete():
     quick_shape = text.split("## Quick Explanation", 1)[1].split(
         "## Evidence Navigation", 1
     )[0].lower()
+    quick_required_shape = quick_shape.split("```text", 1)[1].split("```", 1)[0]
     implementation_shape = text.split(
         "## Implementation Specification", 1
     )[1].lower()
 
-    assert "data contract" not in quick_shape
+    assert "data contract" not in quick_required_shape
     for required in (
         "governing artifact",
         "grain",
@@ -71,6 +79,64 @@ def test_quick_shape_stays_light_and_implementation_shape_is_complete():
         "specification only — not executable",
     ):
         assert required in implementation_shape
+
+
+def test_depth_templates_share_the_approved_header_and_distinct_mode_contracts():
+    """Removing a header field or mixing implementation sections into quick must fail."""
+    template = (
+        SKILL / "references/evidence-output-template.md"
+    ).read_text(encoding="utf-8")
+    depth_reference = (
+        SKILL / "references/output-depths-and-learning-paths.md"
+    ).read_text(encoding="utf-8")
+
+    for text in (template, depth_reference):
+        common = text.split("## Quick Explanation", 1)[0]
+        for field in COMMON_HEADER_FIELDS:
+            assert field in common
+
+        quick = text.split("## Quick Explanation", 1)[1].split(
+            "## Evidence Navigation", 1
+        )[0]
+        quick_required = quick.split("```text", 1)[1].split("```", 1)[0]
+        assert "Common confusions or limits" in quick_required
+        for forbidden in ("Evidence table", "Data contract", "Code maturity"):
+            assert forbidden not in quick_required
+
+        evidence = text.split("## Evidence Navigation", 1)[1].split(
+            "## Research Design", 1
+        )[0]
+        for required in (
+            "Search scope",
+            "Authority-ordered route",
+            "Evidence table",
+            "Conflicts and unreviewed gaps",
+        ):
+            assert required in evidence
+
+        research = text.split("## Research Design", 1)[1].split(
+            "## Implementation Specification", 1
+        )[0]
+        for required in (
+            "Primary intent and design route",
+            "Design fields and time anchors",
+            "Data suitability and claim boundary",
+            "Bias and validation gaps",
+            "Analysis or diagnostics",
+        ):
+            assert required in research
+
+        implementation = text.split(
+            "## Implementation Specification", 1
+        )[1]
+        for required in (
+            "Governing evidence",
+            "Data contract",
+            "Code maturity",
+            "Validation gaps",
+            "Execution gate",
+        ):
+            assert required in implementation
 
 
 def test_build_rwe_sap_is_optional():
@@ -124,7 +190,7 @@ def test_build_rwe_sap_handoff_and_degraded_operation_are_complete():
     template = (
         SKILL / "references/evidence-output-template.md"
     ).read_text(encoding="utf-8")
-    assert "## Research question and study-design routing" in template
+    assert "Research question and study-design routing" in template
     assert "available, unavailable, or incompatible" in template
 
 

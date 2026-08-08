@@ -1,36 +1,31 @@
-## Decision
+Output depth: evidence navigation
+Decision: Resolve the definition through official CDISC sources before using implementation literature.
+Confirmed facts: Controlled terminology and the applicable official model or guide govern different parts of a variable definition.
+Assumptions: No study-specific metadata or governing release was supplied.
+Limitations: A conference paper can inform implementation but cannot override an official definition.
+Sources actually consulted: The current synthetic request and the project authority-routing reference.
 
-Output depth: quick explanation
+## Search scope
 
-Define the synthetic variable from the applicable official CDISC model,
-implementation guide, and controlled terminology version. A conference paper
-is secondary implementation evidence and cannot displace those sources.
+Identify the applicable CDISC model, implementation guide, controlled
+terminology release, and study-specific metadata for the synthetic variable.
+
+## Authority-ordered route
+
+Review official CDISC publications and controlled terminology first, then the
+approved study metadata. Review a conference paper only as secondary
+implementation evidence.
 
 ## Evidence table
 
-| Evidence | Role |
-|---|---|
-| Official CDISC publication and controlled terminology | Governing definition and allowed values |
-| Approved study metadata | Study-specific use and derivation |
-| Conference paper | Non-governing implementation context |
+| Evidence class | Applicability | Provenance limit |
+|---|---|---|
+| Official CDISC model or guide | Governing structure and definition | Confirm applicable version |
+| Controlled terminology | Allowed standardized values | Confirm release |
+| Conference paper | Implementation context | Not governing authority |
 
-## Data contract
+## Conflicts and unreviewed gaps
 
-Record the logical concept, dataset grain, variable role, type, length,
-terminology release, origin, missingness, derivation lineage, and acceptance
-examples before mapping to local fields.
-
-## Code maturity
-
-`conceptual`; no local implementation has been established.
-
-## Validation gaps
-
-Confirm the governing release, study metadata, conformance expectations, and
-approved source mapping.
-
-## Sources
-
-- Applicable official CDISC model, implementation guide, and controlled
-  terminology release.
-- Approved study metadata when available.
+The applicable releases and study metadata were not reviewed. If a conference
+paper conflicts with official CDISC or controlled terminology, preserve the
+conflict and follow the official governing source.

@@ -13,6 +13,9 @@ does reach implementation, the execution gate still applies.
 ADaM, the protocol, the statistical analysis plan (SAP), and implementation
 evidence.
 
+**Prerequisites:** Bring one clinical-trial term, deliverable, or decision you
+want to understand; no programming or institutional data is required.
+
 **Starting prompt:** “In `quick explanation` depth, what is SDTM, how does it
 relate to ADaM, and what does neither standard prove about source-data
 quality?”
@@ -20,6 +23,9 @@ quality?”
 **Expected depth:** Start with `quick explanation`. Move to `evidence
 navigation` only when you need an applicable standard version, implementation
 guide, regulator requirement, or study-specific governing artifact.
+
+**Cannot prove:** This path cannot prove source-data quality, a study-specific
+mapping, submission readiness, or implementation validity.
 
 **Next reading:** Review [CDISC, SDTM, and ADaM in the
 glossary](./glossary.md#cdisc), the [installation guide](./installation.md),
@@ -39,6 +45,10 @@ mapping or derivation contract. Do not infer a local mapping from a standard.
 then decide whether a descriptive or causal-comparative research design is
 warranted.
 
+**Prerequisites:** State the research intent, intended use, population or
+setting, and the type of RWD source being considered; unknowns may remain
+explicit.
+
 **Starting prompt:** “In `evidence navigation` depth, identify the governing
 sources for this RWD question, separate RWD from the RWE claim, and list the
 design information still missing.”
@@ -47,6 +57,9 @@ design information still missing.”
 to `research design` after the question is clear enough to specify PICO or an
 estimand, time zero, follow-up, data fitness, bias, and diagnostics. Target
 trial emulation is considered only for a causal-comparative question.
+
+**Cannot prove:** This path cannot prove causal validity, data fitness,
+measurement validity, or a completed analysis.
 
 **Next reading:** Review [RWD, RWE, PICO, target trial emulation, estimand, and
 phenotype](./glossary.md#rwd), the [installation guide](./installation.md), the
@@ -65,6 +78,10 @@ analysis when confounding, measurement, provenance, or validation gaps remain.
 **Goal:** Convert public evidence and a defined decision into a logical data
 contract without inventing an institution's physical schema.
 
+**Prerequisites:** Bring a defined decision, its governing evidence, and only
+the authorized logical requirements that may be discussed publicly. Keep any
+institution-owned metadata in its approved private workflow.
+
 **Starting prompt:** “In `implementation specification` depth, prepare a
 logical derivation specification using only public synthetic examples, and
 list what approved metadata and fixtures are still required.”
@@ -73,6 +90,9 @@ list what approved metadata and fixtures are still required.”
 `SPECIFICATION ONLY — NOT EXECUTABLE` until the approved Adapter, current live
 metadata, parameters, and acceptance fixtures satisfy the execution gate.
 Generating source code is not required when those inputs are absent.
+
+**Cannot prove:** A logical specification cannot prove that local mappings are
+current, fixtures pass, code is executable, or results are validated.
 
 **Next reading:** Review [data contract, governing artifact, SAS, and
 validation gap](./glossary.md#data-contract), the [installation

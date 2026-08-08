@@ -1,34 +1,27 @@
-## Decision
-
 Output depth: evidence navigation
+Decision: Provide publication-level background only, not implementation guidance.
+Confirmed facts: A peer-reviewed public profile is identified by DOI 10.1136/bmjhci-2023-100890.
+Assumptions: None about private or current institutional metadata.
+Limitations: The public profile is not a schema and not an institutional query guide.
+Sources actually consulted: Nguyen PA et al., public database profile, DOI 10.1136/bmjhci-2023-100890.
 
-Public source snapshot: 2026-07-27. Provide only a public-background profile
-from that snapshot. It is not a schema and not an institutional query guide.
+## Search scope
+
+Public source snapshot: 2026-07-27. Limit the answer to background claims
+supported by the identified publication.
+
+## Authority-ordered route
+
+Use the peer-reviewed public profile for publication-level background. Current
+owner-approved artifacts would be required for any local implementation claim.
 
 ## Evidence table
 
-| Claim | Evidence | Applicability | Limitation |
+| Claim | Provenance | Applicability | Limitation |
 |---|---|---|---|
-| TMUCRD is described as a multi-hospital real-world-data resource. | Peer-reviewed public profile, DOI 10.1136/bmjhci-2023-100890 | Publication-level background | Does not establish current local structures or access |
+| TMUCRD is publicly described as a multi-hospital real-world-data resource. | DOI 10.1136/bmjhci-2023-100890 | Public background | No current local structures or access facts |
 
-## Data contract
+## Conflicts and unreviewed gaps
 
-No local data contract can be derived from a public profile. Grain, keys,
-joins, field meanings, coverage, and permissions require owner-approved
-current artifacts.
-
-## Code maturity
-
-`conceptual`
-
-The public evidence does not authorize an implementation.
-
-## Validation gaps
-
-Current owner-approved documentation, live metadata, access governance, and
-tested fixtures were not reviewed. No private metadata is inferred.
-
-## Sources
-
-- Nguyen PA et al., 2024 public database profile, DOI
-  10.1136/bmjhci-2023-100890.
+No current institutional artifacts, live metadata, or access rules were
+reviewed. No private metadata is inferred.
