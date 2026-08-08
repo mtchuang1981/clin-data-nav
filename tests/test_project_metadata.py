@@ -541,6 +541,38 @@ def test_pyproject_declares_explicit_setuptools_package_boundary():
     assert project["tool"]["setuptools"]["packages"] == ["scripts"]
 
 
+def test_dependabot_version_updates_are_bounded_and_reviewable():
+    path = ROOT / ".github/dependabot.yml"
+    config = yaml.safe_load(path.read_text(encoding="utf-8"))
+
+    assert config["version"] == 2
+    assert set(config) == {"version", "updates"}
+
+    updates = config["updates"]
+    by_ecosystem = {entry["package-ecosystem"]: entry for entry in updates}
+    assert len(updates) == 2
+    assert set(by_ecosystem) == {"pip", "github-actions"}
+
+    forbidden_keys = {
+        "assignees",
+        "groups",
+        "ignore",
+        "registries",
+        "reviewers",
+        "target-branch",
+    }
+    for entry in updates:
+        assert entry["directory"] == "/"
+        assert entry["schedule"] == {"interval": "weekly"}
+        assert entry["open-pull-requests-limit"] == 5
+        assert forbidden_keys.isdisjoint(entry)
+
+    assert by_ecosystem["pip"]["versioning-strategy"] == (
+        "increase-if-necessary"
+    )
+    assert "versioning-strategy" not in by_ecosystem["github-actions"]
+
+
 def test_ci_has_dual_platform_read_only_jobs_and_required_commands():
     workflow_path = ROOT / ".github/workflows/validate.yml"
     workflow = yaml.load(
