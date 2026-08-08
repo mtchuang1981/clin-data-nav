@@ -1025,20 +1025,20 @@ def test_release_version_is_synchronized():
         "citation": citation["version"],
         "packager": PACKAGER_VERSION,
         "installer": INSTALLER_VERSION,
-        "changelog": changelog.splitlines()[2].removeprefix("## ").removesuffix(
-            " - Unreleased"
-        ),
+        "changelog": changelog.splitlines()[2]
+        .removeprefix("## ")
+        .split(" - ", 1)[0],
         "changelog-zh-TW": changelog_zh_tw.splitlines()[2]
         .removeprefix("## ")
-        .removesuffix(" - Unreleased"),
+        .split(" - ", 1)[0],
         "release-notes": release_notes.splitlines()[0].rsplit("v", 1)[1],
     }
 
     assert len(active_surfaces) == 7
     assert set(active_surfaces.values()) == {current_version}
-    assert "## 0.3.0 - Unreleased" in changelog
-    assert "## 0.3.0 - Unreleased" in changelog_zh_tw
-    assert "date-released" not in citation
+    assert "## 0.3.0 - 2026-08-08" in changelog
+    assert "## 0.3.0 - 2026-08-08" in changelog_zh_tw
+    assert citation["date-released"] == "2026-08-08"
 
     # Published history remains immutable while current surfaces advance.
     assert "## 0.2.2 - 2026-07-29" in changelog
@@ -1529,7 +1529,7 @@ def test_citation_has_required_cff_1_2_schema_shape_and_author():
         )
 
 
-def test_citation_points_to_the_public_repository_without_an_unverified_release_date():
+def test_citation_points_to_the_public_repository_with_the_verified_release_date():
     citation = yaml.safe_load(
         (ROOT / "CITATION.cff").read_text(encoding="utf-8")
     )
@@ -1537,7 +1537,7 @@ def test_citation_points_to_the_public_repository_without_an_unverified_release_
     repository_url = "https://github.com/mtchuang1981/clin-data-nav"
     assert citation["url"] == repository_url
     assert citation["repository-code"] == repository_url
-    assert "date-released" not in citation
+    assert citation["date-released"] == "2026-08-08"
 
 
 def test_security_policy_has_supported_versions_and_safe_confidential_reporting():
