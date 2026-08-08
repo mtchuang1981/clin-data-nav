@@ -21,12 +21,15 @@ contents, login-gated documents, or an exploit payload containing such
 material in a public issue.
 
 On 2026-08-09 (Asia/Taipei), GitHub's read-only repository API reported that
-private vulnerability reporting is not enabled for this repository. While
-that remains unavailable, open a public issue containing only a non-sensitive
-request for private coordination. Include no vulnerability details, samples,
-or sensitive payload. A maintainer can then arrange a private channel before
-details are exchanged. An ordinary security concern that contains no sensitive
-material may be reported in a public issue.
+private vulnerability reporting is enabled for this repository. Submit a
+private report through
+`https://github.com/mtchuang1981/clin-data-nav/security/advisories/new`; do not
+put vulnerability details, samples, or sensitive payloads in a public issue.
+If the private form is unavailable to a reporter, open a public issue
+containing only a non-sensitive request for private coordination. A maintainer
+can then arrange a private channel before details are exchanged. An ordinary
+security concern that contains no sensitive material may be reported in a
+public issue.
 
 Repository state can change. Maintainers must re-read the setting rather than
 treat this dated observation as current proof.

@@ -1164,6 +1164,42 @@ def test_v030_publication_report_records_exact_public_evidence():
     assert "No external repository setting was changed" in normalized
 
 
+def test_github_settings_evidence_records_verified_post_change_state():
+    report = (
+        ROOT / "docs/verification/2026-08-09-github-settings.md"
+    ).read_text(encoding="utf-8")
+    normalized = " ".join(report.split())
+
+    for topic in (
+        "agent-skills",
+        "cdisc",
+        "clinical-research",
+        "omop",
+        "rwe",
+        "sas",
+    ):
+        assert topic in normalized
+    for required_state in (
+        "branch protection: enabled",
+        "strict: true",
+        "enforce administrators: false",
+        "force pushes: disabled",
+        "branch deletion: disabled",
+        "rulesets: none",
+        "private vulnerability reporting: enabled",
+        "vulnerability alerts: enabled",
+        "Dependabot security updates: enabled",
+        "paused: false",
+        "test (ubuntu-latest)",
+        "test (windows-latest)",
+        "compare-packages",
+        "14755a9a0d3daabfd252f6fa12ee7361ef56754f",
+        "31266889594",
+    ):
+        assert required_state.casefold() in normalized.casefold()
+    assert "No tag or GitHub Release was changed" in normalized
+
+
 def test_readmes_put_a_real_first_success_path_in_the_first_30_nonblank_lines():
     documents = (
         (
@@ -1600,7 +1636,9 @@ def test_security_policy_has_supported_versions_and_safe_confidential_reporting(
         assert prohibited_public_material in normalized
     assert "public issue" in normalized
     assert "2026-08-09" in normalized
-    assert "private vulnerability reporting is not enabled" in normalized
+    assert "private vulnerability reporting is enabled" in normalized
+    assert "security/advisories/new" in normalized
+    assert "private vulnerability reporting is not enabled" not in normalized
     assert "non-sensitive request for private coordination" in normalized
     assert "best effort" in normalized
     assert not re.search(
