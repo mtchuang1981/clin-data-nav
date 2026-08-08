@@ -51,6 +51,12 @@ After approval:
    `clinical-data-research-navigator-X.Y.Z.manifest.json`.
 6. Download both assets and independently confirm the ZIP SHA-256 equals
    `archive_sha256` in the manifest.
+7. Record the verified main commit, annotated tag object and peeled commit,
+   validation and Release workflow URLs, public Release URL, asset IDs, sizes,
+   and SHA-256 values in a new dated verification report under
+   `docs/verification/`. Clearly separate verified public facts from external
+   settings that remain disabled or unevaluated, then commit and push the
+   report without moving the published tag or editing the Release.
 
 Never force-move a published tag or rerun publication to overwrite an existing
 Release. Prepare a new patch version instead.

@@ -1121,6 +1121,49 @@ def test_v030_release_notes_are_static_bilingual_and_uploadable():
         assert candidate_or_external_claim.casefold() not in notes.casefold()
 
 
+def test_release_process_requires_a_committed_post_release_evidence_report():
+    process = " ".join(
+        (ROOT / "docs/release.md").read_text(encoding="utf-8").split()
+    )
+
+    assert "new dated verification report" in process
+    assert "commit and push" in process
+    assert "tag object" in process
+    assert "asset IDs" in process
+    assert "SHA-256" in process
+
+
+def test_v030_publication_report_records_exact_public_evidence():
+    report = (
+        ROOT / "docs/verification/2026-08-09-v0.3.0-publication.md"
+    ).read_text(encoding="utf-8")
+    normalized = " ".join(report.split())
+
+    required = (
+        "6cf9593dd8a520f56e1e6e5b0bf2cb7d40b97791",
+        "87ca8f379f6751fc465dbcd6ae8f430dabc73523",
+        "31263843137",
+        "31263961241",
+        "https://github.com/mtchuang1981/clin-data-nav/releases/tag/v0.3.0",
+        "506494592",
+        "506494593",
+        "18591",
+        "1265",
+        "ce6a67a268e4266d094db31406a9c5dda3f005c3b6a5355ec851ea87abf3aded",
+        "d3862e00fcf499fa453e6cac05b6f3e21f9b2a9d735d2579a4a5b834caee42bc",
+        "scripts/verify_release.py artifacts",
+    )
+    for value in required:
+        assert value in normalized
+
+    assert "branch protection: disabled" in normalized
+    assert "rulesets: none" in normalized
+    assert "topics: none" in normalized
+    assert "private vulnerability reporting: disabled" in normalized
+    assert "Dependabot security updates: disabled" in normalized
+    assert "No external repository setting was changed" in normalized
+
+
 def test_readmes_put_a_real_first_success_path_in_the_first_30_nonblank_lines():
     documents = (
         (
@@ -1198,22 +1241,23 @@ def test_installation_guides_preserve_quick_update_verified_and_source_paths():
         (
             (ROOT / "docs/installation.md").read_text(encoding="utf-8"),
             ENGLISH_ONBOARDING_CONTRACT,
-            "target version for the next release is `0.3.0`",
-            "not yet a claim that `v0.3.0` is published",
+            "current verified Release is `v0.3.0`",
+            ("target version for the next release", "not yet a claim"),
         ),
         (
             (ROOT / "docs/installation.zh-TW.md").read_text(encoding="utf-8"),
             TRADITIONAL_CHINESE_ONBOARDING_CONTRACT,
-            "下一個 Release 的目標版本是 `0.3.0`",
-            "不表示 `v0.3.0` 已經發布",
+            "目前已驗證的 Release 是 `v0.3.0`",
+            ("下一個 Release", "不表示"),
         ),
     )
 
-    for text, onboarding_contract, target_claim, prerelease_claim in documents:
+    for text, onboarding_contract, published_claim, stale_claims in documents:
         _assert_readme_onboarding_contract(text, **onboarding_contract)
         normalized = " ".join(text.split())
-        assert target_claim in normalized
-        assert prerelease_claim in normalized
+        assert published_claim in normalized
+        for stale_claim in stale_claims:
+            assert stale_claim not in normalized
         assert 'releaseVersion = "0.3.0"' in text
         assert 'release_version="0.3.0"' in text
         assert "$HOME/.agents/skills" in text
@@ -1545,7 +1589,9 @@ def test_security_policy_has_supported_versions_and_safe_confidential_reporting(
     normalized = " ".join(security.split())
 
     assert "| Version | Supported |" in security
-    assert "0.2.x" in security
+    assert "`0.3.x` | Yes" in normalized
+    assert "`< 0.3` | No" in normalized
+    assert "`0.2.x` | Yes" not in normalized
     for prohibited_public_material in (
         "secrets",
         "PII",
@@ -1553,7 +1599,7 @@ def test_security_policy_has_supported_versions_and_safe_confidential_reporting(
     ):
         assert prohibited_public_material in normalized
     assert "public issue" in normalized
-    assert "2026-08-02" in normalized
+    assert "2026-08-09" in normalized
     assert "private vulnerability reporting is not enabled" in normalized
     assert "non-sensitive request for private coordination" in normalized
     assert "best effort" in normalized

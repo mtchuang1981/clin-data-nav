@@ -2,13 +2,13 @@
 
 ## Supported versions
 
-The newest published release line receives security fixes. As of 2026-08-02,
-that line is `0.2.x`.
+The newest published release line receives security fixes. As of 2026-08-09,
+that line is `0.3.x`.
 
 | Version | Supported |
 |---|---|
-| `0.2.x` | Yes |
-| `< 0.2` | No |
+| `0.3.x` | Yes |
+| `< 0.3` | No |
 
 Support and response timing are best effort. This project does not promise an
 acknowledgement or remediation service level.
@@ -20,7 +20,7 @@ protected health information, private data dictionaries, private Adapter
 contents, login-gated documents, or an exploit payload containing such
 material in a public issue.
 
-On 2026-08-02 (Asia/Taipei), GitHub's read-only repository API reported that
+On 2026-08-09 (Asia/Taipei), GitHub's read-only repository API reported that
 private vulnerability reporting is not enabled for this repository. While
 that remains unavailable, open a public issue containing only a non-sensitive
 request for private coordination. Include no vulnerability details, samples,

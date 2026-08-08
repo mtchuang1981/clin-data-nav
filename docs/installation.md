@@ -68,12 +68,10 @@ follow the stage-specific recovery below instead of reinstalling blindly.
 
 ## Verified ZIP installation from a GitHub Release
 
-The target version for the next release is `0.3.0`. The commands below are a
-target-version example, not yet a claim that `v0.3.0` is published. Do not run
-them until the repository's Release page contains both the matching ZIP and
-manifest. Download both assets from that same Release, verify the ZIP's
-SHA-256 against `archive_sha256`, and only then extract it. These examples
-refuse to overwrite an existing destination.
+The current verified Release is `v0.3.0`. Download both the ZIP and manifest
+from that same Release, verify the ZIP's SHA-256 against `archive_sha256`, and
+only then extract it. These examples refuse to overwrite an existing
+destination.
 
 PowerShell:
 

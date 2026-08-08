@@ -64,11 +64,9 @@ npx skills update clinical-data-research-navigator --project --yes
 
 ## 從 GitHub Release 驗證 ZIP 後安裝
 
-下一個 Release 的目標版本是 `0.3.0`。下列指令是目標版本範例，不表示
-`v0.3.0` 已經發布。請等到儲存庫的 Release 頁面同時提供相符的 ZIP 與
-manifest 後再執行。兩個檔案必須來自同一個 Release；先用 manifest 內的
-`archive_sha256` 核對 ZIP 的 SHA-256，再解壓縮。以下範例遇到既有目的
-目錄時會停止，不會覆寫。
+目前已驗證的 Release 是 `v0.3.0`。請從同一個 Release 下載 ZIP 與 manifest，
+先用 `archive_sha256` 核對 ZIP 的 SHA-256，再進行解壓縮。下列範例遇到既有
+目的目錄時會拒絕覆寫。
 
 PowerShell：
 
