@@ -28,6 +28,13 @@ def test_agents_policy_requires_skill_sync_and_final_diff_review():
     assert "Before completion, review git diff." in text
 
 
+def test_agents_policy_prohibits_human_study_raw_material():
+    text = (ROOT / "AGENTS.md").read_text(encoding="utf-8")
+    assert "Do not read or commit human participant data" in text
+    assert "condition keys" in text
+    assert "human answer text" in text
+
+
 def test_eval_catalog_has_twelve_unique_cases():
     data = yaml.safe_load((ROOT / "evals/cases.yaml").read_text(encoding="utf-8"))
     cases = data["cases"]

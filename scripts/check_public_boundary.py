@@ -26,6 +26,8 @@ PRIVATE_NAMES = {
     "tmucrd-v2.16-guide.md",
 }
 PRIVATE_PARTS = ("codingbook", "codebook", "dictionary.txt")
+PRIVATE_STUDY_ROOTS = {Path("study-data")}
+PRIVATE_EFFECTIVENESS_PARTS = {"raw", "private", "participant-data"}
 SECRET_PATTERNS = (
     re.compile(r"(?i)\b(api[_-]?key|token|password)\b\s*[:=]\s*['\"][^'\"]{12,}"),
     re.compile(r"\bsk-[A-Za-z0-9_-]{16,}\b"),
@@ -102,6 +104,19 @@ def _is_sdd_scratch_path(relative_path: Path) -> bool:
     )
 
 
+def _is_private_study_path(relative_path: Path) -> bool:
+    if any(
+        relative_path == root or root in relative_path.parents
+        for root in PRIVATE_STUDY_ROOTS
+    ):
+        return True
+    effectiveness = Path("evals/effectiveness")
+    if effectiveness not in relative_path.parents:
+        return False
+    remainder = relative_path.relative_to(effectiveness)
+    return bool(remainder.parts) and remainder.parts[0] in PRIVATE_EFFECTIVENESS_PARTS
+
+
 def scan_repository(root: Path, max_text_bytes: int = 200_000) -> list[Finding]:
     """Return deterministic public-boundary findings below *root*."""
     findings: list[Finding] = []
@@ -148,6 +163,15 @@ def scan_repository(root: Path, max_text_bytes: int = 200_000) -> list[Finding]:
                 and tracked_paths is not None
                 and relative_path not in tracked_paths
             ):
+                continue
+            if _is_private_study_path(relative):
+                findings.append(
+                    Finding(
+                        relative_path,
+                        "private-study-data",
+                        "human-study raw data is not permitted in the public project",
+                    )
+                )
                 continue
             lowercase_name = filename.lower()
 

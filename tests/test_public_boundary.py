@@ -242,6 +242,39 @@ def test_scanner_returns_findings_in_path_and_rule_order(tmp_path):
     ]
 
 
+@pytest.mark.parametrize(
+    "relative_path",
+    [
+        "study-data/participants.json",
+        "evals/effectiveness/raw/answers.json",
+        "evals/effectiveness/private/condition-key.json",
+        "evals/effectiveness/participant-data/scores.json",
+    ],
+)
+def test_scanner_rejects_human_study_private_paths(tmp_path, relative_path):
+    path = tmp_path / relative_path
+    path.parent.mkdir(parents=True)
+    path.write_text("synthetic boundary sentinel", encoding="utf-8")
+
+    findings = scan_repository(tmp_path)
+
+    assert [(item.path, item.rule) for item in findings] == [
+        (relative_path, "private-study-data")
+    ]
+
+
+def test_scanner_does_not_print_private_study_payload(tmp_path):
+    payload = "participant-answer-must-not-appear"
+    path = tmp_path / "study-data/answers.json"
+    path.parent.mkdir()
+    path.write_text(payload, encoding="utf-8")
+
+    finding = scan_repository(tmp_path)[0]
+
+    assert finding.detail == "human-study raw data is not permitted in the public project"
+    assert payload not in finding.detail
+
+
 def test_public_profile_has_required_public_source_guards():
     text = PROFILE.read_text(encoding="utf-8")
     assert "public source snapshot" in text

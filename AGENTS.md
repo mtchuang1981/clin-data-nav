@@ -7,6 +7,8 @@ Read the approved design and current implementation plan before editing.
 Do not read or copy private TMUCRD adapters, codingbooks, data dictionaries,
 internal guides, physical schema, linkage rules, PII classifications, or
 version-specific metadata into this repository.
+Do not read or commit human participant data, condition keys, human answer text,
+study assignment files, consent records, or repository-external human task packs.
 
 ## Development
 Add or update a failing test before changing behavior. Use only synthetic

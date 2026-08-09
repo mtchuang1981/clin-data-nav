@@ -12,3 +12,7 @@ __pycache__/
 .pytest_cache/
 *.pyc
 .worktrees/
+study-data/
+evals/effectiveness/raw/
+evals/effectiveness/private/
+evals/effectiveness/participant-data/
