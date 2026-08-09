@@ -100,6 +100,28 @@ GitHub returns `204 No Content` when automated security fixes are enabled and
 the UI state as well; an unreadable API response is not evidence of either
 state.
 
+## CodeQL default setup
+
+GitHub UI path: **Settings → Security → Advanced Security → CodeQL analysis**.
+The approved default setup analyzes `actions` and `python` with the `default`
+query suite, `remote` threat model, `standard` runner, and `weekly` schedule.
+CodeQL is not currently a required check; do not add it to branch protection
+until its exact PR check names and availability have been observed and a
+separate change is approved.
+
+Read-only post-change re-read:
+
+```bash
+gh api --method GET \
+  repos/mtchuang1981/clin-data-nav/code-scanning/default-setup
+gh api --method GET \
+  'repos/mtchuang1981/clin-data-nav/code-scanning/alerts?state=open'
+```
+
+Confirm the stored configuration, inspect both language analyses, and review
+every alert. A successful scan and zero results do not prove that the
+repository is secure. Do not dismiss an alert merely to make a check green.
+
 ## Optional Zenodo evaluation
 
 Treat this as an optional Zenodo evaluation, not a release requirement. Record

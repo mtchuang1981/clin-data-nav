@@ -1232,6 +1232,51 @@ def test_github_settings_evidence_records_verified_post_change_state():
     assert "No tag or GitHub Release was changed" in normalized
 
 
+def test_codeql_default_setup_guidance_and_evidence_are_auditable():
+    guide = (ROOT / "docs/repository-settings.md").read_text(
+        encoding="utf-8"
+    )
+    evidence = (
+        ROOT / "docs/verification/2026-08-09-codeql-default-setup.md"
+    ).read_text(encoding="utf-8")
+    normalized_guide = " ".join(guide.split())
+    normalized_evidence = " ".join(evidence.split())
+
+    for guide_contract in (
+        "## CodeQL default setup",
+        "`actions`",
+        "`python`",
+        "`default`",
+        "`remote`",
+        "`standard`",
+        "`weekly`",
+        "not currently a required check",
+        "zero results do not prove",
+    ):
+        assert guide_contract.casefold() in normalized_guide.casefold()
+
+    for evidence_contract in (
+        "0aff8038bb52457e9868fab9ea9a43dda9b4235c",
+        "https://github.com/mtchuang1981/clin-data-nav/actions/runs/31269886134",
+        "93133943497",
+        "93133943498",
+        "1590243272",
+        "1590243578",
+        "17 rules",
+        "43 rules",
+        "zero results",
+        "zero open code-scanning alerts",
+        "zero job annotations, warnings, or failures",
+        "test (ubuntu-latest)",
+        "test (windows-latest)",
+        "compare-packages",
+        "No branch-protection setting was changed",
+        "No tag or GitHub Release was changed",
+        "zero findings do not prove",
+    ):
+        assert evidence_contract.casefold() in normalized_evidence.casefold()
+
+
 def test_readmes_put_a_real_first_success_path_in_the_first_30_nonblank_lines():
     documents = (
         (
