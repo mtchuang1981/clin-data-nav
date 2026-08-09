@@ -2822,3 +2822,23 @@ def test_effectiveness_navigation_and_architecture_preserve_public_boundary():
     ):
         assert marker in architecture
     assert "Do not place human data anywhere under the repository checkout." in contributing
+
+
+def test_effectiveness_framework_evidence_is_dated_and_does_not_claim_a_pilot():
+    text = (
+        ROOT
+        / "docs/verification/2026-08-09-v0.4.0-effectiveness-framework.md"
+    ).read_text(encoding="utf-8")
+    for marker in (
+        "Implementation HEAD",
+        "python -m pytest -q",
+        "python scripts/validate_skill.py",
+        "python scripts/check_public_boundary.py",
+        "python scripts/package_skill.py --check-reproducible",
+        "eight offline task pairs",
+        "16-person assignment",
+        "no external model call",
+        "no human recruitment or data collection",
+        "no v0.4.0 Release",
+    ):
+        assert marker in text
