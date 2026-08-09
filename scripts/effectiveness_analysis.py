@@ -7,7 +7,9 @@ from copy import deepcopy
 from datetime import date, datetime
 import hashlib
 import json
+import math
 from pathlib import Path
+import random
 import re
 
 from scripts.effectiveness_contract import load_effectiveness_contract
@@ -163,6 +165,416 @@ def compute_environment_fingerprint(manifest: dict) -> str:
         payload, ensure_ascii=False, separators=(",", ":"), sort_keys=True
     ).encode("utf-8")
     return hashlib.sha256(canonical).hexdigest()
+
+
+def task_success(observation: dict) -> bool | None:
+    """Return safety-gated task success, preserving technical missingness."""
+    if not isinstance(observation, dict):
+        raise ValueError("observation must be a mapping")
+    status = observation.get("completion_status")
+    if status == "abandoned":
+        return False
+    if status == "technical_failure":
+        return None
+    if status not in SCORED_STATUSES:
+        raise ValueError("completion_status is invalid")
+
+    mandatory = observation.get("mandatory_complete")
+    quality_met = observation.get("quality_met")
+    quality_applicable = observation.get("quality_applicable")
+    critical = observation.get("critical_violation")
+    if type(mandatory) is not bool:
+        raise ValueError("mandatory_complete must be boolean")
+    if type(quality_met) is not int or quality_met < 0:
+        raise ValueError("quality_met must be a non-negative integer")
+    if type(quality_applicable) is not int or quality_applicable <= 0:
+        raise ValueError("quality_applicable must be a positive integer")
+    if quality_met > quality_applicable:
+        raise ValueError("quality_met cannot exceed quality_applicable")
+    if type(critical) is not bool:
+        raise ValueError("critical_violation must be boolean")
+
+    quality_fraction = quality_met / quality_applicable
+    return mandatory and quality_fraction >= 0.8 and not critical
+
+
+def participant_paired_differences(
+    observations: list[dict],
+) -> dict[str, float]:
+    """Compute complete-case participant effects, intervention minus control."""
+    grouped = _group_participant_observations(observations)
+    differences: dict[str, float] = {}
+    for participant_code, rows_by_condition in grouped.items():
+        outcomes = [
+            task_success(row)
+            for rows in rows_by_condition.values()
+            for row in rows
+        ]
+        if any(outcome is None for outcome in outcomes):
+            continue
+        control_rate = sum(
+            task_success(row) is True for row in rows_by_condition["control"]
+        ) / 2
+        intervention_rate = sum(
+            task_success(row) is True for row in rows_by_condition["intervention"]
+        ) / 2
+        differences[participant_code] = intervention_rate - control_rate
+    return differences
+
+
+def bootstrap_mean_interval(
+    values: list[float],
+    seed: int,
+    resamples: int,
+    confidence: float = 0.95,
+) -> tuple[float, float]:
+    """Return a deterministic participant-resampling percentile interval."""
+    if not isinstance(values, list) or not values:
+        raise ValueError("bootstrap values must be a non-empty list")
+    if any(not _is_finite_number(value) for value in values):
+        raise ValueError("bootstrap values must be finite numbers")
+    if type(seed) is not int:
+        raise ValueError("bootstrap seed must be an integer")
+    if type(resamples) is not int or not 1_000 <= resamples <= 100_000:
+        raise ValueError("bootstrap resamples must be from 1000 through 100000")
+    if not _valid_confidence(confidence):
+        raise ValueError("confidence must be a finite number between zero and one")
+
+    numeric_values = [float(value) for value in values]
+    count = len(numeric_values)
+    generator = random.Random(seed)
+    means = [
+        math.fsum(numeric_values[generator.randrange(count)] for _ in range(count))
+        / count
+        for _ in range(resamples)
+    ]
+    means.sort()
+    alpha = 1.0 - float(confidence)
+    return (
+        _linear_percentile(means, alpha / 2.0),
+        _linear_percentile(means, 1.0 - alpha / 2.0),
+    )
+
+
+def clopper_pearson(
+    successes: int, total: int, confidence: float = 0.95
+) -> tuple[float, float]:
+    """Return a two-sided exact Clopper-Pearson binomial interval."""
+    if type(successes) is not int or type(total) is not int:
+        raise ValueError("successes and total must be integers")
+    if total <= 0 or not 0 <= successes <= total:
+        raise ValueError("successes and total are outside the allowed range")
+    if not _valid_confidence(confidence):
+        raise ValueError("confidence must be a finite number between zero and one")
+
+    alpha_tail = (1.0 - float(confidence)) / 2.0
+    lower = (
+        0.0
+        if successes == 0
+        else _binomial_cdf_quantile(total, successes - 1, 1.0 - alpha_tail)
+    )
+    upper = (
+        1.0
+        if successes == total
+        else _binomial_cdf_quantile(total, successes, alpha_tail)
+    )
+    return lower, upper
+
+
+def summarize_effectiveness(
+    manifest: dict, scores: dict, observations: list[dict]
+) -> dict:
+    """Build the fixed aggregate-only Task 6 effectiveness summary."""
+    if not isinstance(manifest, dict) or not isinstance(scores, dict):
+        raise ValueError("manifest and scores must be mappings")
+    layout_errors = validate_pilot_layout(observations)
+    if layout_errors:
+        raise ValueError("invalid effectiveness summary layout")
+    if manifest.get("study_id") != scores.get("study_id"):
+        raise ValueError("effectiveness summary study_id mismatch")
+
+    sessions = manifest.get("sessions")
+    if not isinstance(sessions, list):
+        raise ValueError("study sessions must be a list")
+    assignment_versions = {
+        session.get("assignment_version")
+        for session in sessions
+        if isinstance(session, dict)
+        and isinstance(session.get("assignment_version"), str)
+    }
+    if len(assignment_versions) != 1:
+        raise ValueError("study sessions must share one assignment version")
+
+    grouped = _group_participant_observations(observations)
+    complete_participants = sum(
+        all(
+            row.get("completion_status") in SCORED_STATUSES
+            for rows in rows_by_condition.values()
+            for row in rows
+        )
+        for rows_by_condition in grouped.values()
+    )
+    overall = _primary_summary(
+        observations,
+        manifest["bootstrap_seed"],
+        manifest["bootstrap_resamples"],
+    )
+    beginner_rows = [
+        row for row in observations if row.get("stratum") == "beginner"
+    ]
+    professional_rows = [
+        row for row in observations if row.get("stratum") == "professional"
+    ]
+    conservative = _primary_summary(
+        observations,
+        manifest["bootstrap_seed"],
+        manifest["bootstrap_resamples"],
+        conservative_missingness=True,
+    )
+
+    environment = {
+        field: manifest[field]
+        for field in (
+            *ENVIRONMENT_FIELDS,
+            "study_started_at",
+            "study_ended_at",
+            "task_commitment_sha256",
+            "task_commitment_verified",
+        )
+    }
+    environment.update(
+        {
+            "assignment_version": next(iter(assignment_versions)),
+            "bootstrap_seed": manifest["bootstrap_seed"],
+            "bootstrap_resamples": manifest["bootstrap_resamples"],
+        }
+    )
+    return {
+        "schema_version": "1",
+        "study_id": manifest["study_id"],
+        "synthetic_example": False,
+        "protocol_commit": manifest["protocol_commit"],
+        "environment": environment,
+        "minimum_practical_difference": 0.20,
+        "participant_flow": {
+            "assigned": len(sessions),
+            "completed": complete_participants,
+            "beginners": sum(
+                session.get("stratum") == "beginner" for session in sessions
+            ),
+            "professionals": sum(
+                session.get("stratum") == "professional" for session in sessions
+            ),
+            "abandonments": sum(
+                row.get("completion_status") == "abandoned" for row in observations
+            ),
+            "timeouts": sum(
+                row.get("completion_status") == "timeout" for row in observations
+            ),
+            "technical_failures": sum(
+                row.get("completion_status") == "technical_failure"
+                for row in observations
+            ),
+            "primary_complete_pairs": overall["complete_pairs"],
+            "interpretation_status": (
+                "eligible-for-exploratory-interpretation"
+                if complete_participants >= 14
+                else "workflow-feasibility-only"
+            ),
+        },
+        "primary": {
+            "overall": overall,
+            "beginner": _primary_summary(
+                beginner_rows,
+                manifest["bootstrap_seed"],
+                manifest["bootstrap_resamples"],
+            ),
+            "professional": _primary_summary(
+                professional_rows,
+                manifest["bootstrap_seed"],
+                manifest["bootstrap_resamples"],
+            ),
+            "conservative_missingness": conservative,
+        },
+        "safety": {
+            condition: _safety_summary(observations, condition)
+            for condition in ("control", "intervention")
+        },
+        "secondary": {},
+        "agreement": {},
+        "power_scenarios": [],
+        "protocol_deviations": [],
+        "limitations": [],
+    }
+
+
+def _group_participant_observations(
+    observations: list[dict],
+) -> dict[str, dict[str, list[dict]]]:
+    if not isinstance(observations, list) or not observations:
+        raise ValueError("observations must be a non-empty list")
+    grouped: dict[str, dict[str, list[dict]]] = defaultdict(
+        lambda: {"control": [], "intervention": []}
+    )
+    for observation in observations:
+        if not isinstance(observation, dict):
+            raise ValueError("each observation must be a mapping")
+        participant_code = observation.get("participant_code")
+        condition = observation.get("condition")
+        if not isinstance(participant_code, str) or not participant_code:
+            raise ValueError("participant_code is invalid")
+        if condition not in CONDITIONS:
+            raise ValueError("condition is invalid")
+        grouped[participant_code][condition].append(observation)
+    if any(
+        len(rows) != 2
+        for rows_by_condition in grouped.values()
+        for rows in rows_by_condition.values()
+    ):
+        raise ValueError("each participant must have two observations per condition")
+    return dict(grouped)
+
+
+def _primary_summary(
+    observations: list[dict],
+    seed: int,
+    resamples: int,
+    conservative_missingness: bool = False,
+) -> dict:
+    grouped = _group_participant_observations(observations)
+    differences: list[float] = []
+    successes = {"control": 0, "intervention": 0}
+    totals = {"control": 0, "intervention": 0}
+    for rows_by_condition in grouped.values():
+        outcomes_by_condition = {
+            condition: [task_success(row) for row in rows]
+            for condition, rows in rows_by_condition.items()
+        }
+        if not conservative_missingness and any(
+            outcome is None
+            for outcomes in outcomes_by_condition.values()
+            for outcome in outcomes
+        ):
+            continue
+        if conservative_missingness:
+            outcomes_by_condition = {
+                condition: [
+                    outcome
+                    if outcome is not None
+                    else condition == "control"
+                    for outcome in outcomes
+                ]
+                for condition, outcomes in outcomes_by_condition.items()
+            }
+        condition_rates: dict[str, float] = {}
+        for condition in ("control", "intervention"):
+            outcomes = outcomes_by_condition[condition]
+            if any(type(outcome) is not bool for outcome in outcomes):
+                raise ValueError("primary outcome remained missing")
+            condition_successes = sum(outcome is True for outcome in outcomes)
+            successes[condition] += condition_successes
+            totals[condition] += len(outcomes)
+            condition_rates[condition] = condition_successes / len(outcomes)
+        differences.append(
+            condition_rates["intervention"] - condition_rates["control"]
+        )
+
+    if not differences:
+        raise ValueError("primary analysis has no complete participant pairs")
+    interval = bootstrap_mean_interval(differences, seed, resamples)
+    distribution_names = {
+        -1.0: "minus_one",
+        -0.5: "minus_half",
+        0.0: "zero",
+        0.5: "plus_half",
+        1.0: "plus_one",
+    }
+    distribution = {name: 0 for name in distribution_names.values()}
+    for difference in differences:
+        if difference not in distribution_names:
+            raise ValueError("paired difference is outside the fixed distribution")
+        distribution[distribution_names[difference]] += 1
+    return {
+        "control_successes": successes["control"],
+        "control_total": totals["control"],
+        "control_success_rate": successes["control"] / totals["control"],
+        "intervention_successes": successes["intervention"],
+        "intervention_total": totals["intervention"],
+        "intervention_success_rate": (
+            successes["intervention"] / totals["intervention"]
+        ),
+        "paired_risk_difference": math.fsum(differences) / len(differences),
+        "confidence_interval": [interval[0], interval[1]],
+        "complete_pairs": len(differences),
+        "paired_distribution": distribution,
+    }
+
+
+def _safety_summary(observations: list[dict], condition: str) -> dict:
+    critical_flags = [
+        observation.get("critical_violation")
+        for observation in observations
+        if observation.get("condition") == condition
+        and type(observation.get("critical_violation")) is bool
+    ]
+    if not critical_flags:
+        raise ValueError("safety analysis has no scored observations")
+    events = sum(flag is True for flag in critical_flags)
+    total = len(critical_flags)
+    interval = clopper_pearson(events, total)
+    return {
+        "events": events,
+        "total": total,
+        "rate": events / total,
+        "exact_interval": [interval[0], interval[1]],
+    }
+
+
+def _linear_percentile(sorted_values: list[float], probability: float) -> float:
+    position = (len(sorted_values) - 1) * probability
+    lower_index = math.floor(position)
+    upper_index = math.ceil(position)
+    if lower_index == upper_index:
+        return sorted_values[lower_index]
+    fraction = position - lower_index
+    return (
+        sorted_values[lower_index] * (1.0 - fraction)
+        + sorted_values[upper_index] * fraction
+    )
+
+
+def _binomial_cdf_quantile(total: int, maximum_successes: int, target: float) -> float:
+    lower = 0.0
+    upper = 1.0
+    for _ in range(100):
+        midpoint = (lower + upper) / 2.0
+        probability = _binomial_cdf(total, maximum_successes, midpoint)
+        if probability > target:
+            lower = midpoint
+        else:
+            upper = midpoint
+    return (lower + upper) / 2.0
+
+
+def _binomial_cdf(total: int, maximum_successes: int, probability: float) -> float:
+    if probability <= 0.0:
+        return 1.0
+    if probability >= 1.0:
+        return 1.0 if maximum_successes >= total else 0.0
+    return math.fsum(
+        math.comb(total, successes)
+        * probability**successes
+        * (1.0 - probability) ** (total - successes)
+        for successes in range(maximum_successes + 1)
+    )
+
+
+def _is_finite_number(value: object) -> bool:
+    return type(value) in {int, float} and math.isfinite(value)
+
+
+def _valid_confidence(value: object) -> bool:
+    return _is_finite_number(value) and 0.0 < float(value) < 1.0
 
 
 def validate_study_manifest(payload: object) -> list[str]:

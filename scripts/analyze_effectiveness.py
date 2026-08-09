@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if __package__ in {None, ""}:
     sys.path.insert(0, str(ROOT))
 
-from scripts.effectiveness_analysis import unlock_observations
+from scripts.effectiveness_analysis import summarize_effectiveness, unlock_observations
 from scripts.effectiveness_contract import ensure_external_path
 
 
@@ -74,11 +74,7 @@ def _analyze(args: argparse.Namespace) -> None:
     observations = unlock_observations(
         manifest, scores, lock, key, scores_bytes
     )
-    summary = {
-        "schema_version": "1",
-        "study_id": scores["study_id"],
-        "validated_observation_count": len(observations),
-    }
+    summary = summarize_effectiveness(manifest, scores, observations)
     _write_summary_atomically(output_summary, summary)
 
 

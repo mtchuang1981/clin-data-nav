@@ -11,7 +11,12 @@ import pytest
 
 import scripts.analyze_effectiveness as analyze_module
 from scripts.effectiveness_analysis import (
+    bootstrap_mean_interval,
+    clopper_pearson,
     compute_environment_fingerprint,
+    participant_paired_differences,
+    summarize_effectiveness,
+    task_success,
     unlock_observations,
     validate_blinded_scores,
     validate_condition_key,
@@ -243,6 +248,395 @@ def full_pilot_payloads():
         ],
     }
     return valid_manifest(), scores, valid_lock(raw_scores), condition_key, raw_scores
+
+
+def completed_observation(**changes):
+    observation = copy.deepcopy(valid_scores()["observations"][0])
+    observation.update(changes)
+    return observation
+
+
+def status_observation(status):
+    observation = completed_observation(completion_status=status)
+    if status in {"abandoned", "technical_failure"}:
+        for field in (
+            "mandatory_complete",
+            "quality_met",
+            "quality_applicable",
+            "quality_score",
+            "critical_violation",
+            "nasa_tlx_ratings",
+            "nasa_tlx_weights",
+            "confidence_before",
+            "confidence_after",
+            "understanding_before",
+            "understanding_after",
+        ):
+            observation[field] = None
+    return observation
+
+
+def unlocked_complete_pilot(intervention_successes=None, control_successes=None):
+    manifest, scores, lock, key, raw_scores = full_pilot_payloads()
+    observations = unlock_observations(manifest, scores, lock, key, raw_scores)
+    requested = {
+        "intervention": intervention_successes or {},
+        "control": control_successes or {},
+    }
+    for condition, successes_by_person in requested.items():
+        for participant_code, successes in successes_by_person.items():
+            rows = [
+                row
+                for row in observations
+                if row["participant_code"] == participant_code
+                and row["condition"] == condition
+            ]
+            assert len(rows) == 2
+            for index, row in enumerate(rows):
+                row["mandatory_complete"] = index < successes
+                row["quality_met"] = 4
+                row["quality_applicable"] = 5
+                row["critical_violation"] = False
+    return observations
+
+
+def mark_unscored(observation, status):
+    replacement = status_observation(status)
+    for field in (
+        "completion_status",
+        "mandatory_complete",
+        "quality_met",
+        "quality_applicable",
+        "quality_score",
+        "critical_violation",
+        "nasa_tlx_ratings",
+        "nasa_tlx_weights",
+        "confidence_before",
+        "confidence_after",
+        "understanding_before",
+        "understanding_after",
+    ):
+        observation[field] = replacement[field]
+
+
+@pytest.mark.parametrize(
+    ("mandatory", "met", "applicable", "critical", "expected"),
+    [
+        (True, 4, 5, False, True),
+        (True, 3, 5, False, False),
+        (False, 5, 5, False, False),
+        (True, 5, 5, True, False),
+    ],
+)
+def test_task_success_requires_mandatory_eighty_percent_and_no_critical(
+    mandatory, met, applicable, critical, expected
+):
+    observation = completed_observation(
+        mandatory_complete=mandatory,
+        quality_met=met,
+        quality_applicable=applicable,
+        critical_violation=critical,
+    )
+    assert task_success(observation) is expected
+
+
+def test_abandonment_is_failure_and_technical_failure_is_missing():
+    assert task_success(status_observation("abandoned")) is False
+    assert task_success(status_observation("technical_failure")) is None
+
+
+def test_task_success_rejects_non_positive_applicable_quality():
+    with pytest.raises(ValueError, match="quality_applicable"):
+        task_success(completed_observation(quality_met=0, quality_applicable=0))
+
+
+def test_participant_effect_is_skill_minus_control():
+    observations = unlocked_complete_pilot(
+        intervention_successes={"B01": 2},
+        control_successes={"B01": 1},
+    )
+    assert participant_paired_differences(observations)["B01"] == 0.5
+
+
+def test_participant_effect_requires_exactly_two_tasks_per_condition():
+    observations = unlocked_complete_pilot()
+    observations.pop()
+
+    with pytest.raises(ValueError, match="two observations per condition"):
+        participant_paired_differences(observations)
+
+
+def test_participant_effect_excludes_any_technical_failure_but_not_abandonment():
+    observations = unlocked_complete_pilot()
+    technical_row = next(
+        row for row in observations if row["participant_code"] == "B01"
+    )
+    abandoned_row = next(
+        row for row in observations if row["participant_code"] == "B02"
+    )
+    mark_unscored(technical_row, "technical_failure")
+    mark_unscored(abandoned_row, "abandoned")
+
+    differences = participant_paired_differences(observations)
+
+    assert "B01" not in differences
+    assert "B02" in differences
+
+
+def test_bootstrap_mean_interval_is_constant_for_constant_values():
+    assert bootstrap_mean_interval([0.5] * 8, seed=20260809, resamples=1000) == (
+        0.5,
+        0.5,
+    )
+
+
+def test_bootstrap_mean_interval_repeats_for_same_seed_and_resamples():
+    values = [-1.0, -0.5, 0.0, 0.5, 1.0]
+
+    first = bootstrap_mean_interval(values, seed=73, resamples=1000)
+    second = bootstrap_mean_interval(values, seed=73, resamples=1000)
+
+    assert first == second
+    assert first[0] < 0 < first[1]
+
+
+@pytest.mark.parametrize(
+    ("values", "seed", "resamples", "confidence"),
+    [
+        ([], 1, 1000, 0.95),
+        ([float("nan")], 1, 1000, 0.95),
+        ([True], 1, 1000, 0.95),
+        ([0.0], True, 1000, 0.95),
+        ([0.0], 1, 999, 0.95),
+        ([0.0], 1, 1000, float("inf")),
+    ],
+)
+def test_bootstrap_rejects_empty_non_finite_bool_and_out_of_range_inputs(
+    values, seed, resamples, confidence
+):
+    with pytest.raises(ValueError):
+        bootstrap_mean_interval(values, seed, resamples, confidence)
+
+
+@pytest.mark.parametrize(
+    ("successes", "total", "expected"),
+    [
+        (0, 10, (0.0, 0.308497)),
+        (5, 10, (0.187086, 0.812914)),
+        (10, 10, (0.691503, 1.0)),
+    ],
+)
+def test_clopper_pearson_reference_values(successes, total, expected):
+    actual = clopper_pearson(successes, total)
+    assert actual == pytest.approx(expected, abs=1e-5)
+
+
+@pytest.mark.parametrize(
+    ("successes", "total", "confidence"),
+    [
+        (-1, 10, 0.95),
+        (11, 10, 0.95),
+        (0, 0, 0.95),
+        (True, 10, 0.95),
+        (1, True, 0.95),
+        (1, 10, float("nan")),
+        (1, 10, 1.0),
+    ],
+)
+def test_clopper_pearson_rejects_invalid_or_bool_inputs(
+    successes, total, confidence
+):
+    with pytest.raises(ValueError):
+        clopper_pearson(successes, total, confidence)
+
+
+def test_summary_has_fixed_aggregate_contract_and_paired_denominators():
+    manifest, scores, lock, key, raw_scores = full_pilot_payloads()
+    observations = unlock_observations(manifest, scores, lock, key, raw_scores)
+
+    summary = summarize_effectiveness(manifest, scores, observations)
+
+    assert set(summary) == {
+        "schema_version",
+        "study_id",
+        "synthetic_example",
+        "protocol_commit",
+        "environment",
+        "minimum_practical_difference",
+        "participant_flow",
+        "primary",
+        "safety",
+        "secondary",
+        "agreement",
+        "power_scenarios",
+        "protocol_deviations",
+        "limitations",
+    }
+    assert set(summary["environment"]) == {
+        "skill_version",
+        "skill_commit",
+        "codex_surface",
+        "model",
+        "reasoning_effort",
+        "service_tier",
+        "python_version",
+        "platform",
+        "study_started_at",
+        "study_ended_at",
+        "task_commitment_sha256",
+        "task_commitment_verified",
+        "assignment_version",
+        "bootstrap_seed",
+        "bootstrap_resamples",
+    }
+    assert summary["study_id"] == "synthetic-pilot-v1"
+    assert summary["synthetic_example"] is False
+    assert summary["minimum_practical_difference"] == 0.20
+    assert summary["participant_flow"] == {
+        "assigned": 16,
+        "completed": 16,
+        "beginners": 8,
+        "professionals": 8,
+        "abandonments": 0,
+        "timeouts": 0,
+        "technical_failures": 0,
+        "primary_complete_pairs": 16,
+        "interpretation_status": "eligible-for-exploratory-interpretation",
+    }
+    expected_primary_keys = {
+        "control_successes",
+        "control_total",
+        "control_success_rate",
+        "intervention_successes",
+        "intervention_total",
+        "intervention_success_rate",
+        "paired_risk_difference",
+        "confidence_interval",
+        "complete_pairs",
+        "paired_distribution",
+    }
+    assert set(summary["primary"]) == {
+        "overall",
+        "beginner",
+        "professional",
+        "conservative_missingness",
+    }
+    assert all(
+        set(result) == expected_primary_keys for result in summary["primary"].values()
+    )
+    overall = summary["primary"]["overall"]
+    assert overall == {
+        "control_successes": 32,
+        "control_total": 32,
+        "control_success_rate": 1.0,
+        "intervention_successes": 32,
+        "intervention_total": 32,
+        "intervention_success_rate": 1.0,
+        "paired_risk_difference": 0.0,
+        "confidence_interval": [0.0, 0.0],
+        "complete_pairs": 16,
+        "paired_distribution": {
+            "minus_one": 0,
+            "minus_half": 0,
+            "zero": 16,
+            "plus_half": 0,
+            "plus_one": 0,
+        },
+    }
+    assert summary["primary"]["beginner"]["control_total"] == 16
+    assert summary["primary"]["professional"]["control_total"] == 16
+    assert summary["safety"]["control"] == {
+        "events": 0,
+        "total": 32,
+        "rate": 0.0,
+        "exact_interval": pytest.approx([0.0, 0.108881], abs=1e-5),
+    }
+    assert summary["secondary"] == {}
+    assert summary["agreement"] == {}
+    assert summary["power_scenarios"] == []
+    assert summary["protocol_deviations"] == []
+    assert summary["limitations"] == []
+
+
+def test_summary_excludes_technical_failure_and_adds_conservative_sensitivity():
+    manifest, scores, lock, key, raw_scores = full_pilot_payloads()
+    observations = unlock_observations(manifest, scores, lock, key, raw_scores)
+    technical_row = next(
+        row
+        for row in observations
+        if row["participant_code"] == "B01"
+        and row["condition"] == "intervention"
+    )
+    mark_unscored(technical_row, "technical_failure")
+
+    summary = summarize_effectiveness(manifest, scores, observations)
+
+    assert summary["participant_flow"]["primary_complete_pairs"] == 15
+    assert summary["primary"]["overall"]["complete_pairs"] == 15
+    assert summary["primary"]["overall"]["control_total"] == 30
+    assert summary["primary"]["overall"]["intervention_total"] == 30
+    sensitivity = summary["primary"]["conservative_missingness"]
+    assert sensitivity["complete_pairs"] == 16
+    assert sensitivity["control_successes"] == 32
+    assert sensitivity["control_total"] == 32
+    assert sensitivity["intervention_successes"] == 31
+    assert sensitivity["intervention_total"] == 32
+    assert sensitivity["paired_risk_difference"] == -0.03125
+    assert sensitivity["paired_distribution"] == {
+        "minus_one": 0,
+        "minus_half": 1,
+        "zero": 15,
+        "plus_half": 0,
+        "plus_one": 0,
+    }
+
+
+@pytest.mark.parametrize(
+    ("incomplete_participants", "expected_completed", "expected_status"),
+    [
+        (3, 13, "workflow-feasibility-only"),
+        (2, 14, "eligible-for-exploratory-interpretation"),
+    ],
+)
+def test_interpretation_stop_rule_uses_fourteen_of_sixteen_completed_participants(
+    incomplete_participants, expected_completed, expected_status
+):
+    manifest, scores, lock, key, raw_scores = full_pilot_payloads()
+    observations = unlock_observations(manifest, scores, lock, key, raw_scores)
+    participant_codes = sorted({row["participant_code"] for row in observations})
+    for row in observations:
+        if row["participant_code"] in participant_codes[:incomplete_participants]:
+            mark_unscored(row, "abandoned")
+
+    summary = summarize_effectiveness(manifest, scores, observations)
+
+    assert summary["participant_flow"]["completed"] == expected_completed
+    assert summary["participant_flow"]["interpretation_status"] == expected_status
+    assert summary["primary"]["overall"]["paired_risk_difference"] == 0.0
+
+
+def test_summary_contains_no_row_identifiers_assignments_or_participant_differences():
+    manifest, scores, lock, key, raw_scores = full_pilot_payloads()
+    observations = unlock_observations(manifest, scores, lock, key, raw_scores)
+
+    summary = summarize_effectiveness(manifest, scores, observations)
+    serialized = json.dumps(summary, ensure_ascii=False, sort_keys=True)
+
+    for forbidden_value in (
+        observations[0]["participant_code"],
+        observations[0]["answer_id"],
+        observations[0]["task_pair_id"],
+    ):
+        assert forbidden_value not in serialized
+    for forbidden_key in (
+        "participant_code",
+        "answer_id",
+        "task_pair_id",
+        "task_variant",
+        "order",
+        "participant_paired_differences",
+    ):
+        assert f'"{forbidden_key}"' not in serialized
 
 
 def test_valid_closed_schema_payloads_are_accepted():
@@ -759,7 +1153,7 @@ def test_atomic_summary_failure_preserves_existing_output_and_cleans_temp_file(
     assert list(tmp_path.glob(".summary.json.*.tmp")) == []
 
 
-def test_cli_atomically_replaces_existing_output_with_minimal_canonical_summary(tmp_path):
+def test_cli_replaces_existing_output_with_canonical_aggregate_summary(tmp_path):
     paths = _write_cli_inputs(tmp_path)
     paths["summary"].write_bytes(b"stale aggregate summary\n")
 
@@ -770,15 +1164,29 @@ def test_cli_atomically_replaces_existing_output_with_minimal_canonical_summary(
         check=False,
     )
 
-    expected = {
-        "schema_version": "1",
-        "study_id": "synthetic-pilot-v1",
-        "validated_observation_count": 64,
-    }
     assert result.returncode == 0
     assert result.stdout == ""
     assert result.stderr == ""
-    assert paths["summary"].read_bytes() == (
-        json.dumps(expected, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
+    summary_bytes = paths["summary"].read_bytes()
+    summary = json.loads(summary_bytes)
+    assert summary_bytes == (
+        json.dumps(summary, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
     ).encode("utf-8")
-    assert not any(key in expected for key in ("observations", "mappings", "sessions"))
+    assert summary["schema_version"] == "1"
+    assert summary["study_id"] == "synthetic-pilot-v1"
+    assert summary["participant_flow"]["assigned"] == 16
+    assert summary["primary"]["overall"]["control_total"] == 32
+    assert summary["primary"]["overall"]["intervention_total"] == 32
+    serialized = json.dumps(summary, ensure_ascii=False, sort_keys=True)
+    for forbidden in (
+        "A000000000000001",
+        "B01",
+        '"observations"',
+        '"mappings"',
+        '"sessions"',
+        '"participant_code"',
+        '"answer_id"',
+        '"task_variant"',
+        '"order"',
+    ):
+        assert forbidden not in serialized
