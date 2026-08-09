@@ -1,3 +1,4 @@
+import hashlib
 import inspect
 import json
 from pathlib import Path
@@ -2845,18 +2846,8 @@ EFFECTIVENESS_FRAMEWORK_FOCUSED_COMMAND = (
     "tests/test_effectiveness_analysis.py::test_cli_requires_explicit_post_lock_unlock_without_echoing_paths "
     "tests/test_effectiveness_reports.py::test_checked_in_example_is_aggregate_only_and_explicitly_synthetic"
 )
-
-EFFECTIVENESS_FRAMEWORK_POSITIVE_CLAIM_PATTERNS = (
-    r"\b(?:the )?pilot (?:was |is |has been )?(?:completed|conducted|run|performed)\b",
-    r"\b(?:the )?skill (?:is|was|has been) (?:proven )?effective\b",
-    r"\b(?:an )?external model call (?:was |is |has been )?(?:made|performed|completed|conducted|issued)\b",
-    r"\bparticipants? (?:were|was|have been|has been) recruited\b",
-    r"\bhuman data (?:were|was|have been|has been) (?:collected|gathered|analyzed)\b",
-    r"\bactual human task commitment (?:was |is |has been )?(?:created|committed|published)\b",
-    r"\b(?:a )?tag (?:was |is |has been )?(?:created|changed|published|pushed)\b",
-    r"\b(?:a |the )?(?:v0\.4\.0 )?release (?:was |is |has been )?(?:created|published|changed|issued)\b",
-    r"\b(?:repository )?settings? (?:were|was|have been|has been) (?:changed|modified|updated)\b",
-    r"\breal participant outcomes? (?:were|was|are|is|have been|has been) (?:observed|reported|collected|analyzed)\b",
+EFFECTIVENESS_FRAMEWORK_EVIDENCE_LF_UTF8_SHA256 = (
+    "5750a189f86ae35b0e5894f2f1ccab0824ee2716cbdaa03ce4242d05cac2f0fe"
 )
 
 
@@ -2899,25 +2890,11 @@ def _evidence_table_rows(section: str) -> tuple[tuple[str, ...], ...]:
     return tuple(rows)
 
 
-def _assert_no_unnegated_effectiveness_claims(text: str) -> None:
-    normalized = " ".join(text.split())
-    clauses = re.split(
-        r"(?<=[.!?])\s+|;\s+|\bbut\b|\bhowever\b",
-        normalized,
-        flags=re.IGNORECASE,
-    )
-    for clause in clauses:
-        for pattern in EFFECTIVENESS_FRAMEWORK_POSITIVE_CLAIM_PATTERNS:
-            for match in re.finditer(pattern, clause, flags=re.IGNORECASE):
-                local_prefix = clause[max(0, match.start() - 120) : match.start()]
-                assert re.search(
-                    r"\b(?:no|not|never|without)\b",
-                    local_prefix,
-                    flags=re.IGNORECASE,
-                ), f"unnegated evidence claim: {match.group(0)}"
-
-
 def _assert_effectiveness_framework_evidence_contract(text: str) -> None:
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
+    digest = hashlib.sha256(text.encode("utf-8")).hexdigest()
+    assert digest == EFFECTIVENESS_FRAMEWORK_EVIDENCE_LF_UTF8_SHA256
+
     headings = tuple(re.findall(r"^## .+$", text, flags=re.MULTILINE))
     assert headings == EFFECTIVENESS_FRAMEWORK_EVIDENCE_SECTIONS
     assert text.endswith("\n")
@@ -3115,8 +3092,6 @@ def _assert_effectiveness_framework_evidence_contract(text: str) -> None:
     ):
         assert normalized_authority.count(exact_fact) == 1
 
-    _assert_no_unnegated_effectiveness_claims(text)
-
 
 def test_effectiveness_framework_evidence_is_dated_and_does_not_claim_a_pilot():
     text = (
@@ -3139,6 +3114,10 @@ def test_effectiveness_framework_evidence_is_dated_and_does_not_claim_a_pilot():
         "The v0.4.0 Release was published.",
         "Repository settings were changed.",
         "Real participant outcomes were reported.",
+        "No external model call was made, and the pilot was completed.",
+        "We completed the pilot.",
+        "We proved the Skill effective.",
+        "We recruited participants and collected human data.",
     ),
 )
 def test_effectiveness_framework_evidence_rejects_contradictory_positive_claims(
@@ -3166,7 +3145,7 @@ def test_effectiveness_framework_evidence_rejects_contradictory_positive_claims(
         "No real participant outcomes were reported.",
     ),
 )
-def test_effectiveness_framework_evidence_allows_explicitly_negated_claims(
+def test_effectiveness_framework_evidence_rejects_even_negated_content_mutations(
     negated_claim,
 ):
     text = (
@@ -3175,4 +3154,55 @@ def test_effectiveness_framework_evidence_allows_explicitly_negated_claims(
     ).read_text(encoding="utf-8")
     mutated = f"{text.rstrip()}\n\n{negated_claim}\n"
 
-    _assert_effectiveness_framework_evidence_contract(mutated)
+    with pytest.raises(AssertionError):
+        _assert_effectiveness_framework_evidence_contract(mutated)
+
+
+@pytest.mark.parametrize(
+    ("original", "replacement"),
+    (
+        (
+            "Verification date: `2026-08-09`",
+            "Verification date: `2026-08-10`",
+        ),
+        (
+            "Implementation HEAD: `eb61bca2c7b5cfd0955bf99e5c19eaf4c19c866d`",
+            "Implementation HEAD: `0b61bca2c7b5cfd0955bf99e5c19eaf4c19c866d`",
+        ),
+        ("`508 passed in 21.74s`", "`509 passed in 21.74s`"),
+        (
+            "`python scripts/validate_skill.py` | 0 |",
+            "`python scripts/validate_skill.py` | 1 |",
+        ),
+        (
+            "No pilot was completed or conducted, and there are no real participant\n"
+            "outcomes.",
+            "A pilot was completed, and there are real participant outcomes.",
+        ),
+    ),
+)
+def test_effectiveness_framework_evidence_rejects_audited_fact_mutations(
+    original,
+    replacement,
+):
+    text = (
+        ROOT
+        / "docs/verification/2026-08-09-v0.4.0-effectiveness-framework.md"
+    ).read_text(encoding="utf-8")
+    assert original in text
+    mutated = text.replace(original, replacement, 1)
+
+    with pytest.raises(AssertionError):
+        _assert_effectiveness_framework_evidence_contract(mutated)
+
+
+def test_effectiveness_framework_evidence_lock_normalizes_lf_and_crlf():
+    text = (
+        ROOT
+        / "docs/verification/2026-08-09-v0.4.0-effectiveness-framework.md"
+    ).read_text(encoding="utf-8")
+    lf_text = text.replace("\r\n", "\n").replace("\r", "\n")
+    crlf_text = lf_text.replace("\n", "\r\n")
+
+    _assert_effectiveness_framework_evidence_contract(lf_text)
+    _assert_effectiveness_framework_evidence_contract(crlf_text)
