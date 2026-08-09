@@ -6,16 +6,11 @@ must resolve outside the repository checkout. All schemas use
 `schema_version: "1"`; unknown or missing keys are rejected. The public
 repository may receive only a validated aggregate summary, never these inputs.
 
-The assignment generator emits an external JSON object with exactly
-`schema_version`, `study_id`, `seed`, and `assignments`. Each assignment row has
-exactly `answer_id`, `participant_code`, `stratum`, `pair_id`, `variant`,
-`output_depth`, `condition`, and `order`. Its current validator API is
-`validate_assignments(rows, catalog, study_id, seed)`.
+## Normative assignment contract
 
-The following machine-readable contract is normative. Lists are exact: keys
-may not be omitted or added.
+This visible contract is the sole exact assignment schema and validator API.
+Lists are closed: keys may not be omitted, duplicated, or added.
 
-<!-- BEGIN ASSIGNMENT SCHEMA CONTRACT -->
 ```yaml
 assignment_top_level_keys:
   - schema_version
@@ -33,7 +28,6 @@ assignment_row_keys:
   - order
 validator_api: validate_assignments(rows, catalog, study_id, seed)
 ```
-<!-- END ASSIGNMENT SCHEMA CONTRACT -->
 
 ## 1. Study manifest
 
@@ -118,23 +112,30 @@ contains one row per assigned criterion. Every criterion row has exactly
 
 All quality criteria may be N/A. In that case `quality_applicable=0`,
 `quality_met=0`, and the aggregate quality rate is null and not estimable.
-Primary success depends only on mandatory completion and the absence of a
-critical violation; quality criteria and the 0.8 catalog reference are
-secondary and cannot create or remove primary success. Abandonment is primary
-failure, while technical failure is missing for complete-case primary
-analysis.
+Abandonment is primary failure, while technical failure is missing for
+complete-case primary analysis.
 
-This machine-readable rule is normative: primary success requires both facts
-below, and quality criteria never alter that result.
+### Normative primary-outcome truth table
 
-<!-- BEGIN PRIMARY OUTCOME CONTRACT -->
+This visible truth table is the sole exact primary-success rule. The last field
+states whether varying quality inputs may change any row's result.
+
 ```yaml
-primary_success:
-  mandatory_complete: required
-  critical_violation: forbidden
+primary_success_truth_table:
+  - mandatory_complete: false
+    critical_violation: false
+    success: false
+  - mandatory_complete: false
+    critical_violation: true
+    success: false
+  - mandatory_complete: true
+    critical_violation: false
+    success: true
+  - mandatory_complete: true
+    critical_violation: true
+    success: false
 quality_criteria_affect_primary: false
 ```
-<!-- END PRIMARY OUTCOME CONTRACT -->
 
 `quality_score` is an integer from 0 through 100. NASA-TLX has six integer
 ratings from 0 through 100 and six integer weights from 0 through 5 that sum to
@@ -159,8 +160,8 @@ original rater. The rationale is one of `critical-safety`,
 `mandatory-criterion`, `quality-threshold`, `ordinal-quality`, or
 `other-prespecified`; narrative rationale and answer excerpts are rejected.
 
-Final success must match mandatory completion with no critical violation. The
-0-through-100 quality score and 0-through-4 ordinal rating remain separate
+Primary-success semantics are defined only by the normative truth table above.
+The 0-through-100 quality score and 0-through-4 ordinal rating remain separate
 secondary measures.
 
 ### SUS rows

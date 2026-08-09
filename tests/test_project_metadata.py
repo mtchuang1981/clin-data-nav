@@ -1,3 +1,5 @@
+import inspect
+import json
 from pathlib import Path
 import re
 import subprocess
@@ -21,7 +23,10 @@ from scripts.effectiveness_analysis import (
     SCORES_KEYS,
     SESSION_KEYS,
     SUS_RESPONSE_KEYS,
+    task_success,
 )
+from scripts.effectiveness_contract import load_effectiveness_contract
+from scripts.generate_study_assignments import validate_assignments
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -1887,140 +1892,66 @@ EFFECTIVENESS_PROTOCOL_SECTION_CONTRACTS = (
     (
         "## 1. Purpose and evidence boundary",
         "## 1. 目的與證據邊界",
-        ("synthetic clinical-data research tasks", "does not establish", "clinical validity"),
-        ("合成臨床資料研究任務", "不能證明", "臨床效度"),
     ),
     (
         "## 2. Governance and authorization",
         "## 2. 治理與授權",
-        ("does not authorize recruitment", "ethics-review determination", "storage platform"),
-        ("不代表已核准招募", "倫理審查", "儲存平台"),
     ),
     (
         "## 3. Eligibility and strata",
         "## 3. 納入條件與分層",
-        ("8 beginners", "8 professionals", "before recruitment"),
-        ("初學者 8 人", "專業者 8 人", "招募前"),
     ),
     (
         "## 4. Four-task balanced crossover",
         "## 4. 四任務平衡交叉設計",
-        ("four synthetic tasks", "2:2 balanced crossover", "never gives both variants"),
-        ("四個合成任務", "2:2 平衡交叉", "同一人不會收到"),
     ),
     (
         "## 5. Standardized task execution",
         "## 5. 標準化任務執行",
-        ("ten-minute", "fresh conversation", "time limits", "Rest is offered"),
-        ("十分鐘", "全新對話", "時限", "休息"),
     ),
     (
         "## 6. Environment manifest and version stop rule",
         "## 6. 環境 manifest 與版本停止規則",
-        ("environment fingerprint", "stop the open batch", "no external model call"),
-        ("環境指紋", "停止開放批次", "不會呼叫外部模型"),
     ),
     (
         "## 7. Human-task commitment and leakage rule",
         "## 7. 人類任務承諾與外洩規則",
-        ("32-byte nonce", "SHA-256", "leakage stops the affected batch"),
-        ("32-byte nonce", "SHA-256", "外洩", "停止受影響批次"),
     ),
     (
         "## 8. Safety-gated primary outcome",
         "## 8. 通過安全門檻的主要結果",
-        (
-            "mandatory criterion",
-            "no critical violation",
-            "secondary and never determine",
-            "invented-schema",
-            "false-executable-status",
-            "rwd-rwe-confusion",
-            "unsupported-causal-claim",
-            "fabricated-citation",
-            "unreviewed-search-as-authority",
-            "missing-tte-readiness",
-            "private-data-request-or-exposure",
-        ),
-        (
-            "必備準則",
-            "沒有重大違規",
-            "屬次要結果",
-            "invented-schema",
-            "false-executable-status",
-            "rwd-rwe-confusion",
-            "unsupported-causal-claim",
-            "fabricated-citation",
-            "unreviewed-search-as-authority",
-            "missing-tte-readiness",
-            "private-data-request-or-exposure",
-        ),
     ),
     (
         "## 9. Secondary outcomes and fixed scoring",
         "## 9. 次要結果與固定計分",
-        ("NASA-TLX", "sum to 15", "SUS", "multiplied by 2.5", "null and not estimable"),
-        ("NASA-TLX", "總和為 15", "SUS", "乘以 2.5", "無法估計"),
     ),
     (
         "## 10. Blinded ratings and adjudication",
         "## 10. 盲化評分與第三人裁定",
-        ("Two independent raters", "third-person adjudication", "original ratings remain unchanged"),
-        ("兩位獨立評分者", "第三人裁定", "原始評分", "維持不變"),
     ),
     (
         "## 11. Ratings lock, agreement gate, and explicit unlock",
         "## 11. 評分鎖定、一致性閘門與明確解盲",
-        ("raw blinded score-file", "condition key", "0.80", "0.60", "--unlock-after-ratings-lock"),
-        ("原始位元組", "condition key", "0.80", "0.60", "--unlock-after-ratings-lock"),
     ),
     (
         "## 12. Paired exploratory analysis",
         "## 12. 配對探索性分析",
-        (
-            "95%",
-            "participant-cluster bootstrap",
-            "technical failure",
-            "conservative sensitivity",
-            "No null-hypothesis significance",
-        ),
-        ("95%", "參與者叢集 bootstrap", "技術失敗", "保守敏感度", "不得以虛無假設顯著性"),
     ),
     (
         "## 13. Practical difference and later power scenarios",
         "## 13. 實務差異與後續檢定力情境",
-        (
-            "20 percentage points",
-            "conservative scenarios",
-            "pilot point estimate alone",
-            "deferred-until-post-pilot",
-        ),
-        ("20 個百分點", "保守情境", "絕不只使用先導研究點估計", "deferred-until-post-pilot"),
     ),
     (
         "## 14. Completion threshold and non-positive reporting",
         "## 14. 完成門檻與非正向結果報告",
-        ("14 of 16", "Positive, neutral, and negative", "not changed after seeing"),
-        ("14/16", "正向、中性與負向", "不得更改"),
     ),
     (
         "## 15. Raw-data, incident, and publication boundaries",
         "## 15. 原始資料、事件與發布邊界",
-        (
-            "stay outside the repository",
-            "least privilege",
-            "retention",
-            "incident",
-            "No participant row",
-            "Packaging the Skill",
-        ),
-        ("儲存庫外", "最小權限", "保存", "事件", "不得發布參與者", "封裝 Skill"),
     ),
     (
         "## 16. Method references",
         "## 16. 方法參考資料",
-        EFFECTIVENESS_METHOD_URLS,
-        EFFECTIVENESS_METHOD_URLS,
     ),
 )
 
@@ -2068,8 +1999,8 @@ EFFECTIVENESS_CANONICAL_FACTS = (
     ),
     (
         "secondary-scoring",
-        "NASA-TLX weights sum to 15, SUS uses the fixed 2.5 multiplier, and a quality rate with no applicable criteria is null and not estimable.",
-        "NASA-TLX 權重總和為 15，SUS 使用固定的 2.5 倍轉換，沒有適用品質判準時品質率為 null 且不可估計。",
+        "NASA-TLX uses six integer ratings from 0 through 100 and six integer weights from 0 through 5 that sum to 15, with score sum(rating * weight) / 15; SUS uses ten integer responses from 1 through 5, transforms odd items to response - 1 and even items to 5 - response, and multiplies the sum by 2.5; a quality rate with no applicable criteria is null and not estimable.",
+        "NASA-TLX 使用六個 0 到 100 的整數評分與六個 0 到 5、總和為 15 的整數權重，分數為 sum(rating * weight) / 15；SUS 使用十個 1 到 5 的整數作答，奇數題轉為 response - 1、偶數題轉為 5 - response，再將總和乘以 2.5；沒有適用品質判準時，品質率為 null 且不可估計。",
     ),
     (
         "blinded-rating",
@@ -2083,8 +2014,8 @@ EFFECTIVENESS_CANONICAL_FACTS = (
     ),
     (
         "paired-analysis",
-        "The paired analysis reports a risk difference with a 95% participant-cluster bootstrap interval, handles technical failures conservatively, and performs no null-hypothesis significance test.",
-        "配對分析報告風險差與 95% 參與者群聚 bootstrap 區間，並以保守方式處理技術失敗，不做虛無假設顯著性檢定。",
+        "The paired analysis calculates the risk difference, paired distribution, and denominators directly from observed participant differences; only applicable 95% confidence intervals use participant-cluster bootstrap with the manifest's fixed seed and resample count; technical failures are handled conservatively and no null-hypothesis significance test is performed.",
+        "配對分析直接從觀察到的參與者差異計算風險差、配對分布與分母；只有適用的 95% 信賴區間使用 manifest 固定種子與重抽次數的參與者群聚 bootstrap；技術失敗採保守方式處理，且不做虛無假設顯著性檢定。",
     ),
     (
         "power-rule",
@@ -2107,6 +2038,24 @@ EFFECTIVENESS_CANONICAL_FACTS = (
         "本規格使用本節列出的五項固定方法參考資料。",
     ),
 )
+EFFECTIVENESS_REDUNDANT_FACT_MARKERS = (
+    ("does not establish", "不代表已證明"),
+    ("does not authorize", "不代表已核准"),
+    ("8 beginners", "初學者 8 人"),
+    ("2:2 balanced crossover", "2:2 平衡交叉"),
+    ("same ten-minute interface orientation", "相同的十分鐘介面導覽"),
+    ("stop the open batch", "停止目前開放批次"),
+    ("32-byte nonce", "32-byte nonce"),
+    ("requires every predeclared mandatory criterion", "滿足所有預先指定的必備準則"),
+    ("sum to 15", "總和為 15"),
+    ("Two independent raters score", "兩位獨立評分者以"),
+    ("Raw binary agreement must be at least", "二元原始一致率至少"),
+    ("95% participant-cluster bootstrap", "95% 參與者叢集 bootstrap"),
+    ("absolute 20 percentage points", "絕對 20 個百分點"),
+    ("At least 14 of 16", "至少 14/16"),
+    ("stay outside the repository", "都留在招募前核准的儲存庫外位置"),
+    (None, None),
+)
 ENGLISH_CANONICAL_FACT_PATTERN = re.compile(
     r"^\*\*Canonical fact `(?P<fact_id>[a-z0-9-]+)`:"
     r"\*\* (?P<statement>.+)$",
@@ -2128,9 +2077,9 @@ def _assert_effectiveness_canonical_facts(
     for index, (fact_id, english_statement, chinese_statement) in enumerate(
         EFFECTIVENESS_CANONICAL_FACTS
     ):
-        english_heading, chinese_heading, _, _ = (
-            EFFECTIVENESS_PROTOCOL_SECTION_CONTRACTS[index]
-        )
+        english_heading, chinese_heading = EFFECTIVENESS_PROTOCOL_SECTION_CONTRACTS[
+            index
+        ]
         next_english = (
             EFFECTIVENESS_PROTOCOL_SECTION_CONTRACTS[index + 1][0]
             if index + 1 < len(EFFECTIVENESS_PROTOCOL_SECTION_CONTRACTS)
@@ -2151,6 +2100,31 @@ def _assert_effectiveness_canonical_facts(
         assert TRADITIONAL_CHINESE_CANONICAL_FACT_PATTERN.findall(chinese_section) == [
             (fact_id, chinese_statement)
         ]
+        english_match = ENGLISH_CANONICAL_FACT_PATTERN.search(english_section)
+        chinese_match = TRADITIONAL_CHINESE_CANONICAL_FACT_PATTERN.search(
+            chinese_section
+        )
+        assert english_match is not None
+        assert chinese_match is not None
+        english_remainder = " ".join(
+            (
+                english_section[: english_match.start()]
+                + english_section[english_match.end() :]
+            ).split()
+        )
+        chinese_remainder = " ".join(
+            (
+                chinese_section[: chinese_match.start()]
+                + chinese_section[chinese_match.end() :]
+            ).split()
+        )
+        english_duplicate, chinese_duplicate = EFFECTIVENESS_REDUNDANT_FACT_MARKERS[
+            index
+        ]
+        if english_duplicate is not None:
+            assert english_duplicate not in english_remainder
+        if chinese_duplicate is not None:
+            assert chinese_duplicate not in chinese_remainder
         english_facts[fact_id] = english_statement
         chinese_facts[fact_id] = chinese_statement
 
@@ -2171,7 +2145,7 @@ def _assert_effectiveness_protocol_contract(
         r"^## .+$", traditional_chinese, flags=re.MULTILINE
     ) == chinese_headings
 
-    for index, (english_heading, chinese_heading, english_markers, chinese_markers) in enumerate(
+    for index, (english_heading, chinese_heading) in enumerate(
         EFFECTIVENESS_PROTOCOL_SECTION_CONTRACTS
     ):
         next_english = (
@@ -2184,12 +2158,8 @@ def _assert_effectiveness_protocol_contract(
         chinese_section = _markdown_section(
             traditional_chinese, chinese_heading, next_chinese
         )
-        normalized_english_section = " ".join(english_section.split())
-        normalized_chinese_section = " ".join(chinese_section.split())
-        for marker in english_markers:
-            assert marker in normalized_english_section
-        for marker in chinese_markers:
-            assert marker in normalized_chinese_section
+        assert english_section.startswith(english_heading)
+        assert chinese_section.startswith(chinese_heading)
 
     for url in EFFECTIVENESS_METHOD_URLS:
         assert english.count(url) == 1
@@ -2216,28 +2186,36 @@ def test_effectiveness_protocols_fix_the_approved_design_and_stay_bilingual():
 
 
 @pytest.mark.parametrize(
-    ("old", "replacement"),
+    ("fact_id", "replacement"),
     [
         (
-            "Both conditions use the same standardized ten-minute orientation",
+            "standardized-execution",
             "Each condition uses a condition-specific orientation",
         ),
         (
-            "any model, Skill, surface, or material setting change stops the open batch",
-            "a model, Skill, surface, or material setting change does not stop the open batch",
+            "environment-stop",
+            "A model or version change does not stop the open batch.",
         ),
         (
-            "receive only opaque answer codes and condition-free material",
-            "receive condition-labelled material",
+            "blinded-rating",
+            "Blinded raters receive condition-labelled material.",
         ),
         (
-            "At least 14 of 16 participants",
-            "At most 14 of 16 participants",
+            "completion-reporting",
+            "At most 14 of 16 participants must complete all four tasks.",
+        ),
+        (
+            "secondary-scoring",
+            "NASA-TLX divides the weighted sum by 6 and SUS reverses the odd/even transformations.",
+        ),
+        (
+            "paired-analysis",
+            "Paired distributions and denominators are bootstrap estimates.",
         ),
     ],
 )
 def test_effectiveness_protocol_contract_rejects_semantic_reversals(
-    old,
+    fact_id,
     replacement,
 ):
     english = (ROOT / "evals/effectiveness/protocol.md").read_text(
@@ -2246,7 +2224,12 @@ def test_effectiveness_protocol_contract_rejects_semantic_reversals(
     traditional_chinese = (
         ROOT / "evals/effectiveness/protocol.zh-TW.md"
     ).read_text(encoding="utf-8")
-    mutated = english.replace(old, replacement, 1)
+    pattern = re.compile(
+        rf"^(\*\*Canonical fact `{re.escape(fact_id)}`:\*\* ).+$",
+        flags=re.MULTILINE,
+    )
+    mutated, replacement_count = pattern.subn(rf"\1{replacement}", english)
+    assert replacement_count == 1
     assert mutated != english
 
     with pytest.raises(AssertionError):
@@ -2501,40 +2484,12 @@ IMPLEMENTED_EFFECTIVENESS_SCHEMA_KEY_GROUPS = {
     "condition_key": CONDITION_KEY_KEYS,
     "condition_mapping": CONDITION_MAPPING_KEYS,
 }
-EFFECTIVENESS_ASSIGNMENT_SCHEMA_CONTRACT = {
-    "assignment_top_level_keys": [
-        "schema_version",
-        "study_id",
-        "seed",
-        "assignments",
-    ],
-    "assignment_row_keys": [
-        "answer_id",
-        "participant_code",
-        "stratum",
-        "pair_id",
-        "variant",
-        "output_depth",
-        "condition",
-        "order",
-    ],
-    "validator_api": "validate_assignments(rows, catalog, study_id, seed)",
-}
-EFFECTIVENESS_PRIMARY_OUTCOME_CONTRACT = {
-    "primary_success": {
-        "mandatory_complete": "required",
-        "critical_violation": "forbidden",
-    },
-    "quality_criteria_affect_primary": False,
-}
-
-
-def _effectiveness_yaml_contract(text: str, contract_name: str) -> dict:
-    body = _between(
-        text,
-        f"<!-- BEGIN {contract_name} -->",
-        f"<!-- END {contract_name} -->",
-    )
+def _effectiveness_yaml_contract(
+    text: str,
+    heading: str,
+    next_heading: str,
+) -> dict:
+    body = _markdown_section(text, heading, next_heading)
     matches = list(FENCED_BLOCK_PATTERN.finditer(body))
     assert len(matches) == 1
     assert matches[0].group("language").strip() == "yaml"
@@ -2543,13 +2498,133 @@ def _effectiveness_yaml_contract(text: str, contract_name: str) -> dict:
     return parsed
 
 
-def _assert_effectiveness_input_schema_contract(text: str) -> None:
-    assert _effectiveness_yaml_contract(
-        text, "ASSIGNMENT SCHEMA CONTRACT"
-    ) == EFFECTIVENESS_ASSIGNMENT_SCHEMA_CONTRACT
-    assert _effectiveness_yaml_contract(
-        text, "PRIMARY OUTCOME CONTRACT"
-    ) == EFFECTIVENESS_PRIMARY_OUTCOME_CONTRACT
+def _production_assignment_contract(tmp_path: Path) -> dict:
+    output = tmp_path / "assignments.json"
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "scripts/generate_study_assignments.py",
+            "--study-id",
+            "contract-test",
+            "--seed",
+            "20260809",
+            "--output",
+            str(output),
+        ],
+        cwd=ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert completed.returncode == 0, completed.stderr
+    payload = json.loads(output.read_text(encoding="utf-8"))
+    rows = payload["assignments"]
+    catalog, _ = load_effectiveness_contract(
+        ROOT / "evals/effectiveness/offline-tasks.yaml",
+        ROOT / "evals/effectiveness/rubric.yaml",
+    )
+    assert validate_assignments(
+        rows,
+        catalog,
+        payload["study_id"],
+        payload["seed"],
+    ) == []
+    parameters = tuple(inspect.signature(validate_assignments).parameters)
+    assert parameters == ("rows", "catalog", "study_id", "seed")
+    return {
+        "assignment_top_level_keys": tuple(payload),
+        "assignment_row_keys": tuple(rows[0]),
+        "validator_api": f"validate_assignments({', '.join(parameters)})",
+    }
+
+
+def _assert_primary_outcome_contract(contract: dict) -> None:
+    assert set(contract) == {
+        "primary_success_truth_table",
+        "quality_criteria_affect_primary",
+    }
+    assert contract["quality_criteria_affect_primary"] is False
+    truth_table = contract["primary_success_truth_table"]
+    assert isinstance(truth_table, list)
+    assert len(truth_table) == 4
+    observed_inputs = set()
+    for row in truth_table:
+        assert set(row) == {
+            "mandatory_complete",
+            "critical_violation",
+            "success",
+        }
+        mandatory = row["mandatory_complete"]
+        critical = row["critical_violation"]
+        documented_success = row["success"]
+        assert type(mandatory) is bool
+        assert type(critical) is bool
+        assert type(documented_success) is bool
+        observed_inputs.add((mandatory, critical))
+        expected = mandatory and not critical
+        assert documented_success is expected
+        for quality_met, quality_applicable in ((0, 0), (0, 3), (3, 3)):
+            observation = {
+                "completion_status": "completed",
+                "mandatory_complete": mandatory,
+                "quality_met": quality_met,
+                "quality_applicable": quality_applicable,
+                "critical_violation": critical,
+            }
+            assert task_success(observation) is documented_success
+    assert observed_inputs == {
+        (False, False),
+        (False, True),
+        (True, False),
+        (True, True),
+    }
+
+
+def _assert_effectiveness_input_schema_contract(
+    text: str,
+    production_assignment: dict | None = None,
+) -> None:
+    assignment_contract = _effectiveness_yaml_contract(
+        text,
+        "## Normative assignment contract",
+        "## 1. Study manifest",
+    )
+    assert set(assignment_contract) == {
+        "assignment_top_level_keys",
+        "assignment_row_keys",
+        "validator_api",
+    }
+    if production_assignment is not None:
+        for key in ("assignment_top_level_keys", "assignment_row_keys"):
+            documented = assignment_contract[key]
+            production = production_assignment[key]
+            assert len(documented) == len(production)
+            assert set(documented) == set(production)
+        assert (
+            assignment_contract["validator_api"]
+            == production_assignment["validator_api"]
+        )
+
+    primary_contract = _effectiveness_yaml_contract(
+        text,
+        "### Normative primary-outcome truth table",
+        "### Original rater rows",
+    )
+    _assert_primary_outcome_contract(primary_contract)
+    primary_section = _markdown_section(
+        text,
+        "### Normative primary-outcome truth table",
+        "### Original rater rows",
+    )
+    primary_fences = list(FENCED_BLOCK_PATTERN.finditer(primary_section))
+    assert len(primary_fences) == 1
+    primary_block = primary_fences[0].group(0)
+    assert text.count(primary_block) == 1
+    outside_primary_block = " ".join(text.replace(primary_block, "", 1).split())
+    assert (
+        "Final success must match mandatory completion with no critical violation."
+        not in outside_primary_block
+    )
 
     normalized = " ".join(text.split())
     documented_groups = {
@@ -2614,7 +2689,6 @@ def _assert_effectiveness_input_schema_contract(text: str) -> None:
         "quality_applicable=0",
         "quality_met=0",
         "quality rate is null and not estimable",
-        "Primary success depends only on mandatory completion",
         "criterion_scores",
     ):
         assert marker in normalized
@@ -2631,12 +2705,15 @@ def _backtick_key_set(text: str) -> frozenset[str]:
     return frozenset(re.findall(r"`([a-z][a-z0-9_]*)`", text))
 
 
-def test_effectiveness_input_schema_records_strict_rows_and_quality_na():
+def test_effectiveness_input_schema_records_strict_rows_and_quality_na(tmp_path):
     text = (ROOT / "evals/effectiveness/input-schema.md").read_text(
         encoding="utf-8"
     )
 
-    _assert_effectiveness_input_schema_contract(text)
+    _assert_effectiveness_input_schema_contract(
+        text,
+        _production_assignment_contract(tmp_path),
+    )
 
 
 @pytest.mark.parametrize(
@@ -2674,10 +2751,18 @@ def test_effectiveness_input_schema_contract_rejects_field_or_na_drift(
             "validator_api: validate_assignments(rows, catalog, study_id, seed)",
             "validator_api: validate_assignments(rows, catalog)",
         ),
-        ("critical_violation: forbidden", "critical_violation: allowed"),
+        (
+            "  - mandatory_complete: true\n"
+            "    critical_violation: true\n"
+            "    success: false",
+            "  - mandatory_complete: true\n"
+            "    critical_violation: true\n"
+            "    success: true",
+        ),
     ],
 )
 def test_effectiveness_input_schema_contract_rejects_assignment_or_primary_drift(
+    tmp_path,
     old,
     replacement,
 ):
@@ -2685,6 +2770,27 @@ def test_effectiveness_input_schema_contract_rejects_assignment_or_primary_drift
         encoding="utf-8"
     )
     mutated = text.replace(old, replacement, 1)
+    assert mutated != text
+
+    with pytest.raises(AssertionError):
+        _assert_effectiveness_input_schema_contract(
+            mutated,
+            _production_assignment_contract(tmp_path),
+        )
+
+
+def test_effectiveness_input_schema_rejects_primary_rule_outside_normative_yaml():
+    text = (ROOT / "evals/effectiveness/input-schema.md").read_text(
+        encoding="utf-8"
+    )
+    duplicate = (
+        "Final success must match mandatory completion with no critical violation."
+    )
+    mutated = text.replace(
+        "### Adjudication rows\n",
+        f"### Adjudication rows\n\n{duplicate}\n",
+        1,
+    )
     assert mutated != text
 
     with pytest.raises(AssertionError):
