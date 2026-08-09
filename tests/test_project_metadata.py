@@ -2824,21 +2824,355 @@ def test_effectiveness_navigation_and_architecture_preserve_public_boundary():
     assert "Do not place human data anywhere under the repository checkout." in contributing
 
 
+EFFECTIVENESS_FRAMEWORK_EVIDENCE_SECTIONS = (
+    "## Test-driven evidence contract",
+    "## Official Python 3.11.9 runtime",
+    "## Framework structure and focused checks",
+    "## Pre-document command observations",
+    "## Document-present fresh verification",
+    "## Complete diff and public-boundary audit",
+    "## Evidence and authority boundary",
+)
+
+EFFECTIVENESS_FRAMEWORK_FOCUSED_COMMAND = (
+    "python -m pytest -q "
+    "tests/test_effectiveness_contract.py::test_offline_bank_has_eight_pairs_two_per_depth_and_two_variants "
+    "tests/test_study_assignments.py::test_assignment_has_sixteen_people_four_tasks_and_balanced_conditions "
+    "tests/test_human_task_commitment.py::test_public_example_is_exactly_recomputed_with_zero_nonce "
+    "tests/test_effectiveness_analysis.py::test_lock_requires_completed_ratings_raw_byte_hash_and_closed_schema "
+    "tests/test_effectiveness_analysis.py::test_condition_key_requires_exact_unique_answer_set_and_valid_conditions "
+    "tests/test_effectiveness_analysis.py::test_unlock_requires_same_study_id_as_manifest_and_among_rating_files "
+    "tests/test_effectiveness_analysis.py::test_cli_requires_explicit_post_lock_unlock_without_echoing_paths "
+    "tests/test_effectiveness_reports.py::test_checked_in_example_is_aggregate_only_and_explicitly_synthetic"
+)
+
+EFFECTIVENESS_FRAMEWORK_POSITIVE_CLAIM_PATTERNS = (
+    r"\b(?:the )?pilot (?:was |is |has been )?(?:completed|conducted|run|performed)\b",
+    r"\b(?:the )?skill (?:is|was|has been) (?:proven )?effective\b",
+    r"\b(?:an )?external model call (?:was |is |has been )?(?:made|performed|completed|conducted|issued)\b",
+    r"\bparticipants? (?:were|was|have been|has been) recruited\b",
+    r"\bhuman data (?:were|was|have been|has been) (?:collected|gathered|analyzed)\b",
+    r"\bactual human task commitment (?:was |is |has been )?(?:created|committed|published)\b",
+    r"\b(?:a )?tag (?:was |is |has been )?(?:created|changed|published|pushed)\b",
+    r"\b(?:a |the )?(?:v0\.4\.0 )?release (?:was |is |has been )?(?:created|published|changed|issued)\b",
+    r"\b(?:repository )?settings? (?:were|was|have been|has been) (?:changed|modified|updated)\b",
+    r"\breal participant outcomes? (?:were|was|are|is|have been|has been) (?:observed|reported|collected|analyzed)\b",
+)
+
+
+def _evidence_metadata_items(preamble: str) -> tuple[str, ...]:
+    items: list[str] = []
+    current: list[str] = []
+    for line in preamble.splitlines():
+        if line.startswith("- "):
+            if current:
+                items.append(" ".join(current))
+            current = [line]
+        elif current and line.startswith("  "):
+            current.append(line.strip())
+        elif current:
+            items.append(" ".join(current))
+            current = []
+    if current:
+        items.append(" ".join(current))
+    return tuple(items)
+
+
+def _evidence_subsection(text: str, heading: str, next_heading: str | None) -> str:
+    assert text.count(heading) == 1
+    start = text.index(heading)
+    end = text.index(next_heading, start) if next_heading is not None else len(text)
+    return text[start:end]
+
+
+def _evidence_table_rows(section: str) -> tuple[tuple[str, ...], ...]:
+    rows: list[tuple[str, ...]] = []
+    for line in section.splitlines():
+        if not line.startswith("|"):
+            continue
+        cells = tuple(cell.strip() for cell in line.strip("|").split("|"))
+        if cells[0] in {"Property", "Command"}:
+            continue
+        if all(re.fullmatch(r":?-+:?", cell) for cell in cells):
+            continue
+        rows.append(cells)
+    return tuple(rows)
+
+
+def _assert_no_unnegated_effectiveness_claims(text: str) -> None:
+    normalized = " ".join(text.split())
+    clauses = re.split(
+        r"(?<=[.!?])\s+|;\s+|\bbut\b|\bhowever\b",
+        normalized,
+        flags=re.IGNORECASE,
+    )
+    for clause in clauses:
+        for pattern in EFFECTIVENESS_FRAMEWORK_POSITIVE_CLAIM_PATTERNS:
+            for match in re.finditer(pattern, clause, flags=re.IGNORECASE):
+                local_prefix = clause[max(0, match.start() - 120) : match.start()]
+                assert re.search(
+                    r"\b(?:no|not|never|without)\b",
+                    local_prefix,
+                    flags=re.IGNORECASE,
+                ), f"unnegated evidence claim: {match.group(0)}"
+
+
+def _assert_effectiveness_framework_evidence_contract(text: str) -> None:
+    headings = tuple(re.findall(r"^## .+$", text, flags=re.MULTILINE))
+    assert headings == EFFECTIVENESS_FRAMEWORK_EVIDENCE_SECTIONS
+    assert text.endswith("\n")
+
+    preamble = text[: text.index(EFFECTIVENESS_FRAMEWORK_EVIDENCE_SECTIONS[0])]
+    assert preamble.startswith("# v0.4.0 Effectiveness Framework Verification\n")
+    assert _evidence_metadata_items(preamble) == (
+        "- Verification date: `2026-08-09` (`Asia/Taipei`, UTC+08:00; Windows zone `Taipei Standard Time`)",
+        "- Observation captured: `2026-08-09T20:00:32+08:00`",
+        "- Branch: `codex/effectiveness-evaluation-design`",
+        "- Implementation HEAD: `eb61bca2c7b5cfd0955bf99e5c19eaf4c19c866d`",
+        "- Host interpreter: `Python 3.13.13`",
+        "- Target interpreter: official `Python 3.11.9` 64-bit embeddable runtime",
+    )
+    normalized_preamble = " ".join(preamble.split())
+    for exact_fact in (
+        "The exact implementation object identified by this record is the Implementation HEAD above.",
+        "that clean object produced `507 passed in 25.52s` under the host interpreter.",
+        "The evidence document and its contract test necessarily follow the implementation object",
+        "this record does not call that working tree clean.",
+        "The evidence commit will contain only those two files and will be verified again after commit.",
+    ):
+        assert normalized_preamble.count(exact_fact) == 1
+
+    tdd = _evidence_subsection(
+        text,
+        "## Test-driven evidence contract",
+        "## Official Python 3.11.9 runtime",
+    )
+    for exact_fact in (
+        "python -m pytest tests/test_project_metadata.py::test_effectiveness_framework_evidence_is_dated_and_does_not_claim_a_pilot -q",
+        "`1 failed in 0.24s`",
+        "`FileNotFoundError`",
+        "`1 failed, 507 passed in 21.65s` on Python 3.13.13",
+        "`1 failed, 507 passed in 22.84s` on Python 3.11.9",
+    ):
+        assert tdd.count(exact_fact) == 1
+
+    runtime = _evidence_subsection(
+        text,
+        "## Official Python 3.11.9 runtime",
+        "## Framework structure and focused checks",
+    )
+    assert _evidence_table_rows(runtime) == (
+        (
+            "Source URL",
+            "`https://www.python.org/ftp/python/3.11.9/python-3.11.9-embed-amd64.zip`",
+        ),
+        ("Download size", "`11,249,023` bytes"),
+        (
+            "Locally computed SHA-256",
+            "`009D6BF7E3B2DDCA3D784FA09F90FE54336D5B60F0E0F305C37F400BF83CFD3B`",
+        ),
+        (
+            "Runtime",
+            "`3.11.9 (tags/v3.11.9:de54cf5, Apr 2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]`",
+        ),
+        (
+            "Temporary executable",
+            "`C:\\tmp\\python-3.11.9-embed-amd64\\python.exe`",
+        ),
+    )
+    normalized_runtime = " ".join(runtime.split())
+    for exact_fact in (
+        "The ZIP hash above is the locally observed download hash, not a claim that it was independently matched to a separately published checksum.",
+        "`pytest 9.0.2`, `PyYAML 6.0.3`",
+        "`yaml.__with_libyaml__ == False`",
+        "No installer, project dependency, declared Python support, PATH, file association, or tracked file was changed for this runtime.",
+    ):
+        assert normalized_runtime.count(exact_fact) == 1
+
+    framework = _evidence_subsection(
+        text,
+        "## Framework structure and focused checks",
+        "## Pre-document command observations",
+    )
+    assert "A direct in-memory contract and assignment check" not in framework
+    normalized_framework = " ".join(framework.split())
+    for exact_fact in (
+        "The focused pytest command below exited `0` with `10 passed in 0.24s` and verified:",
+        "eight offline task pairs;",
+        "two pairs at each of the four depths",
+        "16 variants in total;",
+        "a 16-person assignment with 64 rows across synthetic participant codes `B01`-`B08` and `P01`-`P08`;",
+        "32 control and 32 intervention assignments;",
+        "no assignment-validator errors.",
+        "It did not create an actual human task commitment.",
+        "The lock/key tests exercised rejection and explicit-unlock boundaries without using a real condition key or human data.",
+        "verified as aggregate-only, explicitly synthetic examples; they are not pilot outcomes.",
+    ):
+        assert normalized_framework.count(exact_fact) == 1
+    command_blocks = re.findall(
+        r"```text\n(?P<body>.+?)\n```",
+        framework,
+        flags=re.DOTALL,
+    )
+    assert command_blocks == [EFFECTIVENESS_FRAMEWORK_FOCUSED_COMMAND]
+
+    pre_document = _evidence_subsection(
+        text,
+        "## Pre-document command observations",
+        "## Document-present fresh verification",
+    )
+    pre_host = _evidence_subsection(
+        pre_document,
+        "### Host Python 3.13.13",
+        "### Target Python 3.11.9",
+    )
+    pre_target = _evidence_subsection(
+        pre_document,
+        "### Target Python 3.11.9",
+        None,
+    )
+    assert _evidence_table_rows(pre_host) == (
+        ("`python -m pytest -q`", "1", "`1 failed, 507 passed in 21.65s`; only the expected missing evidence file", "`22,361 ms`"),
+        ("`python scripts/validate_skill.py`", "0", "no output/findings", "`410 ms`"),
+        ("`python scripts/check_public_boundary.py`", "0", "no output/findings", "`392 ms`"),
+        ("`python scripts/package_skill.py --check-reproducible`", "0", "no output; reproducibility check accepted", "`111 ms`"),
+        ("`python scripts/render_eval_summary.py --check`", "0", "no output; checked-in deterministic Eval summary accepted", "`91 ms`"),
+        ("`python scripts/render_effectiveness_report.py --summary evals/effectiveness/examples/synthetic-summary.json --english evals/effectiveness/examples/synthetic-report.md --traditional-chinese evals/effectiveness/examples/synthetic-report.zh-TW.md --check`", "0", "no output; both checked-in synthetic reports accepted", "`61 ms`"),
+        ("`git diff --check main...HEAD`", "0", "no output/whitespace errors in the committed branch diff", "`80 ms`"),
+    )
+    assert _evidence_table_rows(pre_target) == (
+        ("`python -m pytest -q`", "1", "`1 failed, 507 passed in 22.84s`; only the expected missing evidence file", "`23,547 ms`"),
+        ("`python scripts/validate_skill.py`", "0", "no output/findings", "`75 ms`"),
+        ("`python scripts/check_public_boundary.py`", "0", "no output/findings", "`182 ms`"),
+        ("`python scripts/package_skill.py --check-reproducible`", "0", "no output; reproducibility check accepted", "`115 ms`"),
+        ("`python scripts/render_eval_summary.py --check`", "0", "no output; checked-in deterministic Eval summary accepted", "`119 ms`"),
+        ("`python scripts/render_effectiveness_report.py --summary evals/effectiveness/examples/synthetic-summary.json --english evals/effectiveness/examples/synthetic-report.md --traditional-chinese evals/effectiveness/examples/synthetic-report.zh-TW.md --check`", "0", "no output; both checked-in synthetic reports accepted", "`54 ms`"),
+    )
+
+    document_present = _evidence_subsection(
+        text,
+        "## Document-present fresh verification",
+        "## Complete diff and public-boundary audit",
+    )
+    current_host = _evidence_subsection(
+        document_present,
+        "### Host Python 3.13.13",
+        "### Target Python 3.11.9",
+    )
+    current_target = _evidence_subsection(
+        document_present,
+        "### Target Python 3.11.9",
+        None,
+    )
+    assert _evidence_table_rows(current_host) == (
+        ("`python -m pytest -q`", "0", "`508 passed in 21.74s`", "`22,825 ms`"),
+        ("`python scripts/validate_skill.py`", "0", "no output/findings", "`61 ms`"),
+        ("`python scripts/check_public_boundary.py`", "0", "no output/findings", "`185 ms`"),
+        ("`python scripts/package_skill.py --check-reproducible`", "0", "no output; reproducibility check accepted", "`98 ms`"),
+        ("`python scripts/render_eval_summary.py --check`", "0", "no output; checked-in deterministic Eval summary accepted", "`83 ms`"),
+        ("`python scripts/render_effectiveness_report.py --summary evals/effectiveness/examples/synthetic-summary.json --english evals/effectiveness/examples/synthetic-report.md --traditional-chinese evals/effectiveness/examples/synthetic-report.zh-TW.md --check`", "0", "no output; both checked-in synthetic reports accepted", "`56 ms`"),
+        ("`git diff --check main...HEAD`", "0", "no output/whitespace errors in the committed branch diff", "`52 ms`"),
+    )
+    assert _evidence_table_rows(current_target) == (
+        ("`python -m pytest -q`", "0", "`508 passed in 22.31s`", "`23,013 ms`"),
+        ("`python scripts/validate_skill.py`", "0", "no output/findings", "`77 ms`"),
+        ("`python scripts/check_public_boundary.py`", "0", "no output/findings", "`188 ms`"),
+        ("`python scripts/package_skill.py --check-reproducible`", "0", "no output; reproducibility check accepted", "`111 ms`"),
+        ("`python scripts/render_eval_summary.py --check`", "0", "no output; checked-in deterministic Eval summary accepted", "`109 ms`"),
+        ("`python scripts/render_effectiveness_report.py --summary evals/effectiveness/examples/synthetic-summary.json --english evals/effectiveness/examples/synthetic-report.md --traditional-chinese evals/effectiveness/examples/synthetic-report.zh-TW.md --check`", "0", "no output; both checked-in synthetic reports accepted", "`54 ms`"),
+    )
+
+    audit = _evidence_subsection(
+        text,
+        "## Complete diff and public-boundary audit",
+        "## Evidence and authority boundary",
+    )
+    normalized_audit = " ".join(audit.split())
+    for exact_fact in (
+        "The complete committed `main...HEAD` diff and the Task 9-inclusive diff against `main` were loaded for review.",
+        "They contained no binary patch.",
+        "Both `git diff --check main` and `git diff --cached --check` exited `0`.",
+        "the fresh `python scripts/check_public_boundary.py` scan exited `0` with no findings.",
+        "The changed-path review found no change to `pyproject.toml`, `.github/`, `docs/release.md`, `docs/releases/`, `CITATION.cff`, or `CHANGELOG.md`",
+        "There is no tracked assignment file, participant-level dataset, human answer, blinded score file, ratings lock, condition key, nonce, confidential task pack, or external model snapshot represented as deterministic evidence.",
+    ):
+        assert normalized_audit.count(exact_fact) == 1
+
+    authority = _evidence_subsection(
+        text,
+        "## Evidence and authority boundary",
+        None,
+    )
+    normalized_authority = " ".join(authority.split())
+    for exact_fact in (
+        "There was no external model call for this verification.",
+        "There was no human recruitment or data collection, no actual human task commitment, no real ratings lock or condition-key unlock, no tag or settings change, and no v0.4.0 Release.",
+        "No pilot was completed or conducted, and there are no real participant outcomes.",
+        "The only outcome example is synthetic and aggregate-only.",
+        "This record does not claim that the Skill is effective, clinically valid, causally valid, or ready for real-use deployment.",
+        "Completing the framework commit does not authorize governance, recruitment, human data collection, rating, unlock, analysis, or publication activity.",
+        "Remaining external steps require separate authorization and observed inputs:",
+    ):
+        assert normalized_authority.count(exact_fact) == 1
+
+    _assert_no_unnegated_effectiveness_claims(text)
+
+
 def test_effectiveness_framework_evidence_is_dated_and_does_not_claim_a_pilot():
     text = (
         ROOT
         / "docs/verification/2026-08-09-v0.4.0-effectiveness-framework.md"
     ).read_text(encoding="utf-8")
-    for marker in (
-        "Implementation HEAD",
-        "python -m pytest -q",
-        "python scripts/validate_skill.py",
-        "python scripts/check_public_boundary.py",
-        "python scripts/package_skill.py --check-reproducible",
-        "eight offline task pairs",
-        "16-person assignment",
-        "no external model call",
-        "no human recruitment or data collection",
-        "no v0.4.0 Release",
-    ):
-        assert marker in text
+    _assert_effectiveness_framework_evidence_contract(text)
+
+
+@pytest.mark.parametrize(
+    "contradictory_claim",
+    (
+        "The pilot was completed.",
+        "The Skill was proven effective.",
+        "An external model call was made.",
+        "Participants were recruited.",
+        "Human data were collected.",
+        "An actual human task commitment was created.",
+        "A tag was created.",
+        "The v0.4.0 Release was published.",
+        "Repository settings were changed.",
+        "Real participant outcomes were reported.",
+    ),
+)
+def test_effectiveness_framework_evidence_rejects_contradictory_positive_claims(
+    contradictory_claim,
+):
+    text = (
+        ROOT
+        / "docs/verification/2026-08-09-v0.4.0-effectiveness-framework.md"
+    ).read_text(encoding="utf-8")
+    mutated = f"{text.rstrip()}\n\n{contradictory_claim}\n"
+
+    with pytest.raises(AssertionError):
+        _assert_effectiveness_framework_evidence_contract(mutated)
+
+
+@pytest.mark.parametrize(
+    "negated_claim",
+    (
+        "No pilot was completed.",
+        "This record does not claim that the Skill was proven effective.",
+        "No external model call was made.",
+        "No participants were recruited and no human data were collected.",
+        "No actual human task commitment was created.",
+        "No tag was created, no v0.4.0 Release was published, and repository settings were not changed.",
+        "No real participant outcomes were reported.",
+    ),
+)
+def test_effectiveness_framework_evidence_allows_explicitly_negated_claims(
+    negated_claim,
+):
+    text = (
+        ROOT
+        / "docs/verification/2026-08-09-v0.4.0-effectiveness-framework.md"
+    ).read_text(encoding="utf-8")
+    mutated = f"{text.rstrip()}\n\n{negated_claim}\n"
+
+    _assert_effectiveness_framework_evidence_contract(mutated)
