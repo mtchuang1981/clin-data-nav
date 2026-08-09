@@ -64,14 +64,14 @@ npx skills update clinical-data-research-navigator --project --yes
 
 ## 從 GitHub Release 驗證 ZIP 後安裝
 
-目前已驗證的 Release 是 `v0.3.0`。請從同一個 Release 下載 ZIP 與 manifest，
+目前已驗證的 Release 是 `v0.4.0`。請從同一個 Release 下載 ZIP 與 manifest，
 先用 `archive_sha256` 核對 ZIP 的 SHA-256，再進行解壓縮。下列範例遇到既有
 目的目錄時會拒絕覆寫。
 
 PowerShell：
 
 ```powershell
-$releaseVersion = "0.3.0"
+$releaseVersion = "0.4.0"
 $assetName = "clinical-data-research-navigator-$releaseVersion"
 $releaseBase = "https://github.com/mtchuang1981/clin-data-nav/releases/download/v$releaseVersion"
 Invoke-WebRequest "$releaseBase/$assetName.zip" -OutFile "$assetName.zip"
@@ -89,7 +89,7 @@ Test-Path (Join-Path $skillDirectory "SKILL.md")
 POSIX shell：
 
 ```bash
-release_version="0.3.0"
+release_version="0.4.0"
 asset_name="clinical-data-research-navigator-$release_version"
 release_base="https://github.com/mtchuang1981/clin-data-nav/releases/download/v$release_version"
 curl -fLO "$release_base/$asset_name.zip"

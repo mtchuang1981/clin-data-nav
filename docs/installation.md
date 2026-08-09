@@ -68,7 +68,7 @@ follow the stage-specific recovery below instead of reinstalling blindly.
 
 ## Verified ZIP installation from a GitHub Release
 
-The current verified Release is `v0.3.0`. Download both the ZIP and manifest
+The current verified Release is `v0.4.0`. Download both the ZIP and manifest
 from that same Release, verify the ZIP's SHA-256 against `archive_sha256`, and
 only then extract it. These examples refuse to overwrite an existing
 destination.
@@ -76,7 +76,7 @@ destination.
 PowerShell:
 
 ```powershell
-$releaseVersion = "0.3.0"
+$releaseVersion = "0.4.0"
 $assetName = "clinical-data-research-navigator-$releaseVersion"
 $releaseBase = "https://github.com/mtchuang1981/clin-data-nav/releases/download/v$releaseVersion"
 Invoke-WebRequest "$releaseBase/$assetName.zip" -OutFile "$assetName.zip"
@@ -94,7 +94,7 @@ Test-Path (Join-Path $skillDirectory "SKILL.md")
 POSIX shell:
 
 ```bash
-release_version="0.3.0"
+release_version="0.4.0"
 asset_name="clinical-data-research-navigator-$release_version"
 release_base="https://github.com/mtchuang1981/clin-data-nav/releases/download/v$release_version"
 curl -fLO "$release_base/$asset_name.zip"

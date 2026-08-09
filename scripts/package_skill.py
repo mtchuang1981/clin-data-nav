@@ -17,7 +17,7 @@ except ModuleNotFoundError:  # Direct execution from the scripts directory.
 
 
 SKILL_NAME = "clinical-data-research-navigator"
-PACKAGE_VERSION = "0.3.0"
+PACKAGE_VERSION = "0.4.0"
 ARCHIVE_NAME = f"{SKILL_NAME}-{PACKAGE_VERSION}.zip"
 MANIFEST_NAME = f"{SKILL_NAME}-{PACKAGE_VERSION}.manifest.json"
 INCLUDED_DIRECTORIES = ("agents", "references", "scripts", "assets")

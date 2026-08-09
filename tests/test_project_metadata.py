@@ -1060,7 +1060,7 @@ def test_citation_and_license_metadata():
         (ROOT / "CITATION.cff").read_text(encoding="utf-8")
     )
     assert citation["title"] == "Clinical Data Research Navigator"
-    assert citation["version"] == "0.3.0"
+    assert citation["version"] == "0.4.0"
     assert citation["license"] == "Apache-2.0"
     assert "Apache License" in (ROOT / "LICENSE").read_text(encoding="utf-8")
 
@@ -1070,9 +1070,9 @@ def test_release_version_is_synchronized():
     citation = yaml.safe_load((ROOT / "CITATION.cff").read_text(encoding="utf-8"))
     changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
     changelog_zh_tw = (ROOT / "CHANGELOG.zh-TW.md").read_text(encoding="utf-8")
-    release_notes = (ROOT / "docs/releases/0.3.0.md").read_text(encoding="utf-8")
+    release_notes = (ROOT / "docs/releases/0.4.0.md").read_text(encoding="utf-8")
 
-    current_version = "0.3.0"
+    current_version = "0.4.0"
     active_surfaces = {
         "pyproject": project["project"]["version"],
         "citation": citation["version"],
@@ -1089,9 +1089,9 @@ def test_release_version_is_synchronized():
 
     assert len(active_surfaces) == 7
     assert set(active_surfaces.values()) == {current_version}
-    assert "## 0.3.0 - 2026-08-08" in changelog
-    assert "## 0.3.0 - 2026-08-08" in changelog_zh_tw
-    assert citation["date-released"] == "2026-08-08"
+    assert "## 0.4.0 - 2026-08-10" in changelog
+    assert "## 0.4.0 - 2026-08-10" in changelog_zh_tw
+    assert citation["date-released"] == "2026-08-10"
 
     # Published history remains immutable while current surfaces advance.
     assert "## 0.2.2 - 2026-07-29" in changelog
@@ -1172,6 +1172,39 @@ def test_v030_release_notes_are_static_bilingual_and_uploadable():
         "私人漏洞回報",
     ):
         assert candidate_or_external_claim.casefold() not in notes.casefold()
+
+
+def test_v040_release_notes_are_static_bilingual_and_uploadable():
+    notes = (ROOT / "docs" / "releases" / "0.4.0.md").read_text(
+        encoding="utf-8"
+    )
+    normalized = " ".join(notes.split()).casefold()
+
+    assert notes.startswith("# Clinical Data Research Navigator v0.4.0\n")
+    for heading in (
+        "## English",
+        "### Installation",
+        "### Verification",
+        "### Limitations",
+        "## 繁體中文",
+        "### 安裝",
+        "### 驗證",
+        "### 限制",
+    ):
+        assert heading in notes
+    for release_contract in (
+        "npx skills add mtchuang1981/clin-data-nav",
+        "clinical-data-research-navigator-0.4.0.zip",
+        "clinical-data-research-navigator-0.4.0.manifest.json",
+        "SHA-256",
+        "synthetic",
+        "no human pilot was conducted",
+        "not proven effective",
+        "合成",
+        "未進行人類試行",
+        "尚未證實有效",
+    ):
+        assert release_contract.casefold() in normalized
 
 
 def test_release_process_requires_a_committed_post_release_evidence_report():
@@ -1375,13 +1408,13 @@ def test_installation_guides_preserve_quick_update_verified_and_source_paths():
         (
             (ROOT / "docs/installation.md").read_text(encoding="utf-8"),
             ENGLISH_ONBOARDING_CONTRACT,
-            "current verified Release is `v0.3.0`",
+            "current verified Release is `v0.4.0`",
             ("target version for the next release", "not yet a claim"),
         ),
         (
             (ROOT / "docs/installation.zh-TW.md").read_text(encoding="utf-8"),
             TRADITIONAL_CHINESE_ONBOARDING_CONTRACT,
-            "目前已驗證的 Release 是 `v0.3.0`",
+            "目前已驗證的 Release 是 `v0.4.0`",
             ("下一個 Release", "不表示"),
         ),
     )
@@ -1392,8 +1425,8 @@ def test_installation_guides_preserve_quick_update_verified_and_source_paths():
         assert published_claim in normalized
         for stale_claim in stale_claims:
             assert stale_claim not in normalized
-        assert 'releaseVersion = "0.3.0"' in text
-        assert 'release_version="0.3.0"' in text
+        assert 'releaseVersion = "0.4.0"' in text
+        assert 'release_version="0.4.0"' in text
         assert "$HOME/.agents/skills" in text
         assert "SHA-256" in text
         assert "archive_sha256" in text
@@ -1715,7 +1748,7 @@ def test_citation_points_to_the_public_repository_with_the_verified_release_date
     repository_url = "https://github.com/mtchuang1981/clin-data-nav"
     assert citation["url"] == repository_url
     assert citation["repository-code"] == repository_url
-    assert citation["date-released"] == "2026-08-08"
+    assert citation["date-released"] == "2026-08-10"
 
 
 def test_security_policy_has_supported_versions_and_safe_confidential_reporting():

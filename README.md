@@ -68,7 +68,7 @@ publish a Plugin.
 | Contribute and validate | [Contributing](CONTRIBUTING.md) |
 | Report a security concern | [Security](SECURITY.md) |
 | Prepare an approved release | [Release process](docs/release.md) |
-| Review v0.3.0 changes | [Static release notes](docs/releases/0.3.0.md) and [changelog](CHANGELOG.md) |
+| Review v0.4.0 changes | [Static release notes](docs/releases/0.4.0.md) and [changelog](CHANGELOG.md) |
 | Check current product guidance | [OpenAI Skills in ChatGPT](https://help.openai.com/en/articles/20001066) and [Codex Skill documentation](https://learn.chatgpt.com/docs/build-skills) |
 
 ## Evidence, public boundary, and limitations

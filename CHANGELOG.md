@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.4.0 - 2026-08-10
+
+### Features
+
+- Add the human-effectiveness evaluation framework with strict synthetic-data
+  contracts: balanced assignments, task-pack commitment, blinded agreement and
+  unlock safeguards, paired analysis, controlled deviations and limitations,
+  and aggregate-only bilingual reports.
+- Preserve PICO, RWD, RWE, and target trial emulation (TTE) documentation
+  continuity alongside the protocol, input schema, quick start, and public
+  repository boundaries.
+
+### Validation
+
+- Verify deterministic package and effectiveness-framework contracts with the
+  official Python 3.11.9 runtime across supported platforms.
+- Enforce canonical LF checkouts for reproducible package bytes and recover
+  bilingual reports transactionally if publication replacement fails.
+
+### Limitations
+
+- The framework is available for approved future use, but no human pilot was
+  conducted and the Skill is not proven effective. All examples remain
+  synthetic and aggregate-only.
+
 ## 0.3.0 - 2026-08-08
 
 ### Features
