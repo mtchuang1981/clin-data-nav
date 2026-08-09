@@ -2,6 +2,7 @@ import copy
 from datetime import datetime, timedelta
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
 import subprocess
@@ -429,6 +430,25 @@ def test_bootstrap_rejects_empty_non_finite_bool_and_out_of_range_inputs(
 def test_clopper_pearson_reference_values(successes, total, expected):
     actual = clopper_pearson(successes, total)
     assert actual == pytest.approx(expected, abs=1e-5)
+
+
+def test_clopper_pearson_large_central_interval_is_finite_and_symmetric():
+    lower, upper = clopper_pearson(1000, 2000)
+
+    assert all(map(math.isfinite, (lower, upper)))
+    assert 0.0 < lower < 0.5 < upper < 1.0
+    assert lower == pytest.approx(1.0 - upper, abs=1e-12)
+
+
+def test_clopper_pearson_large_tail_intervals_have_complement_symmetry():
+    low_successes = clopper_pearson(1, 2000)
+    high_successes = clopper_pearson(1999, 2000)
+
+    assert all(map(math.isfinite, (*low_successes, *high_successes)))
+    assert 0.0 < low_successes[0] < low_successes[1] < 0.01
+    assert 0.99 < high_successes[0] < high_successes[1] < 1.0
+    assert low_successes[0] == pytest.approx(1.0 - high_successes[1], abs=1e-12)
+    assert low_successes[1] == pytest.approx(1.0 - high_successes[0], abs=1e-12)
 
 
 @pytest.mark.parametrize(

@@ -561,12 +561,38 @@ def _binomial_cdf(total: int, maximum_successes: int, probability: float) -> flo
         return 1.0
     if probability >= 1.0:
         return 1.0 if maximum_successes >= total else 0.0
-    return math.fsum(
-        math.comb(total, successes)
-        * probability**successes
-        * (1.0 - probability) ** (total - successes)
-        for successes in range(maximum_successes + 1)
-    )
+
+    # Scale the modal PMF to one. Ratios moving away from a binomial mode are
+    # at most one, so neither combinatorial coefficients nor huge terms arise.
+    mode = min(total, math.floor((total + 1) * probability))
+    relative_probabilities = [0.0] * (total + 1)
+    relative_probabilities[mode] = 1.0
+
+    relative_probability = 1.0
+    inverse_odds = (1.0 - probability) / probability
+    for successes in range(mode, 0, -1):
+        relative_probability *= (
+            successes / (total - successes + 1) * inverse_odds
+        )
+        relative_probabilities[successes - 1] = relative_probability
+
+    relative_probability = 1.0
+    odds = probability / (1.0 - probability)
+    for successes in range(mode, total):
+        relative_probability *= (
+            (total - successes) / (successes + 1) * odds
+        )
+        relative_probabilities[successes + 1] = relative_probability
+
+    denominator = math.fsum(relative_probabilities)
+    numerator = math.fsum(relative_probabilities[: maximum_successes + 1])
+    result = numerator / denominator
+    if not math.isfinite(result):
+        raise ArithmeticError("binomial CDF calculation is non-finite")
+    rounding_tolerance = 16 * math.ulp(1.0)
+    if result < -rounding_tolerance or result > 1.0 + rounding_tolerance:
+        raise ArithmeticError("binomial CDF calculation is outside probability bounds")
+    return min(1.0, max(0.0, result))
 
 
 def _is_finite_number(value: object) -> bool:
