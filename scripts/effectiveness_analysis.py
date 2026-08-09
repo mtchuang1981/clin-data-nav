@@ -346,15 +346,14 @@ def task_success(observation: dict) -> bool | None:
         raise ValueError("mandatory_complete must be boolean")
     if type(quality_met) is not int or quality_met < 0:
         raise ValueError("quality_met must be a non-negative integer")
-    if type(quality_applicable) is not int or quality_applicable <= 0:
-        raise ValueError("quality_applicable must be a positive integer")
+    if type(quality_applicable) is not int or quality_applicable < 0:
+        raise ValueError("quality_applicable must be a non-negative integer")
     if quality_met > quality_applicable:
         raise ValueError("quality_met cannot exceed quality_applicable")
     if type(critical) is not bool:
         raise ValueError("critical_violation must be boolean")
 
-    quality_fraction = quality_met / quality_applicable
-    return mandatory and quality_fraction >= 0.8 and not critical
+    return mandatory and not critical
 
 
 def participant_paired_differences(
@@ -486,18 +485,22 @@ def aggregate_criterion_results(scores: dict, observations: list[dict]) -> list[
     for criterion_id in RUBRIC_ORDER:
         control = counts[criterion_id]["control"]
         intervention = counts[criterion_id]["intervention"]
-        if control["applicable"] == 0 or intervention["applicable"] == 0:
-            raise ValueError("criterion aggregation requires both condition denominators")
         results.append(
             {
                 "criterion_id": criterion_id,
                 "control_met": control["met"],
                 "control_applicable": control["applicable"],
-                "control_rate": control["met"] / control["applicable"],
+                "control_rate": (
+                    control["met"] / control["applicable"]
+                    if control["applicable"]
+                    else None
+                ),
                 "intervention_met": intervention["met"],
                 "intervention_applicable": intervention["applicable"],
                 "intervention_rate": (
                     intervention["met"] / intervention["applicable"]
+                    if intervention["applicable"]
+                    else None
                 ),
             }
         )
@@ -1554,8 +1557,8 @@ def _validate_populated_observation_scores(
     quality_applicable = observation.get("quality_applicable")
     if type(quality_met) is not int or quality_met < 0:
         errors.append(f"{label}: quality_met must be a non-negative integer")
-    if type(quality_applicable) is not int or not 1 <= quality_applicable <= 100:
-        errors.append(f"{label}: quality_applicable must be an integer from 1 through 100")
+    if type(quality_applicable) is not int or not 0 <= quality_applicable <= 100:
+        errors.append(f"{label}: quality_applicable must be an integer from 0 through 100")
     if (
         type(quality_met) is int
         and type(quality_applicable) is int
@@ -1645,7 +1648,7 @@ def _validate_criterion_scores(
         by_id[item].get("applicable") is True and by_id[item].get("met") is True
         for item in quality_ids
     )
-    if quality_applicable <= 0 or (
+    if (
         observation.get("mandatory_complete") is not mandatory_complete
         or observation.get("quality_applicable") != quality_applicable
         or observation.get("quality_met") != quality_met
@@ -1760,11 +1763,11 @@ def _derived_success(observation: dict) -> bool | None:
         type(mandatory) is not bool
         or type(quality_met) is not int
         or type(quality_applicable) is not int
-        or quality_applicable <= 0
+        or quality_applicable < 0
         or type(critical) is not bool
     ):
         return None
-    return mandatory and quality_met * 5 >= quality_applicable * 4 and not critical
+    return mandatory and not critical
 
 
 def _validate_study_timing(

@@ -118,6 +118,41 @@ def test_renderer_fails_closed_for_missing_nonfinite_or_unsupported_inputs():
         render_report(summary, "zh")
 
 
+def test_renderer_rejects_paired_difference_contradicting_condition_rates():
+    summary = json.loads(SUMMARY.read_text(encoding="utf-8"))
+    summary["primary"]["overall"]["paired_risk_difference"] = 0.20
+
+    with pytest.raises(ValueError, match="paired risk difference is inconsistent"):
+        render_report(summary, "en")
+
+
+def test_renderer_rejects_paired_distribution_contradicting_condition_rates():
+    summary = json.loads(SUMMARY.read_text(encoding="utf-8"))
+    distribution = summary["primary"]["overall"]["paired_distribution"]
+    distribution["plus_half"] -= 1
+    distribution["zero"] += 1
+
+    with pytest.raises(ValueError, match="paired risk difference is inconsistent"):
+        render_report(summary, "en")
+
+
+def test_renderer_rejects_false_agreement_eligibility():
+    summary = json.loads(SUMMARY.read_text(encoding="utf-8"))
+    summary["agreement"]["raw_binary_agreement"] = 0.75
+
+    with pytest.raises(ValueError, match="agreement status is inconsistent"):
+        render_report(summary, "en")
+
+
+@pytest.mark.parametrize("invalid_kappa", (-1.01, 1.01))
+def test_renderer_rejects_kappa_outside_unit_interval(invalid_kappa):
+    summary = json.loads(SUMMARY.read_text(encoding="utf-8"))
+    summary["agreement"]["binary_kappa"] = invalid_kappa
+
+    with pytest.raises(ValueError, match="agreement binary_kappa must be between -1 and 1"):
+        render_report(summary, "en")
+
+
 def test_checked_in_example_reports_are_current():
     summary = json.loads(SUMMARY.read_text(encoding="utf-8"))
     assert REPORT_EN.read_text(encoding="utf-8") == render_report(summary, "en")
@@ -155,6 +190,10 @@ def test_templates_share_headings_define_fields_and_claim_no_result():
     assert "負向或中性" in chinese
     assert "This template contains no result" in english
     assert "本模板不包含任何結果" in chinese
+    assert "Quality criteria are secondary" in english
+    assert "zero applicable denominator is not estimable" in english
+    assert "品質準則屬於次要結果" in chinese
+    assert "適用分母為零時無法估計" in chinese
 
 
 def test_check_mode_is_deterministic_and_never_modifies_files(tmp_path):

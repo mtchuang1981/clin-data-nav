@@ -14,6 +14,7 @@
 - 分派版本：synthetic-pilot-v1-assignments。
 - 任務承諾：已驗證 （`cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc`）。
 - 參與者叢集 bootstrap：seed 20260809、20000 次重抽；連續型配對次要結果的 95% 區間採相同方法。
+- 品質準則屬於次要結果，絕不決定主要任務成功；適用分母為零時標示為無法估計。
 
 ## 參與者流程
 

@@ -34,6 +34,7 @@ from scripts.effectiveness_analysis import (
 )
 from scripts.effectiveness_contract import load_effectiveness_contract
 from scripts.generate_study_assignments import generate_assignments
+from scripts.render_effectiveness_report import render_report
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -502,12 +503,13 @@ def test_agreement_status_is_eligible_only_when_all_applicable_thresholds_pass()
     ("mandatory", "met", "applicable", "critical", "expected"),
     [
         (True, 4, 5, False, True),
-        (True, 3, 5, False, False),
+        (True, 3, 5, False, True),
+        (True, 0, 0, False, True),
         (False, 5, 5, False, False),
         (True, 5, 5, True, False),
     ],
 )
-def test_task_success_requires_mandatory_eighty_percent_and_no_critical(
+def test_task_success_uses_only_mandatory_completion_and_no_critical_violation(
     mandatory, met, applicable, critical, expected
 ):
     observation = completed_observation(
@@ -524,9 +526,10 @@ def test_abandonment_is_failure_and_technical_failure_is_missing():
     assert task_success(status_observation("technical_failure")) is None
 
 
-def test_task_success_rejects_non_positive_applicable_quality():
-    with pytest.raises(ValueError, match="quality_applicable"):
-        task_success(completed_observation(quality_met=0, quality_applicable=0))
+def test_task_success_accepts_zero_applicable_quality_as_not_estimable():
+    assert task_success(
+        completed_observation(quality_met=0, quality_applicable=0)
+    ) is True
 
 
 def test_participant_effect_is_skill_minus_control():
@@ -1055,6 +1058,57 @@ def test_quality_criterion_can_be_non_applicable_with_null_met():
     observation["quality_met"] = 2
 
     assert validate_blinded_scores(scores) == []
+
+
+def test_all_quality_criteria_na_are_valid_secondary_nulls_end_to_end():
+    manifest, scores, _, key, _ = full_pilot_payloads()
+    _, rubric = load_effectiveness_contract(
+        ROOT / "evals/effectiveness/offline-tasks.yaml",
+        ROOT / "evals/effectiveness/rubric.yaml",
+    )
+    quality_ids = {
+        criterion["id"]
+        for criterion in rubric["criteria"]
+        if criterion["kind"] == "quality"
+    }
+    for observation in scores["observations"]:
+        for criterion in observation["criterion_scores"]:
+            if criterion["criterion_id"] in quality_ids:
+                criterion["applicable"] = False
+                criterion["met"] = None
+        observation["quality_applicable"] = 0
+        observation["quality_met"] = 0
+
+    raw_scores = score_bytes(scores)
+    lock = valid_lock(raw_scores)
+    assert validate_blinded_scores(scores) == []
+    observations = unlock_observations(manifest, scores, lock, key, raw_scores)
+    summary = summarize_effectiveness(manifest, scores, observations)
+
+    assert summary["primary"]["overall"]["control_successes"] == 32
+    assert summary["primary"]["overall"]["intervention_successes"] == 32
+    quality_results = [
+        row
+        for row in summary["secondary"]["criterion_results"]
+        if row["criterion_id"] in quality_ids
+    ]
+    assert quality_results
+    assert all(
+        row["control_met"] == 0
+        and row["control_applicable"] == 0
+        and row["control_rate"] is None
+        and row["intervention_met"] == 0
+        and row["intervention_applicable"] == 0
+        and row["intervention_rate"] is None
+        for row in quality_results
+    )
+
+    english = render_report(summary, "en")
+    chinese = render_report(summary, "zh-TW")
+    assert "not estimable" in english
+    assert "無法估計" in chinese
+    assert "Quality criteria are secondary and never determine primary task success" in english
+    assert "品質準則屬於次要結果，絕不決定主要任務成功" in chinese
 
 
 def test_environment_fingerprint_is_canonical_and_uses_only_environment_fields():

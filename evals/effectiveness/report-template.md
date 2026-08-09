@@ -13,6 +13,8 @@ task boundary, and that the pilot does not prove clinical validity.
 
 Report protocol commit, study dates, model/Skill environment, assignment
 version, task-commitment verification, and participant-cluster bootstrap setup.
+Quality criteria are secondary and never determine primary task success; a
+zero applicable denominator is not estimable.
 
 ## Participant flow
 

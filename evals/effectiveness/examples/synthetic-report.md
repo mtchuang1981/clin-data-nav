@@ -14,6 +14,7 @@ This is an illustrative synthetic example, not observed pilot evidence.
 - Assignment version: synthetic-pilot-v1-assignments.
 - Task commitment: verified (`cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc`).
 - Participant-cluster bootstrap: seed 20260809, 20000 resamples; the same method provides 95% intervals for continuous paired secondary outcomes.
+- Quality criteria are secondary and never determine primary task success; a zero applicable denominator is reported as not estimable.
 
 ## Participant flow
 

@@ -194,6 +194,7 @@ def _render_english(summary: dict) -> str:
             f"{environment['bootstrap_resamples']} resamples; the same method provides "
             "95% intervals for continuous paired secondary outcomes."
         ),
+        "- Quality criteria are secondary and never determine primary task success; a zero applicable denominator is reported as not estimable.",
         "",
         "## Participant flow",
         "",
@@ -249,9 +250,9 @@ def _render_english(summary: dict) -> str:
         *[
             (
                 f"| {row['criterion_id']} | {row['control_met']}/{row['control_applicable']} "
-                f"| {_pct(row['control_rate'], 1)} | "
+                f"| {_criterion_rate(row['control_rate'], 'en')} | "
                 f"{row['intervention_met']}/{row['intervention_applicable']} | "
-                f"{_pct(row['intervention_rate'], 1)} |"
+                f"{_criterion_rate(row['intervention_rate'], 'en')} |"
             )
             for row in secondary["criterion_results"]
         ],
@@ -343,6 +344,7 @@ def _render_traditional_chinese(summary: dict) -> str:
             f"- 參與者叢集 bootstrap：seed {environment['bootstrap_seed']}、"
             f"{environment['bootstrap_resamples']} 次重抽；連續型配對次要結果的 95% 區間採相同方法。"
         ),
+        "- 品質準則屬於次要結果，絕不決定主要任務成功；適用分母為零時標示為無法估計。",
         "",
         "## 參與者流程",
         "",
@@ -394,9 +396,9 @@ def _render_traditional_chinese(summary: dict) -> str:
         *[
             (
                 f"| {row['criterion_id']} | {row['control_met']}/{row['control_applicable']} "
-                f"| {_pct(row['control_rate'], 1)} | "
+                f"| {_criterion_rate(row['control_rate'], 'zh-TW')} | "
                 f"{row['intervention_met']}/{row['intervention_applicable']} | "
-                f"{_pct(row['intervention_rate'], 1)} |"
+                f"{_criterion_rate(row['intervention_rate'], 'zh-TW')} |"
             )
             for row in secondary["criterion_results"]
         ],
@@ -553,27 +555,23 @@ def _validate_summary(summary: object) -> None:
             "intervention_applicable",
         ):
             _integer(row.get(key), f"criterion {index} {key}", minimum=0)
-        _probability(row.get("control_rate"), f"criterion {index} control rate")
-        _probability(
-            row.get("intervention_rate"), f"criterion {index} intervention rate"
-        )
         if (
-            row["control_applicable"] <= 0
-            or row["intervention_applicable"] <= 0
-            or row["control_met"] > row["control_applicable"]
+            row["control_met"] > row["control_applicable"]
             or row["intervention_met"] > row["intervention_applicable"]
-            or not math.isclose(
-                row["control_rate"],
-                row["control_met"] / row["control_applicable"],
-                abs_tol=1e-12,
-            )
-            or not math.isclose(
-                row["intervention_rate"],
-                row["intervention_met"] / row["intervention_applicable"],
-                abs_tol=1e-12,
-            )
         ):
             raise ValueError(f"criterion {index} rates are inconsistent")
+        _validate_optional_rate(
+            row["control_rate"],
+            row["control_met"],
+            row["control_applicable"],
+            f"criterion {index} control rate",
+        )
+        _validate_optional_rate(
+            row["intervention_rate"],
+            row["intervention_met"],
+            row["intervention_applicable"],
+            f"criterion {index} intervention rate",
+        )
 
     agreement = _closed_mapping(summary.get("agreement"), AGREEMENT_KEYS, "agreement")
     for key in ("answers_rated", "critical_disagreements", "adjudications"):
@@ -584,6 +582,10 @@ def _validate_summary(summary: object) -> None:
         value = agreement.get(key)
         if value is not None:
             _finite(value, f"agreement {key}")
+            if not -1.0 <= value <= 1.0:
+                raise ValueError(
+                    f"agreement {key} must be between -1 and 1"
+                )
     if agreement.get("status") not in {
         "eligible-for-locked-unlock",
         "recalibrate-and-rescore-before-unlock",
@@ -595,6 +597,17 @@ def _validate_summary(summary: object) -> None:
         or agreement["adjudications"] > agreement["answers_rated"]
     ):
         raise ValueError("agreement denominators are inconsistent")
+    eligible = agreement["raw_binary_agreement"] >= 0.80 and all(
+        agreement[key] is None or agreement[key] >= 0.60
+        for key in ("binary_kappa", "ordinal_weighted_kappa")
+    )
+    expected_status = (
+        "eligible-for-locked-unlock"
+        if eligible
+        else "recalibrate-and-rescore-before-unlock"
+    )
+    if agreement["status"] != expected_status:
+        raise ValueError("agreement status is inconsistent with recomputed eligibility")
 
     scenarios = summary.get("power_scenarios")
     if not isinstance(scenarios, list) or not scenarios:
@@ -653,6 +666,7 @@ def _validate_primary(value: object, label: str) -> None:
     if (
         row["control_total"] <= 0
         or row["intervention_total"] <= 0
+        or row["complete_pairs"] <= 0
         or row["control_successes"] > row["control_total"]
         or row["intervention_successes"] > row["intervention_total"]
         or not math.isclose(
@@ -668,6 +682,24 @@ def _validate_primary(value: object, label: str) -> None:
         or sum(distribution.values()) != row["complete_pairs"]
     ):
         raise ValueError(f"{label} denominators are inconsistent")
+    condition_difference = (
+        row["intervention_success_rate"] - row["control_success_rate"]
+    )
+    distribution_difference = (
+        -distribution["minus_one"]
+        - 0.5 * distribution["minus_half"]
+        + 0.5 * distribution["plus_half"]
+        + distribution["plus_one"]
+    ) / row["complete_pairs"]
+    if not (
+        math.isclose(
+            row["paired_risk_difference"], condition_difference, abs_tol=1e-12
+        )
+        and math.isclose(
+            row["paired_risk_difference"], distribution_difference, abs_tol=1e-12
+        )
+    ):
+        raise ValueError(f"{label} paired risk difference is inconsistent")
 
 
 def _secondary_lines(secondary: dict, language: str) -> list[str]:
@@ -845,6 +877,18 @@ def _probability(value: object, label: str) -> None:
         raise ValueError(f"{label} must be a probability")
 
 
+def _validate_optional_rate(
+    value: object, met: int, applicable: int, label: str
+) -> None:
+    if applicable == 0:
+        if met != 0 or value is not None:
+            raise ValueError(f"{label} must be null when not estimable")
+        return
+    _probability(value, label)
+    if not math.isclose(value, met / applicable, abs_tol=1e-12):
+        raise ValueError(f"{label} is inconsistent")
+
+
 def _interval(value: object, label: str) -> None:
     if not isinstance(value, list) or len(value) != 2:
         raise ValueError(f"{label} must contain two limits")
@@ -856,6 +900,12 @@ def _interval(value: object, label: str) -> None:
 
 def _pct(value: float, digits: int) -> str:
     return f"{value * 100:.{digits}f}%"
+
+
+def _criterion_rate(value: float | None, language: str) -> str:
+    if value is not None:
+        return _pct(value, 1)
+    return "not estimable" if language == "en" else "無法估計"
 
 
 def _points(value: float, digits: int) -> str:
