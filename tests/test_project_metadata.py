@@ -1071,8 +1071,15 @@ def test_release_version_is_synchronized():
     changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
     changelog_zh_tw = (ROOT / "CHANGELOG.zh-TW.md").read_text(encoding="utf-8")
     release_notes = (ROOT / "docs/releases/0.4.0.md").read_text(encoding="utf-8")
+    security = (ROOT / "SECURITY.md").read_text(encoding="utf-8")
 
     current_version = "0.4.0"
+    supported_release = re.search(
+        r"^\| `(\d+\.\d+)\.x` \| Yes \|$",
+        security,
+        flags=re.MULTILINE,
+    )
+    assert supported_release is not None
     active_surfaces = {
         "pyproject": project["project"]["version"],
         "citation": citation["version"],
@@ -1085,9 +1092,10 @@ def test_release_version_is_synchronized():
         .removeprefix("## ")
         .split(" - ", 1)[0],
         "release-notes": release_notes.splitlines()[0].rsplit("v", 1)[1],
+        "security-supported-release": f"{supported_release.group(1)}.0",
     }
 
-    assert len(active_surfaces) == 7
+    assert len(active_surfaces) == 8
     assert set(active_surfaces.values()) == {current_version}
     assert "## 0.4.0 - 2026-08-10" in changelog
     assert "## 0.4.0 - 2026-08-10" in changelog_zh_tw
@@ -1972,8 +1980,9 @@ def test_security_policy_has_supported_versions_and_safe_confidential_reporting(
     normalized = " ".join(security.split())
 
     assert "| Version | Supported |" in security
-    assert "`0.3.x` | Yes" in normalized
-    assert "`< 0.3` | No" in normalized
+    assert "`0.4.x` | Yes" in normalized
+    assert "`< 0.4` | No" in normalized
+    assert "`0.3.x` | Yes" not in normalized
     assert "`0.2.x` | Yes" not in normalized
     for prohibited_public_material in (
         "secrets",
@@ -1982,7 +1991,8 @@ def test_security_policy_has_supported_versions_and_safe_confidential_reporting(
     ):
         assert prohibited_public_material in normalized
     assert "public issue" in normalized
-    assert "2026-08-09" in normalized
+    assert "As of 2026-08-10, that line is `0.4.x`." in normalized
+    assert "On 2026-08-09 (Asia/Taipei)" in normalized
     assert "private vulnerability reporting is enabled" in normalized
     assert "security/advisories/new" in normalized
     assert "private vulnerability reporting is not enabled" not in normalized
