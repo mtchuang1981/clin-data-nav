@@ -283,6 +283,52 @@ def test_bilingual_publication_rolls_back_first_replace_when_second_replace_fail
     assert list(tmp_path.glob(".*.bak")) == []
 
 
+def test_bilingual_publication_preserves_coherent_backups_when_publish_and_rollback_fail(
+    tmp_path, monkeypatch
+):
+    english = tmp_path / "report.md"
+    chinese = tmp_path / "report.zh-TW.md"
+    old_english = b"old english\n"
+    old_chinese = "舊版中文\n".encode("utf-8")
+    english.write_bytes(old_english)
+    chinese.write_bytes(old_chinese)
+    real_replace = report_module.os.replace
+    replace_calls = 0
+
+    def fail_publish_then_rollback(source, destination):
+        nonlocal replace_calls
+        replace_calls += 1
+        if replace_calls in {2, 3}:
+            raise OSError(f"synthetic replace failure {replace_calls}")
+        return real_replace(source, destination)
+
+    monkeypatch.setattr(
+        report_module.os,
+        "replace",
+        fail_publish_then_rollback,
+    )
+
+    with pytest.raises(
+        RuntimeError,
+        match="^effectiveness report recovery required; bilingual backups preserved$",
+    ):
+        report_module._write_reports_transactionally(
+            english,
+            "new english\n",
+            chinese,
+            "新版中文\n",
+        )
+
+    assert english.read_bytes() == b"new english\n"
+    assert chinese.read_bytes() == old_chinese
+    assert list(tmp_path.glob(".*.tmp")) == []
+    english_backups = list(tmp_path.glob(".report.md.*.bak"))
+    chinese_backups = list(tmp_path.glob(".report.zh-TW.md.*.bak"))
+    assert len(english_backups) == len(chinese_backups) == 1
+    assert english_backups[0].read_bytes() == old_english
+    assert chinese_backups[0].read_bytes() == old_chinese
+
+
 def test_renderer_rejects_hardlink_output_alias_without_corrupting_summary(tmp_path):
     summary = tmp_path / "summary.json"
     english = tmp_path / "report.md"

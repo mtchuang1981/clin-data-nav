@@ -26,6 +26,9 @@ from scripts.effectiveness_analysis import (
 
 LANGUAGES = ("en", "zh-TW")
 REPORT_ERROR = "effectiveness report rendering failed\n"
+REPORT_RECOVERY_ERROR = (
+    "effectiveness report recovery required; bilingual backups preserved"
+)
 
 TOP_LEVEL_KEYS = frozenset(
     {
@@ -1098,27 +1101,36 @@ def _write_reports_transactionally(
     }
     backups: dict[Path, Path | None] = {}
     replaced: list[Path] = []
+    preserve_backups = False
     try:
         for path in (english_path, chinese_path):
             backups[path] = _stage_backup(path) if path.exists() else None
         for path in (english_path, chinese_path):
             os.replace(staged[path], path)
             replaced.append(path)
-    except Exception:
+    except Exception as publication_error:
+        rollback_failed = False
         for path in reversed(replaced):
-            backup = backups.get(path)
-            if backup is None:
-                path.unlink(missing_ok=True)
-            else:
-                os.replace(backup, path)
-                backups[path] = None
+            try:
+                backup = backups.get(path)
+                if backup is None:
+                    path.unlink(missing_ok=True)
+                else:
+                    os.replace(backup, path)
+                    backups[path] = None
+            except Exception:
+                rollback_failed = True
+        if rollback_failed:
+            preserve_backups = True
+            raise RuntimeError(REPORT_RECOVERY_ERROR) from publication_error
         raise
     finally:
         for temporary in staged.values():
             temporary.unlink(missing_ok=True)
-        for backup in backups.values():
-            if backup is not None:
-                backup.unlink(missing_ok=True)
+        if not preserve_backups:
+            for backup in backups.values():
+                if backup is not None:
+                    backup.unlink(missing_ok=True)
 
 
 def _same_existing_file(left: Path, right: Path) -> bool:
