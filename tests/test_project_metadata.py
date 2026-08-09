@@ -952,8 +952,8 @@ def test_release_workflow_is_manual_fail_closed_and_least_privilege():
     assert 'candidate-packages/Linux/$manifest' in build_runs[verify_index]
     assert 'cp "candidate-packages/Linux/$archive"' in build_runs[verify_index]
     assert 'cp "candidate-packages/Linux/$manifest"' in build_runs[verify_index]
-    assert 'test "$VERSION" = "0.3.0"' in build_runs[verify_index]
-    assert 'notes="docs/releases/0.3.0.md"' in build_runs[verify_index]
+    assert 'test "$VERSION" = "0.4.0"' in build_runs[verify_index]
+    assert 'notes="docs/releases/0.4.0.md"' in build_runs[verify_index]
     assert "python scripts/package_skill.py" not in build_rendered
     assert all("pip " not in command for command in build_runs)
     assert "dist/" not in build_rendered

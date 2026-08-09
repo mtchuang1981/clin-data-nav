@@ -124,10 +124,10 @@ jobs:
           VERSION: ${{ needs.preflight.outputs.version }}
         run: |
           set -euo pipefail
-          test "$VERSION" = "0.3.0"
+          test "$VERSION" = "0.4.0"
           archive="clinical-data-research-navigator-$VERSION.zip"
           manifest="clinical-data-research-navigator-$VERSION.manifest.json"
-          notes="docs/releases/0.3.0.md"
+          notes="docs/releases/0.4.0.md"
           test -f "$notes"
           python scripts/verify_release.py artifacts \
             --archive "candidate-packages/Linux/$archive" \
