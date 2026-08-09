@@ -64,6 +64,7 @@ publish a Plugin.
 | Guided progression | [Learning paths](docs/learning-paths.md) |
 | Synthetic worked examples | [TEAE to SAS](examples/teae-to-sas-spec.md), [OMOP phenotype to SQL specification](examples/omop-phenotype-to-sql-spec.md), and [institutional mapping](examples/synthetic-institutional-mapping.md) |
 | Evidence shape and limitations | [Evidence output template](skills/clinical-data-research-navigator/references/evidence-output-template.md) and [architecture](docs/architecture.md) |
+| Product-effectiveness evaluation framework | [Effectiveness evaluation](evals/effectiveness/README.md) |
 | Contribute and validate | [Contributing](CONTRIBUTING.md) |
 | Report a security concern | [Security](SECURITY.md) |
 | Prepare an approved release | [Release process](docs/release.md) |
@@ -77,6 +78,11 @@ confirmed facts, assumptions, limitations, and provenance visible. The
 repository's deterministic Evals check response contracts; they do not prove
 source accuracy, clinical validity, causal validity, or complete real-world
 coverage.
+
+The repository also contains a separate [effectiveness evaluation
+framework](evals/effectiveness/README.md) for public offline dry runs and a
+separately authorized exploratory human pilot. The framework's presence does
+not mean a pilot was conducted and makes no observed-effectiveness claim.
 
 This public Core contains reusable guidance, synthetic examples, tests, and
 packaging tools. It contains no private TMUCRD Adapter, codingbook, data

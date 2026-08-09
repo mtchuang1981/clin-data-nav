@@ -61,6 +61,7 @@ OpenAI 官方文件說明，Skill 會封裝操作指引、資源與選用指令�
 | 依序學習 | [學習路徑](docs/learning-paths.zh-TW.md) |
 | 合成資料實作範例 | [TEAE 到 SAS](examples/teae-to-sas-spec.md)、[OMOP phenotype 到 SQL 規格](examples/omop-phenotype-to-sql-spec.md)及[機構對應](examples/synthetic-institutional-mapping.md) |
 | 證據輸出與限制 | [證據輸出範本](skills/clinical-data-research-navigator/references/evidence-output-template.md)與[架構說明](docs/architecture.md) |
+| 產品效果評估框架 | [效果評估](evals/effectiveness/README.md) |
 | 參與貢獻與驗證 | [貢獻指南](CONTRIBUTING.md) |
 | 回報安全性問題 | [安全性說明](SECURITY.md) |
 | 準備經核准的發布 | [發布流程](docs/release.md) |
@@ -72,6 +73,10 @@ OpenAI 官方文件說明，Skill 會封裝操作指引、資源與選用指令�
 Skill 會優先採用主導來源，再參考實作文獻，並清楚區分已確認事實、假設、
 限制與來源。儲存庫的確定性 Evals 只檢查回覆契約，不能證明來源正確、臨床
 效度、因果效度或真實世界情境已完整涵蓋。
+
+儲存庫另有獨立的[效果評估框架](evals/effectiveness/README.md)，供公開離線
+演練及另行核准的探索性人類先導研究使用。框架存在不代表已執行先導研究，
+也不構成任何已觀察到的效果證據。
 
 這套公開核心只包含可重複使用的指引、合成範例、測試與封裝工具；不包含私有
 TMUCRD Adapter、codingbook、資料字典、實體 schema、串接規則、PII 分類、

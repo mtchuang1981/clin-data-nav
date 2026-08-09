@@ -1848,3 +1848,122 @@ def test_architecture_describes_ci_network_boundary_accurately():
     assert "credential-free" in architecture
     assert "After dependency acquisition" in architecture
     assert "no institutional or external LLM network calls" in architecture
+
+
+def test_effectiveness_docs_distinguish_contract_evals_from_human_evidence():
+    eval_readme = (ROOT / "evals/README.md").read_text(encoding="utf-8")
+    effectiveness = (
+        ROOT / "evals/effectiveness/README.md"
+    ).read_text(encoding="utf-8")
+
+    assert "response contracts" in eval_readme
+    assert "does not prove real-use effectiveness" in eval_readme
+    assert "offline dry run" in effectiveness
+    assert "separately authorized human pilot" in effectiveness
+    assert "no telemetry" in effectiveness
+
+
+def test_effectiveness_protocols_fix_the_approved_design_and_stay_bilingual():
+    english = (ROOT / "evals/effectiveness/protocol.md").read_text(
+        encoding="utf-8"
+    )
+    traditional_chinese = (
+        ROOT / "evals/effectiveness/protocol.zh-TW.md"
+    ).read_text(encoding="utf-8")
+
+    for marker in (
+        "8 beginners",
+        "8 professionals",
+        "20 percentage points",
+        "14 of 16",
+        "does not authorize recruitment",
+    ):
+        assert marker in english
+    for marker in (
+        "初學者 8 人",
+        "專業者 8 人",
+        "20 個百分點",
+        "14/16",
+        "不代表已核准招募",
+    ):
+        assert marker in traditional_chinese
+
+
+def test_effectiveness_command_map_matches_current_cli_and_unlock_gate():
+    text = (ROOT / "evals/effectiveness/README.md").read_text(encoding="utf-8")
+
+    for command in (
+        "python -m pytest tests/test_effectiveness_contract.py -q",
+        "python scripts/generate_study_assignments.py",
+        "python scripts/commit_human_task_pack.py create",
+        "python scripts/commit_human_task_pack.py verify",
+        "python scripts/analyze_effectiveness.py agreement-check",
+        "python scripts/analyze_effectiveness.py analyze",
+        "python scripts/render_effectiveness_report.py",
+    ):
+        assert command in text
+    for flag in (
+        "--study-manifest",
+        "--scores",
+        "--ratings-lock",
+        "--condition-key",
+        "--unlock-after-ratings-lock",
+    ):
+        assert flag in text
+    assert "exit code 3" in text
+    assert "recalibrate-and-rescore-before-unlock" in text
+    assert "eligible-for-locked-unlock" in text
+
+
+def test_effectiveness_input_schema_records_strict_rows_and_quality_na():
+    text = (ROOT / "evals/effectiveness/input-schema.md").read_text(
+        encoding="utf-8"
+    )
+
+    for key in (
+        "`schema_version`",
+        "`study_id`",
+        "`sessions`",
+        "`observations`",
+        "`criterion_scores`",
+        "`rater_scores`",
+        "`adjudications`",
+        "`sus_responses`",
+        "`scores_sha256`",
+        "`mappings`",
+    ):
+        assert key in text
+    assert "validate_assignments(rows, catalog, study_id, seed)" in text
+    assert "raw score-file bytes" in text
+    assert "quality_applicable=0" in text
+    assert "quality_met=0" in text
+    assert "quality rate is null and not estimable" in text
+    assert "Primary success depends only on mandatory completion" in text
+    assert "free-text answers" in text
+
+
+def test_effectiveness_navigation_and_architecture_preserve_public_boundary():
+    english = (ROOT / "README.md").read_text(encoding="utf-8")
+    traditional_chinese = (ROOT / "README.zh-TW.md").read_text(
+        encoding="utf-8"
+    )
+    architecture = (ROOT / "docs/architecture.md").read_text(encoding="utf-8")
+    contributing = (ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8")
+
+    assert "evals/effectiveness/README.md" in english
+    assert "evals/effectiveness/README.md" in traditional_chinese
+    assert "has proven effective" not in english
+    assert "已證明有效" not in traditional_chinese
+    for marker in (
+        "External raw storage",
+        "Condition-blinded scoring",
+        "Ratings lock and agreement gate",
+        "Condition-key unlock",
+        "Aggregate analysis",
+        "Public bilingual report",
+        "independent from the existing deterministic response-contract Evals",
+        "no external model call in CI",
+        "does not include effectiveness raw data or run a human study",
+    ):
+        assert marker in architecture
+    assert "Do not place human data anywhere under the repository checkout." in contributing

@@ -43,6 +43,28 @@ Windows or POSIX checkout does not change a text file's packaged representation.
 Producing a ZIP does not imply that the boundary scan or evaluator passed; run
 those gates separately before accepting or distributing an artifact.
 
+## Independent effectiveness-evaluation flow
+
+The [effectiveness evaluation framework](../evals/effectiveness/README.md) is
+independent from the existing deterministic response-contract Evals. It uses
+synthetic tasks and external study inputs to evaluate product task performance;
+it does not change the response-contract gate or turn an exploratory pilot into
+clinical-validity evidence.
+
+```mermaid
+flowchart LR
+    Raw["External raw storage"] --> Blind["Condition-blinded scoring"]
+    Blind --> Gate["Ratings lock and agreement gate"]
+    Gate --> Unlock["Condition-key unlock"]
+    Unlock --> Aggregate["Aggregate analysis"]
+    Aggregate --> Report["Public bilingual report"]
+```
+
+Assignment rows, human answers, blinded scores, ratings locks, condition keys,
+and consent material stay outside the checkout. Only a validated anonymous
+aggregate may enter the public reporting flow. There is no external model call in CI,
+and packaging the Skill does not include effectiveness raw data or run a human study.
+
 CI is credential-free. Dependency acquisition can use public package and
 GitHub services to check out source, configure Python, and install the declared
 dependencies. After dependency acquisition, validation makes no institutional

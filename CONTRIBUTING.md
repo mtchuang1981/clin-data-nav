@@ -20,6 +20,14 @@ release tooling.
 - If `SKILL.md` changes, review the associated Evals, UI metadata in
   `agents/openai.yaml`, and references for consistency.
 
+Effectiveness-evaluation development follows the public command map in
+[`evals/effectiveness/README.md`](evals/effectiveness/README.md).
+Do not place human data anywhere under the repository checkout. Keep assignments,
+participant rows, human answers, score files, ratings locks, condition keys,
+nonces, confidential task packs, consent records, and other study-private
+material in an approved external location; use only synthetic examples in
+tests and documentation.
+
 ## Contributor setup with Python 3.11
 
 The repository's development and release tools support Python 3.11. Create a

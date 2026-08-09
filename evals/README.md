@@ -27,3 +27,9 @@ catalog and rubric in this directory. They are regression evidence for the
 checked-in response pairs, not proof of semantic correctness or clinical validity.
 They also do not prove source accuracy, causal validity, or complete real-world
 coverage.
+
+These deterministic Evals test response contracts and remain independent from
+the [effectiveness evaluation framework](effectiveness/README.md). That
+framework supports an offline dry run and a separately authorized exploratory
+human pilot; its existence does not prove real-use effectiveness or imply that
+a pilot has been conducted.
