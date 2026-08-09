@@ -1207,6 +1207,78 @@ def test_v040_release_notes_are_static_bilingual_and_uploadable():
         assert release_contract.casefold() in normalized
 
 
+def test_v040_local_release_evidence_records_verified_candidate():
+    report = (
+        ROOT / "docs/verification/2026-08-10-v0.4.0-local-release.md"
+    ).read_text(encoding="utf-8")
+    normalized = " ".join(report.split())
+
+    for identity in (
+        "7c681b04a63beecdf20f528b1380060c55a7856f",
+        "codex/v0.4.0-release",
+        "Python 3.13.13",
+        "Python 3.11.9",
+    ):
+        assert identity in normalized
+
+    pytest_results = re.findall(r"`(\d+) passed in (\d+\.\d+)s`", report)
+    assert len(pytest_results) >= 2
+    assert all(
+        int(count) > 0 and float(seconds) > 0
+        for count, seconds in pytest_results
+    )
+    assert "`552 passed in 23.61s`" in report
+    assert "`552 passed in 26.17s`" in report
+
+    dual_runtime_commands = (
+        "python -m pytest -q -p no:cacheprovider",
+        "python scripts/validate_skill.py",
+        "python scripts/check_public_boundary.py",
+        "python scripts/package_skill.py --check-reproducible",
+        "python scripts/render_eval_summary.py --check",
+        (
+            "python scripts/render_effectiveness_report.py --summary "
+            "evals/effectiveness/examples/synthetic-summary.json --english "
+            "evals/effectiveness/examples/synthetic-report.md "
+            "--traditional-chinese "
+            "evals/effectiveness/examples/synthetic-report.zh-TW.md --check"
+        ),
+    )
+    for command in dual_runtime_commands:
+        assert report.count(f"`{command}`") >= 2
+        successful_rows = re.findall(
+            rf"^\| `{re.escape(command)}` \| 0 \|",
+            report,
+            flags=re.MULTILINE,
+        )
+        assert len(successful_rows) == 2
+
+    for asset_name in (
+        "clinical-data-research-navigator-0.4.0.zip",
+        "clinical-data-research-navigator-0.4.0.manifest.json",
+    ):
+        assert asset_name in report
+    for observed_artifact_fact in (
+        "ZIP size | `18591` bytes",
+        "Manifest size | `1265` bytes",
+        "ZIP file count | `8`",
+        "ce6a67a268e4266d094db31406a9c5dda3f005c3b6a5355ec851ea87abf3aded",
+        "9fe69bfa0a5fd9f8ce58082c1989316ed5b46683d74176319ba6c1187063a85a",
+    ):
+        assert observed_artifact_fact in report
+    assert "Manifest `archive_sha256`" in report
+    assert "Manifest file records are sorted and unique." in normalized
+    assert "ZIP members exactly equal the manifest paths." in normalized
+
+    for boundary_statement in (
+        "No human pilot was conducted.",
+        "This evidence does not claim that the Skill is effective.",
+        "The `v0.4.0` tag does not yet exist.",
+        "The GitHub Release has not yet been published.",
+    ):
+        assert boundary_statement in normalized
+
+
 def test_release_process_requires_a_committed_post_release_evidence_report():
     process = " ".join(
         (ROOT / "docs/release.md").read_text(encoding="utf-8").split()
