@@ -11,6 +11,7 @@ import math
 from pathlib import Path
 import random
 import re
+import statistics
 
 from scripts.effectiveness_contract import load_effectiveness_contract
 
@@ -103,6 +104,7 @@ OBSERVATION_KEYS = frozenset(
         "quality_applicable",
         "quality_score",
         "critical_violation",
+        "criterion_scores",
         "nasa_tlx_ratings",
         "nasa_tlx_weights",
         "confidence_before",
@@ -131,6 +133,7 @@ ADJUDICATION_KEYS = frozenset(
     }
 )
 SUS_RESPONSE_KEYS = frozenset({"participant_code", "items"})
+CRITERION_SCORE_KEYS = frozenset({"criterion_id", "applicable", "met"})
 RATINGS_LOCK_KEYS = frozenset(
     {
         "schema_version",
@@ -156,6 +159,162 @@ _CATALOG, _RUBRIC = load_effectiveness_contract(
 TASK_DEPTHS = {
     pair["id"]: pair["output_depth"] for pair in _CATALOG["task_pairs"]
 }
+TASK_CRITERIA = {
+    pair["id"]: (
+        tuple(pair["mandatory_criteria"]),
+        tuple(pair["quality_criteria"]),
+    )
+    for pair in _CATALOG["task_pairs"]
+}
+RUBRIC_ORDER = tuple(criterion["id"] for criterion in _RUBRIC["criteria"])
+
+
+def score_nasa_tlx(ratings: list[int], weights: list[int]) -> float:
+    """Score the standard six-dimension weighted NASA-TLX."""
+    if (
+        not isinstance(ratings, list)
+        or len(ratings) != 6
+        or any(type(value) is not int or not 0 <= value <= 100 for value in ratings)
+    ):
+        raise ValueError("NASA-TLX ratings must contain six integers from 0 through 100")
+    if (
+        not isinstance(weights, list)
+        or len(weights) != 6
+        or any(type(value) is not int or not 0 <= value <= 5 for value in weights)
+        or sum(weights) != 15
+    ):
+        raise ValueError("NASA-TLX weights must contain six integers summing to 15")
+    return sum(
+        rating * weight for rating, weight in zip(ratings, weights, strict=True)
+    ) / 15
+
+
+def score_sus(items: list[int]) -> float:
+    """Score ten SUS responses with the standard odd/even transformation."""
+    if (
+        not isinstance(items, list)
+        or len(items) != 10
+        or any(type(value) is not int or not 1 <= value <= 5 for value in items)
+    ):
+        raise ValueError("SUS items must contain ten integers from 1 through 5")
+    contributions = [
+        response - 1 if index % 2 else 5 - response
+        for index, response in enumerate(items, start=1)
+    ]
+    return sum(contributions) * 2.5
+
+
+def cohens_kappa(pairs: list[tuple[bool, bool]]) -> float | None:
+    """Compute binary Cohen kappa, or null for zero expected disagreement."""
+    validated = _validate_pairs(pairs, lambda value: type(value) is bool, "binary")
+    total = len(validated)
+    observed_agreement = sum(left == right for left, right in validated) / total
+    left_positive = sum(left for left, _ in validated) / total
+    right_positive = sum(right for _, right in validated) / total
+    expected_agreement = (
+        left_positive * right_positive
+        + (1.0 - left_positive) * (1.0 - right_positive)
+    )
+    expected_disagreement = 1.0 - expected_agreement
+    if math.isclose(expected_disagreement, 0.0, abs_tol=1e-15):
+        return None
+    return _bounded_kappa((observed_agreement - expected_agreement) / expected_disagreement)
+
+
+def linear_weighted_kappa(
+    pairs: list[tuple[int, int]],
+    categories: tuple[int, ...] = (0, 1, 2, 3, 4),
+) -> float | None:
+    """Compute linearly weighted ordinal kappa from original paired ratings."""
+    if (
+        not isinstance(categories, tuple)
+        or len(categories) < 2
+        or any(type(value) is not int for value in categories)
+        or len(set(categories)) != len(categories)
+        or tuple(sorted(categories)) != categories
+    ):
+        raise ValueError("ordinal categories must be a unique increasing integer tuple")
+    allowed = set(categories)
+    validated = _validate_pairs(
+        pairs, lambda value: type(value) is int and value in allowed, "ordinal"
+    )
+    total = len(validated)
+    denominator = len(categories) - 1
+    observed_disagreement = math.fsum(
+        abs(left - right) / denominator for left, right in validated
+    ) / total
+    left_counts = Counter(left for left, _ in validated)
+    right_counts = Counter(right for _, right in validated)
+    expected_disagreement = math.fsum(
+        (left_counts[left] / total)
+        * (right_counts[right] / total)
+        * (abs(left - right) / denominator)
+        for left in categories
+        for right in categories
+    )
+    if math.isclose(expected_disagreement, 0.0, abs_tol=1e-15):
+        return None
+    return _bounded_kappa(1.0 - observed_disagreement / expected_disagreement)
+
+
+def blinded_agreement_status(scores: dict) -> dict:
+    """Summarize original pre-adjudication ratings and apply the unlock gate."""
+    if not isinstance(scores, dict):
+        raise ValueError("blinded scores must be a mapping")
+    rater_scores = scores.get("rater_scores")
+    adjudications = scores.get("adjudications")
+    if not isinstance(rater_scores, list) or not isinstance(adjudications, list):
+        raise ValueError("blinded rating collections must be lists")
+
+    by_answer: dict[str, list[dict]] = defaultdict(list)
+    for rating in rater_scores:
+        if not isinstance(rating, dict) or not isinstance(rating.get("answer_id"), str):
+            raise ValueError("original rating row is invalid")
+        by_answer[rating["answer_id"]].append(rating)
+    if not by_answer:
+        raise ValueError("agreement requires rated answers")
+
+    binary_pairs: list[tuple[bool, bool]] = []
+    ordinal_pairs: list[tuple[int, int]] = []
+    critical_pairs: list[tuple[bool, bool]] = []
+    for answer_id in sorted(by_answer):
+        ratings = sorted(by_answer[answer_id], key=lambda row: str(row.get("rater_code")))
+        if len(ratings) != 2:
+            raise ValueError("agreement requires two original ratings per answer")
+        binary_pairs.append((ratings[0].get("success"), ratings[1].get("success")))
+        ordinal_pairs.append(
+            (ratings[0].get("ordinal_quality"), ratings[1].get("ordinal_quality"))
+        )
+        critical_pairs.append(
+            (
+                ratings[0].get("critical_violation"),
+                ratings[1].get("critical_violation"),
+            )
+        )
+
+    binary_kappa = cohens_kappa(binary_pairs)
+    ordinal_kappa = linear_weighted_kappa(ordinal_pairs)
+    raw_binary = sum(left == right for left, right in binary_pairs) / len(binary_pairs)
+    raw_ordinal = sum(left == right for left, right in ordinal_pairs) / len(ordinal_pairs)
+    eligible = (
+        raw_binary >= 0.80
+        and (binary_kappa is None or binary_kappa >= 0.60)
+        and (ordinal_kappa is None or ordinal_kappa >= 0.60)
+    )
+    return {
+        "answers_rated": len(binary_pairs),
+        "raw_binary_agreement": raw_binary,
+        "binary_kappa": binary_kappa,
+        "raw_ordinal_agreement": raw_ordinal,
+        "ordinal_weighted_kappa": ordinal_kappa,
+        "critical_disagreements": sum(left != right for left, right in critical_pairs),
+        "adjudications": len(adjudications),
+        "status": (
+            "eligible-for-locked-unlock"
+            if eligible
+            else "recalibrate-and-rescore-before-unlock"
+        ),
+    }
 
 
 def compute_environment_fingerprint(manifest: dict) -> str:
@@ -281,6 +440,144 @@ def clopper_pearson(
     return lower, upper
 
 
+def aggregate_paired_metric(observations: list[dict], field: str) -> dict:
+    """Aggregate participant-level intervention-minus-control differences."""
+    return _aggregate_paired_metric(
+        observations, field, seed=20260809, resamples=1_000
+    )
+
+
+def aggregate_criterion_results(scores: dict, observations: list[dict]) -> list[dict]:
+    """Aggregate applicable criterion decisions in fixed rubric order."""
+    if not isinstance(scores, dict):
+        raise ValueError("scores must be a mapping")
+    if not isinstance(observations, list) or not observations:
+        raise ValueError("observations must be a non-empty list")
+    counts = {
+        criterion_id: {
+            condition: {"met": 0, "applicable": 0}
+            for condition in ("control", "intervention")
+        }
+        for criterion_id in RUBRIC_ORDER
+    }
+    for observation in observations:
+        if not isinstance(observation, dict):
+            raise ValueError("each observation must be a mapping")
+        if observation.get("completion_status") not in SCORED_STATUSES:
+            continue
+        condition = observation.get("condition")
+        if condition not in CONDITIONS:
+            raise ValueError("condition is invalid")
+        criterion_scores = observation.get("criterion_scores")
+        if not isinstance(criterion_scores, list):
+            raise ValueError("scored observation criterion_scores must be a list")
+        for criterion_score in criterion_scores:
+            if not isinstance(criterion_score, dict):
+                raise ValueError("criterion score must be a mapping")
+            criterion_id = criterion_score.get("criterion_id")
+            if criterion_id not in counts:
+                raise ValueError("criterion score ID is unknown")
+            if criterion_score.get("applicable") is True:
+                counts[criterion_id][condition]["applicable"] += 1
+                if criterion_score.get("met") is True:
+                    counts[criterion_id][condition]["met"] += 1
+
+    results: list[dict] = []
+    for criterion_id in RUBRIC_ORDER:
+        control = counts[criterion_id]["control"]
+        intervention = counts[criterion_id]["intervention"]
+        if control["applicable"] == 0 or intervention["applicable"] == 0:
+            raise ValueError("criterion aggregation requires both condition denominators")
+        results.append(
+            {
+                "criterion_id": criterion_id,
+                "control_met": control["met"],
+                "control_applicable": control["applicable"],
+                "control_rate": control["met"] / control["applicable"],
+                "intervention_met": intervention["met"],
+                "intervention_applicable": intervention["applicable"],
+                "intervention_rate": (
+                    intervention["met"] / intervention["applicable"]
+                ),
+            }
+        )
+    return results
+
+
+def _aggregate_paired_metric(
+    observations: list[dict],
+    field: str,
+    *,
+    seed: int,
+    resamples: int,
+) -> dict:
+    if field not in {
+        "completion_seconds",
+        "quality_score",
+        "nasa_tlx_points",
+        "confidence_change",
+        "understanding_change",
+    }:
+        raise ValueError("paired metric field is unsupported")
+    grouped = _group_participant_observations(observations)
+    differences: list[float] = []
+    for rows_by_condition in grouped.values():
+        values_by_condition: dict[str, list[float]] = {}
+        complete = True
+        for condition, rows in rows_by_condition.items():
+            values = [_paired_metric_value(row, field) for row in rows]
+            if any(value is None for value in values):
+                complete = False
+                break
+            values_by_condition[condition] = [
+                float(value) for value in values if value is not None
+            ]
+        if not complete:
+            continue
+        differences.append(
+            math.fsum(values_by_condition["intervention"]) / 2
+            - math.fsum(values_by_condition["control"]) / 2
+        )
+    if not differences:
+        raise ValueError("paired metric has no complete participant pairs")
+    interval = bootstrap_mean_interval(differences, seed, resamples)
+    return {
+        "complete_pairs": len(differences),
+        "mean_difference": math.fsum(differences) / len(differences),
+        "median_difference": float(statistics.median(differences)),
+        "confidence_interval": [interval[0], interval[1]],
+    }
+
+
+def _paired_metric_value(observation: dict, field: str) -> float | None:
+    if observation.get("completion_status") not in SCORED_STATUSES:
+        return None
+    if field == "completion_seconds":
+        value = observation.get("completion_seconds")
+    elif field == "quality_score":
+        value = observation.get("quality_score")
+    elif field == "nasa_tlx_points":
+        return score_nasa_tlx(
+            observation.get("nasa_tlx_ratings"),
+            observation.get("nasa_tlx_weights"),
+        )
+    elif field == "confidence_change":
+        before = observation.get("confidence_before")
+        after = observation.get("confidence_after")
+        if type(before) is not int or type(after) is not int:
+            return None
+        value = after - before
+    else:
+        before = observation.get("understanding_before")
+        after = observation.get("understanding_after")
+        if type(before) is not int or type(after) is not int:
+            return None
+        value = after - before
+    if not _is_finite_number(value):
+        return None
+    return float(value)
+
+
 def summarize_effectiveness(
     manifest: dict, scores: dict, observations: list[dict]
 ) -> dict:
@@ -349,6 +646,45 @@ def summarize_effectiveness(
             "bootstrap_resamples": manifest["bootstrap_resamples"],
         }
     )
+    paired_metrics = {
+        output_name: _aggregate_paired_metric(
+            observations,
+            field,
+            seed=manifest["bootstrap_seed"],
+            resamples=manifest["bootstrap_resamples"],
+        )
+        for output_name, field in (
+            ("paired_time_seconds", "completion_seconds"),
+            ("paired_quality_points", "quality_score"),
+            ("paired_nasa_tlx_points", "nasa_tlx_points"),
+            ("paired_confidence_change", "confidence_change"),
+            ("paired_understanding_change", "understanding_change"),
+        )
+    }
+    sus_responses = scores.get("sus_responses")
+    if not isinstance(sus_responses, list) or not sus_responses:
+        raise ValueError("effectiveness summary requires intervention SUS responses")
+    sus_scores = [score_sus(response.get("items")) for response in sus_responses]
+    assigned_tasks = len(observations)
+    secondary = {
+        **paired_metrics,
+        "intervention_sus": {
+            "participants": len(sus_scores),
+            "mean": math.fsum(sus_scores) / len(sus_scores),
+            "median": float(statistics.median(sus_scores)),
+        },
+        "timeout_rate": _event_rate(observations, "timeout"),
+        "technical_failure_rate": _event_rate(observations, "technical_failure"),
+        "criterion_results": aggregate_criterion_results(scores, observations),
+    }
+    if any(
+        result["assigned_tasks"] != assigned_tasks
+        for result in (
+            secondary["timeout_rate"],
+            secondary["technical_failure_rate"],
+        )
+    ):
+        raise AssertionError("secondary task denominator mismatch")
     return {
         "schema_version": "1",
         "study_id": manifest["study_id"],
@@ -400,12 +736,56 @@ def summarize_effectiveness(
             condition: _safety_summary(observations, condition)
             for condition in ("control", "intervention")
         },
-        "secondary": {},
-        "agreement": {},
-        "power_scenarios": [],
+        "secondary": secondary,
+        "agreement": blinded_agreement_status(scores),
+        "power_scenarios": _deferred_power_scenarios(),
         "protocol_deviations": [],
-        "limitations": [],
+        "limitations": [
+            "This 16-person pilot is exploratory and not confirmatory.",
+            "Synthetic tasks and a controlled environment limit real-world generalizability.",
+            "Product task performance does not prove clinical validity, causal validity, or patient-outcome validity.",
+        ],
     }
+
+
+def _event_rate(observations: list[dict], status: str) -> dict:
+    events = sum(
+        observation.get("completion_status") == status
+        for observation in observations
+        if isinstance(observation, dict)
+    )
+    assigned_tasks = len(observations)
+    if assigned_tasks == 0:
+        raise ValueError("event rate requires assigned tasks")
+    return {
+        "events": events,
+        "assigned_tasks": assigned_tasks,
+        "rate": events / assigned_tasks,
+    }
+
+
+def _deferred_power_scenarios() -> list[dict]:
+    scenarios = (
+        ("lower-control-rate", 0.30, 0.35, 0.15),
+        ("mid-control-rate", 0.50, 0.50, 0.15),
+        ("higher-control-rate", 0.70, 0.35, 0.15),
+    )
+    return [
+        {
+            "scenario_id": scenario_id,
+            "minimum_difference": 0.20,
+            "control_rate": control_rate,
+            "paired_discordance": paired_discordance,
+            "attrition_rate": attrition_rate,
+            "two_sided_alpha": 0.05,
+            "target_power": 0.80,
+            "analysis_method": "paired-binary-or-participant-task-clustered-design",
+            "required_complete_pairs": None,
+            "required_recruits": None,
+            "status": "deferred-until-post-pilot",
+        }
+        for scenario_id, control_rate, paired_discordance, attrition_rate in scenarios
+    ]
 
 
 def _group_participant_observations(
@@ -597,6 +977,31 @@ def _binomial_cdf(total: int, maximum_successes: int, probability: float) -> flo
 
 def _is_finite_number(value: object) -> bool:
     return type(value) in {int, float} and math.isfinite(value)
+
+
+def _validate_pairs(pairs: object, predicate, label: str) -> list[tuple]:
+    if not isinstance(pairs, list) or not pairs:
+        raise ValueError(f"{label} agreement pairs must be a non-empty list")
+    validated: list[tuple] = []
+    for pair in pairs:
+        if (
+            not isinstance(pair, tuple)
+            or len(pair) != 2
+            or not predicate(pair[0])
+            or not predicate(pair[1])
+        ):
+            raise ValueError(f"{label} agreement pair is invalid")
+        validated.append(pair)
+    return validated
+
+
+def _bounded_kappa(value: float) -> float:
+    if not math.isfinite(value):
+        raise ArithmeticError("kappa calculation is non-finite")
+    tolerance = 16 * math.ulp(1.0)
+    if not -1.0 - tolerance <= value <= 1.0 + tolerance:
+        raise ArithmeticError("kappa calculation is outside its bounds")
+    return min(1.0, max(-1.0, value))
 
 
 def _valid_confidence(value: object) -> bool:
@@ -918,6 +1323,73 @@ def validate_ratings_lock(lock: object, scores_bytes: bytes) -> list[str]:
     return errors
 
 
+def validate_blinded_agreement_inputs(
+    manifest: object,
+    scores: object,
+    lock: object,
+    scores_bytes: bytes,
+) -> list[str]:
+    """Validate all condition-free inputs needed for the pre-unlock gate."""
+    errors = validate_study_manifest(manifest)
+    errors.extend(validate_blinded_scores(scores))
+    errors.extend(validate_ratings_lock(lock, scores_bytes))
+    study_ids = [
+        value.get("study_id") if isinstance(value, dict) else None
+        for value in (manifest, scores, lock)
+    ]
+    if any(not isinstance(study_id, str) for study_id in study_ids) or (
+        len(set(study_ids)) != 1
+        if all(isinstance(study_id, str) for study_id in study_ids)
+        else True
+    ):
+        errors.append("effectiveness agreement: study_id mismatch")
+    if _manifest_session_members(manifest) != _observation_members(scores):
+        errors.append("effectiveness agreement: observation/session membership mismatch")
+    locked_rater_codes = (
+        {
+            code
+            for code in lock.get("rater_codes", [])
+            if isinstance(code, str)
+        }
+        if isinstance(lock, dict) and isinstance(lock.get("rater_codes"), list)
+        else set()
+    )
+    if locked_rater_codes != _score_rater_codes(scores):
+        errors.append("effectiveness agreement: lock rater set mismatch")
+    _validate_study_timing(manifest, scores, lock, errors)
+    observations = scores.get("observations") if isinstance(scores, dict) else None
+    errors.extend(_validate_blinded_pilot_layout(observations))
+    return errors
+
+
+def _validate_blinded_pilot_layout(observations: object) -> list[str]:
+    if not isinstance(observations, list):
+        return ["blinded pilot layout: observations must be a list"]
+    errors: list[str] = []
+    if len(observations) != 64:
+        errors.append("blinded pilot layout: expected exactly 64 observations")
+    by_person: dict[str, list[dict]] = defaultdict(list)
+    for observation in observations:
+        if isinstance(observation, dict) and isinstance(
+            observation.get("participant_code"), str
+        ):
+            by_person[observation["participant_code"]].append(observation)
+    if set(by_person) != _expected_participants():
+        errors.append("blinded pilot layout: participant set is incomplete")
+    for participant_code in sorted(_expected_participants()):
+        rows = by_person.get(participant_code, [])
+        if len(rows) != 4:
+            errors.append("blinded pilot layout: each participant needs four observations")
+            continue
+        if Counter(row.get("order") for row in rows) != Counter({1: 1, 2: 1, 3: 1, 4: 1}):
+            errors.append("blinded pilot layout: participant orders are invalid")
+        if Counter(row.get("output_depth") for row in rows) != Counter(
+            {depth: 1 for depth in DEPTHS}
+        ):
+            errors.append("blinded pilot layout: participant depths are invalid")
+    return errors
+
+
 def validate_condition_key(key: object, answer_ids: set[str]) -> list[str]:
     """Validate a closed condition key with an exact one-to-one answer mapping."""
     if not isinstance(key, dict):
@@ -1096,6 +1568,7 @@ def _validate_populated_observation_scores(
         errors.append(f"{label}: quality_score must be an integer from 0 through 100")
     if type(observation.get("critical_violation")) is not bool:
         errors.append(f"{label}: critical_violation must be boolean")
+    _validate_criterion_scores(observation, label, errors)
     _validate_integer_list(
         observation.get("nasa_tlx_ratings"), 6, 0, 100, f"{label} TLX ratings", errors
     )
@@ -1113,6 +1586,71 @@ def _validate_populated_observation_scores(
         value = observation.get(field)
         if type(value) is not int or not 1 <= value <= 5:
             errors.append(f"{label}: {field} must be an integer from 1 through 5")
+
+
+def _validate_criterion_scores(
+    observation: dict, label: str, errors: list[str]
+) -> None:
+    task_pair_id = observation.get("task_pair_id")
+    contract = TASK_CRITERIA.get(task_pair_id) if isinstance(task_pair_id, str) else None
+    criterion_scores = observation.get("criterion_scores")
+    if not isinstance(criterion_scores, list):
+        errors.append(f"{label}: criterion_scores must be a list")
+        return
+    if contract is None:
+        return
+    mandatory_ids, quality_ids = contract
+    expected_ids = (*mandatory_ids, *quality_ids)
+    observed_ids: list[object] = []
+    by_id: dict[str, dict] = {}
+    for index, criterion_score in enumerate(criterion_scores):
+        row_label = f"{label} criterion score {index}"
+        if not isinstance(criterion_score, dict):
+            errors.append(f"{row_label}: must be a mapping")
+            continue
+        _validate_exact_keys(row_label, criterion_score, CRITERION_SCORE_KEYS, errors)
+        criterion_id = criterion_score.get("criterion_id")
+        observed_ids.append(criterion_id)
+        if isinstance(criterion_id, str) and criterion_id not in by_id:
+            by_id[criterion_id] = criterion_score
+        applicable = criterion_score.get("applicable")
+        met = criterion_score.get("met")
+        if criterion_id in mandatory_ids:
+            if applicable is not True:
+                errors.append(f"{row_label}: mandatory criterion must be applicable")
+            if type(met) is not bool:
+                errors.append(f"{row_label}: mandatory criterion met must be boolean")
+        elif criterion_id in quality_ids:
+            if type(applicable) is not bool:
+                errors.append(f"{row_label}: quality applicable must be boolean")
+            elif applicable and type(met) is not bool:
+                errors.append(
+                    f"{row_label}: applicable quality criterion met must be boolean"
+                )
+            elif not applicable and met is not None:
+                errors.append(
+                    f"{row_label}: non-applicable quality criterion must have null met"
+                )
+
+    if tuple(observed_ids) != expected_ids:
+        errors.append(
+            f"{label}: criterion IDs must exactly match task contract order"
+        )
+        return
+    mandatory_complete = all(by_id[item].get("met") is True for item in mandatory_ids)
+    quality_applicable = sum(
+        by_id[item].get("applicable") is True for item in quality_ids
+    )
+    quality_met = sum(
+        by_id[item].get("applicable") is True and by_id[item].get("met") is True
+        for item in quality_ids
+    )
+    if quality_applicable <= 0 or (
+        observation.get("mandatory_complete") is not mandatory_complete
+        or observation.get("quality_applicable") != quality_applicable
+        or observation.get("quality_met") != quality_met
+    ):
+        errors.append(f"{label}: criterion detail does not match aggregate fields")
 
 
 def _validate_rating(rating: dict, label: str, errors: list[str]) -> None:
@@ -1310,6 +1848,7 @@ def _nullable_observation_fields() -> tuple[str, ...]:
         "quality_applicable",
         "quality_score",
         "critical_violation",
+        "criterion_scores",
         "nasa_tlx_ratings",
         "nasa_tlx_weights",
         "confidence_before",

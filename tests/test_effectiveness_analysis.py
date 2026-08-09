@@ -12,10 +12,17 @@ import pytest
 
 import scripts.analyze_effectiveness as analyze_module
 from scripts.effectiveness_analysis import (
+    aggregate_criterion_results,
+    aggregate_paired_metric,
+    blinded_agreement_status,
     bootstrap_mean_interval,
     clopper_pearson,
+    cohens_kappa,
     compute_environment_fingerprint,
+    linear_weighted_kappa,
     participant_paired_differences,
+    score_nasa_tlx,
+    score_sus,
     summarize_effectiveness,
     task_success,
     unlock_observations,
@@ -37,6 +44,18 @@ DEPTHS = {
     "research design",
     "implementation specification",
 }
+
+
+def criterion_scores_for_pair(pair_id, *, met=True):
+    catalog, _ = load_effectiveness_contract(
+        ROOT / "evals/effectiveness/offline-tasks.yaml",
+        ROOT / "evals/effectiveness/rubric.yaml",
+    )
+    pair = next(item for item in catalog["task_pairs"] if item["id"] == pair_id)
+    return [
+        {"criterion_id": criterion_id, "applicable": True, "met": met}
+        for criterion_id in (*pair["mandatory_criteria"], *pair["quality_criteria"])
+    ]
 
 
 def valid_manifest():
@@ -101,10 +120,11 @@ def valid_scores():
                 "completion_status": "completed",
                 "completion_seconds": 420,
                 "mandatory_complete": True,
-                "quality_met": 4,
-                "quality_applicable": 5,
+                "quality_met": 3,
+                "quality_applicable": 3,
                 "quality_score": 82,
                 "critical_violation": False,
+                "criterion_scores": criterion_scores_for_pair("quick-adam-sdtm"),
                 "nasa_tlx_ratings": [40, 0, 35, 70, 45, 20],
                 "nasa_tlx_weights": [3, 0, 3, 3, 3, 3],
                 "confidence_before": 2,
@@ -175,6 +195,7 @@ def full_pilot_payloads():
     assignments = generate_assignments(catalog, "synthetic-pilot-v1", 20260809)
     observations = []
     rater_scores = []
+    pairs_by_id = {pair["id"]: pair for pair in catalog["task_pairs"]}
     for assignment in assignments:
         session_start = datetime.fromisoformat(
             "2026-09-01T09:00:00+08:00"
@@ -183,6 +204,14 @@ def full_pilot_payloads():
         )
         started_at = session_start + timedelta(minutes=10 * (assignment["order"] - 1))
         ended_at = started_at + timedelta(minutes=7)
+        pair = pairs_by_id[assignment["pair_id"]]
+        criterion_scores = [
+            {"criterion_id": criterion_id, "applicable": True, "met": True}
+            for criterion_id in (
+                *pair["mandatory_criteria"],
+                *pair["quality_criteria"],
+            )
+        ]
         observations.append(
             {
                 "answer_id": assignment["answer_id"],
@@ -197,10 +226,11 @@ def full_pilot_payloads():
                 "completion_status": "completed",
                 "completion_seconds": 420,
                 "mandatory_complete": True,
-                "quality_met": 4,
-                "quality_applicable": 5,
+                "quality_met": len(pair["quality_criteria"]),
+                "quality_applicable": len(pair["quality_criteria"]),
                 "quality_score": 82,
                 "critical_violation": False,
+                "criterion_scores": criterion_scores,
                 "nasa_tlx_ratings": [40, 0, 35, 70, 45, 20],
                 "nasa_tlx_weights": [3, 0, 3, 3, 3, 3],
                 "confidence_before": 2,
@@ -266,6 +296,7 @@ def status_observation(status):
             "quality_applicable",
             "quality_score",
             "critical_violation",
+            "criterion_scores",
             "nasa_tlx_ratings",
             "nasa_tlx_weights",
             "confidence_before",
@@ -295,8 +326,26 @@ def unlocked_complete_pilot(intervention_successes=None, control_successes=None)
             assert len(rows) == 2
             for index, row in enumerate(rows):
                 row["mandatory_complete"] = index < successes
-                row["quality_met"] = 4
-                row["quality_applicable"] = 5
+                mandatory_ids = {
+                    item["criterion_id"]
+                    for item in row["criterion_scores"]
+                    if item["criterion_id"] in {
+                        criterion["id"]
+                        for criterion in load_effectiveness_contract(
+                            ROOT / "evals/effectiveness/offline-tasks.yaml",
+                            ROOT / "evals/effectiveness/rubric.yaml",
+                        )[1]["criteria"]
+                        if criterion["kind"] == "mandatory"
+                    }
+                }
+                for item in row["criterion_scores"]:
+                    if item["criterion_id"] in mandatory_ids:
+                        item["met"] = index < successes
+                row["mandatory_complete"] = all(
+                    item["met"]
+                    for item in row["criterion_scores"]
+                    if item["criterion_id"] in mandatory_ids
+                )
                 row["critical_violation"] = False
     return observations
 
@@ -310,6 +359,7 @@ def mark_unscored(observation, status):
         "quality_applicable",
         "quality_score",
         "critical_violation",
+        "criterion_scores",
         "nasa_tlx_ratings",
         "nasa_tlx_weights",
         "confidence_before",
@@ -318,6 +368,134 @@ def mark_unscored(observation, status):
         "understanding_after",
     ):
         observation[field] = replacement[field]
+
+
+def scores_for_agreement(binary_pairs, ordinal_pairs=None, critical_pairs=None):
+    ordinal_pairs = ordinal_pairs or [(4, 4)] * len(binary_pairs)
+    critical_pairs = critical_pairs or [(False, False)] * len(binary_pairs)
+    rater_scores = []
+    for index, (binary_pair, ordinal_pair, critical_pair) in enumerate(
+        zip(binary_pairs, ordinal_pairs, critical_pairs, strict=True), start=1
+    ):
+        answer_id = f"A{index:015X}"
+        for rater_index, rater_code in enumerate(("R1", "R2")):
+            rater_scores.append(
+                {
+                    "answer_id": answer_id,
+                    "rater_code": rater_code,
+                    "success": binary_pair[rater_index],
+                    "critical_violation": critical_pair[rater_index],
+                    "ordinal_quality": ordinal_pair[rater_index],
+                }
+            )
+    return {"rater_scores": rater_scores, "adjudications": []}
+
+
+def test_nasa_tlx_uses_six_weights_summing_to_fifteen():
+    assert score_nasa_tlx(
+        [40, 0, 35, 70, 45, 20],
+        [3, 0, 3, 3, 3, 3],
+    ) == pytest.approx(42.0)
+
+
+@pytest.mark.parametrize(
+    ("ratings", "weights"),
+    [
+        ([40] * 5, [3] * 5),
+        ([40] * 6, [3, 3, 3, 3, 3, 1]),
+        ([101, 0, 0, 0, 0, 0], [3, 3, 3, 3, 3, 0]),
+        ([40] * 6, [6, 3, 3, 3, 0, 0]),
+        ([True, 0, 0, 0, 0, 0], [3, 3, 3, 3, 3, 0]),
+    ],
+)
+def test_nasa_tlx_rejects_invalid_scale_or_weights(ratings, weights):
+    with pytest.raises(ValueError):
+        score_nasa_tlx(ratings, weights)
+
+
+def test_sus_uses_standard_odd_even_scoring():
+    assert score_sus([4, 2, 4, 2, 4, 2, 4, 2, 4, 2]) == 75.0
+
+
+@pytest.mark.parametrize(
+    "items",
+    ([4, 2] * 4, [4, 2, 4, 2, 4, 2, 4, 2, 4, 6], [True] * 10),
+)
+def test_sus_rejects_incomplete_or_out_of_range_items(items):
+    with pytest.raises(ValueError):
+        score_sus(items)
+
+
+def test_kappa_is_one_for_perfect_agreement_and_none_without_variation():
+    assert cohens_kappa([(True, True), (False, False)]) == 1.0
+    assert cohens_kappa([(True, True), (True, True)]) is None
+
+
+def test_linear_weighted_kappa_is_one_for_perfect_ordinal_agreement():
+    assert linear_weighted_kappa([(0, 0), (2, 2), (4, 4)]) == 1.0
+
+
+@pytest.mark.parametrize(
+    ("function", "pairs"),
+    [
+        (cohens_kappa, [(True,)]),
+        (cohens_kappa, [(True, 1)]),
+        (linear_weighted_kappa, [(0,)]),
+        (linear_weighted_kappa, [(0, 5)]),
+    ],
+)
+def test_kappa_rejects_mismatched_pairs_and_unknown_categories(function, pairs):
+    with pytest.raises(ValueError):
+        function(pairs)
+
+
+@pytest.mark.parametrize(
+    "scores",
+    [
+        scores_for_agreement(
+            [(True, True)] * 7 + [(False, True)] * 3,
+            [(4, 4)] * 10,
+        ),
+        scores_for_agreement(
+            [(True, True)] * 8 + [(True, False)] + [(False, True)],
+            [(4, 4)] * 10,
+        ),
+        scores_for_agreement(
+            [(True, True), (False, False)] * 5,
+            [(0, 0)] * 3
+            + [(4, 4)] * 4
+            + [(0, 4), (4, 0), (0, 4)],
+        ),
+    ],
+)
+def test_agreement_status_stops_before_unlock_for_each_threshold(scores):
+    result = blinded_agreement_status(scores)
+
+    assert result["status"] == "recalibrate-and-rescore-before-unlock"
+
+
+def test_null_kappa_does_not_fail_when_raw_agreement_passes():
+    result = blinded_agreement_status(
+        scores_for_agreement([(True, True)] * 8, [(4, 4)] * 8)
+    )
+
+    assert result["binary_kappa"] is None
+    assert result["ordinal_weighted_kappa"] is None
+    assert result["status"] == "eligible-for-locked-unlock"
+
+
+def test_agreement_status_is_eligible_only_when_all_applicable_thresholds_pass():
+    result = blinded_agreement_status(
+        scores_for_agreement(
+            [(True, True), (False, False)] * 4,
+            [(0, 0), (4, 4)] * 4,
+        )
+    )
+
+    assert result["raw_binary_agreement"] == 1.0
+    assert result["binary_kappa"] == 1.0
+    assert result["ordinal_weighted_kappa"] == 1.0
+    assert result["status"] == "eligible-for-locked-unlock"
 
 
 @pytest.mark.parametrize(
@@ -470,6 +648,62 @@ def test_clopper_pearson_rejects_invalid_or_bool_inputs(
         clopper_pearson(successes, total, confidence)
 
 
+def test_paired_metric_uses_participant_means_intervention_minus_control():
+    observations = unlocked_complete_pilot()
+    for row in observations:
+        row["completion_seconds"] = 300
+        if row["participant_code"] == "B01" and row["condition"] == "intervention":
+            row["completion_seconds"] = 180
+
+    result = aggregate_paired_metric(observations, "completion_seconds")
+
+    assert result["complete_pairs"] == 16
+    assert result["mean_difference"] == pytest.approx(-7.5)
+    assert result["median_difference"] == 0.0
+    assert len(result["confidence_interval"]) == 2
+
+
+def test_paired_metric_excludes_participant_with_missing_scale_values():
+    observations = unlocked_complete_pilot()
+    mark_unscored(observations[0], "technical_failure")
+
+    assert aggregate_paired_metric(observations, "nasa_tlx_points")[
+        "complete_pairs"
+    ] == 15
+
+
+def test_criterion_results_preserve_rubric_order_and_condition_denominators():
+    manifest, scores, lock, key, raw_scores = full_pilot_payloads()
+    observations = unlock_observations(manifest, scores, lock, key, raw_scores)
+    first_control = next(row for row in observations if row["condition"] == "control")
+    first_control["criterion_scores"][0]["met"] = False
+    first_control["mandatory_complete"] = False
+
+    results = aggregate_criterion_results(scores, observations)
+    _, rubric = load_effectiveness_contract(
+        ROOT / "evals/effectiveness/offline-tasks.yaml",
+        ROOT / "evals/effectiveness/rubric.yaml",
+    )
+
+    assert [row["criterion_id"] for row in results] == [
+        criterion["id"] for criterion in rubric["criteria"]
+    ]
+    first = results[0]
+    assert set(first) == {
+        "criterion_id",
+        "control_met",
+        "control_applicable",
+        "control_rate",
+        "intervention_met",
+        "intervention_applicable",
+        "intervention_rate",
+    }
+    assert first["control_applicable"] == 32
+    assert first["control_met"] == 31
+    assert first["intervention_applicable"] == 32
+    assert first["intervention_met"] == 32
+
+
 def test_summary_has_fixed_aggregate_contract_and_paired_denominators():
     manifest, scores, lock, key, raw_scores = full_pilot_payloads()
     observations = unlock_observations(manifest, scores, lock, key, raw_scores)
@@ -571,11 +805,92 @@ def test_summary_has_fixed_aggregate_contract_and_paired_denominators():
         "rate": 0.0,
         "exact_interval": pytest.approx([0.0, 0.108881], abs=1e-5),
     }
-    assert summary["secondary"] == {}
-    assert summary["agreement"] == {}
-    assert summary["power_scenarios"] == []
+    assert set(summary["secondary"]) == {
+        "paired_time_seconds",
+        "paired_quality_points",
+        "paired_nasa_tlx_points",
+        "paired_confidence_change",
+        "paired_understanding_change",
+        "intervention_sus",
+        "timeout_rate",
+        "technical_failure_rate",
+        "criterion_results",
+    }
+    for field in (
+        "paired_time_seconds",
+        "paired_quality_points",
+        "paired_nasa_tlx_points",
+        "paired_confidence_change",
+        "paired_understanding_change",
+    ):
+        assert set(summary["secondary"][field]) == {
+            "complete_pairs",
+            "mean_difference",
+            "median_difference",
+            "confidence_interval",
+        }
+        assert summary["secondary"][field]["complete_pairs"] == 16
+        assert summary["secondary"][field]["mean_difference"] == 0.0
+    assert summary["secondary"]["intervention_sus"] == {
+        "participants": 16,
+        "mean": 75.0,
+        "median": 75.0,
+    }
+    assert summary["secondary"]["timeout_rate"] == {
+        "events": 0,
+        "assigned_tasks": 64,
+        "rate": 0.0,
+    }
+    assert summary["secondary"]["technical_failure_rate"] == {
+        "events": 0,
+        "assigned_tasks": 64,
+        "rate": 0.0,
+    }
+    assert len(summary["secondary"]["criterion_results"]) == 12
+    assert set(summary["agreement"]) == {
+        "answers_rated",
+        "raw_binary_agreement",
+        "binary_kappa",
+        "raw_ordinal_agreement",
+        "ordinal_weighted_kappa",
+        "critical_disagreements",
+        "adjudications",
+        "status",
+    }
+    assert summary["agreement"] == {
+        "answers_rated": 64,
+        "raw_binary_agreement": 1.0,
+        "binary_kappa": None,
+        "raw_ordinal_agreement": 1.0,
+        "ordinal_weighted_kappa": None,
+        "critical_disagreements": 0,
+        "adjudications": 0,
+        "status": "eligible-for-locked-unlock",
+    }
+    assert len(summary["power_scenarios"]) == 3
+    for scenario, control_rate in zip(
+        summary["power_scenarios"], (0.30, 0.50, 0.70), strict=True
+    ):
+        assert set(scenario) == {
+            "scenario_id",
+            "minimum_difference",
+            "control_rate",
+            "paired_discordance",
+            "attrition_rate",
+            "two_sided_alpha",
+            "target_power",
+            "analysis_method",
+            "required_complete_pairs",
+            "required_recruits",
+            "status",
+        }
+        assert scenario["control_rate"] == control_rate
+        assert scenario["minimum_difference"] == 0.20
+        assert scenario["required_complete_pairs"] is None
+        assert scenario["required_recruits"] is None
+        assert scenario["status"] == "deferred-until-post-pilot"
     assert summary["protocol_deviations"] == []
-    assert summary["limitations"] == []
+    assert summary["limitations"]
 
 
 def test_summary_excludes_technical_failure_and_adds_conservative_sensitivity():
@@ -670,6 +985,76 @@ def test_valid_closed_schema_payloads_are_accepted():
     assert validate_condition_key(
         valid_key(), {"A000000000000001"}
     ) == []
+
+
+@pytest.mark.parametrize(
+    ("mutate", "marker"),
+    [
+        (
+            lambda rows: rows.__setitem__(
+                0, {**rows[0], "criterion_id": "not-in-rubric"}
+            ),
+            "criterion IDs must exactly match task contract order",
+        ),
+        (
+            lambda rows: rows.__setitem__(1, copy.deepcopy(rows[0])),
+            "criterion IDs must exactly match task contract order",
+        ),
+        (
+            lambda rows: rows.reverse(),
+            "criterion IDs must exactly match task contract order",
+        ),
+        (
+            lambda rows: rows[0].update({"unexpected": True}),
+            "keys must match the closed schema",
+        ),
+        (
+            lambda rows: rows[0].update({"applicable": False}),
+            "mandatory criterion must be applicable",
+        ),
+        (
+            lambda rows: rows[-1].update({"applicable": False, "met": True}),
+            "non-applicable quality criterion must have null met",
+        ),
+    ],
+)
+def test_criterion_scores_reject_unknown_duplicate_order_and_invalid_rows(
+    mutate, marker
+):
+    scores = valid_scores()
+    mutate(scores["observations"][0]["criterion_scores"])
+
+    assert any(marker in error for error in validate_blinded_scores(scores))
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("mandatory_complete", False),
+        ("quality_applicable", 2),
+        ("quality_met", 2),
+    ],
+)
+def test_criterion_scores_must_match_aggregate_observation_fields(field, value):
+    scores = valid_scores()
+    scores["observations"][0][field] = value
+
+    assert any(
+        "criterion detail does not match aggregate fields" in error
+        for error in validate_blinded_scores(scores)
+    )
+
+
+def test_quality_criterion_can_be_non_applicable_with_null_met():
+    scores = valid_scores()
+    observation = scores["observations"][0]
+    observation["criterion_scores"][-1].update(
+        {"applicable": False, "met": None}
+    )
+    observation["quality_applicable"] = 2
+    observation["quality_met"] = 2
+
+    assert validate_blinded_scores(scores) == []
 
 
 def test_environment_fingerprint_is_canonical_and_uses_only_environment_fields():
@@ -792,6 +1177,7 @@ def test_unscored_statuses_require_all_rating_and_survey_fields_to_be_null(statu
         "quality_applicable",
         "quality_score",
         "critical_violation",
+        "criterion_scores",
         "nasa_tlx_ratings",
         "nasa_tlx_weights",
         "confidence_before",
@@ -987,12 +1373,20 @@ def test_unlocked_nested_lists_are_isolated_from_blinded_scores_in_both_directio
     unlocked = unlock_observations(manifest, scores, lock, key, raw_scores)
     original_score_ratings = scores["observations"][0]["nasa_tlx_ratings"].copy()
     original_unlocked_weights = unlocked[0]["nasa_tlx_weights"].copy()
-
+    original_score_criteria = copy.deepcopy(
+        scores["observations"][0]["criterion_scores"]
+    )
     unlocked[0]["nasa_tlx_ratings"][0] = 99
-    scores["observations"][0]["nasa_tlx_weights"][0] = 5
-
+    unlocked[0]["criterion_scores"][0]["met"] = False
+    changed_unlocked_criteria = copy.deepcopy(unlocked[0]["criterion_scores"])
     assert scores["observations"][0]["nasa_tlx_ratings"] == original_score_ratings
+    assert scores["observations"][0]["criterion_scores"] == original_score_criteria
+
+    scores["observations"][0]["nasa_tlx_weights"][0] = 5
+    scores["observations"][0]["criterion_scores"][0]["met"] = False
+
     assert unlocked[0]["nasa_tlx_weights"] == original_unlocked_weights
+    assert unlocked[0]["criterion_scores"] == changed_unlocked_criteria
 
 
 @pytest.mark.parametrize(
@@ -1062,6 +1456,111 @@ def _cli_args(paths):
         "--output-summary",
         str(paths["summary"]),
     ]
+
+
+def _agreement_cli_args(paths):
+    return [
+        sys.executable,
+        str(ROOT / "scripts/analyze_effectiveness.py"),
+        "agreement-check",
+        "--study-manifest",
+        str(paths["manifest"]),
+        "--scores",
+        str(paths["scores"]),
+        "--ratings-lock",
+        str(paths["lock"]),
+        "--output-summary",
+        str(paths["summary"]),
+    ]
+
+
+def _make_cli_scores_recalibration_required(paths):
+    scores = json.loads(paths["scores"].read_text(encoding="utf-8"))
+    answer_ids = [row["answer_id"] for row in scores["observations"][:13]]
+    r2_by_answer = {
+        row["answer_id"]: row
+        for row in scores["rater_scores"]
+        if row["rater_code"] == "R2"
+    }
+    for answer_id in answer_ids:
+        r2_by_answer[answer_id]["success"] = False
+        scores["adjudications"].append(
+            {
+                "answer_id": answer_id,
+                "adjudicator_code": "R3",
+                "final_success": True,
+                "final_critical_violation": False,
+                "final_ordinal_quality": 4,
+                "rationale_code": "mandatory-criterion",
+            }
+        )
+    raw_scores = score_bytes(scores)
+    paths["scores"].write_bytes(raw_scores)
+    paths["lock"].write_text(
+        json.dumps(valid_lock(raw_scores), sort_keys=True), encoding="utf-8"
+    )
+
+
+def test_agreement_check_writes_only_blinded_aggregate_and_accepts_no_condition_key(
+    tmp_path,
+):
+    paths = _write_cli_inputs(tmp_path)
+
+    result = subprocess.run(
+        _agreement_cli_args(paths), capture_output=True, text=True, check=False
+    )
+
+    assert result.returncode == 0
+    summary = json.loads(paths["summary"].read_text(encoding="utf-8"))
+    assert set(summary) == {"schema_version", "study_id", "agreement"}
+    assert summary["agreement"]["status"] == "eligible-for-locked-unlock"
+    assert "condition" not in json.dumps(summary, sort_keys=True)
+
+    paths["summary"].unlink()
+    rejected = subprocess.run(
+        [*_agreement_cli_args(paths), "--condition-key", str(paths["key"])],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert rejected.returncode == 2
+    assert rejected.stderr == CLI_ERROR
+    assert not paths["summary"].exists()
+
+
+def test_agreement_check_exits_three_after_writing_recalibration_status(tmp_path):
+    paths = _write_cli_inputs(tmp_path)
+    _make_cli_scores_recalibration_required(paths)
+
+    result = subprocess.run(
+        _agreement_cli_args(paths), capture_output=True, text=True, check=False
+    )
+
+    assert result.returncode == 3
+    assert result.stdout == ""
+    assert result.stderr == ""
+    summary = json.loads(paths["summary"].read_text(encoding="utf-8"))
+    assert (
+        summary["agreement"]["status"]
+        == "recalibrate-and-rescore-before-unlock"
+    )
+
+
+def test_analyze_refuses_unlock_when_blinded_agreement_is_not_eligible(tmp_path):
+    paths = _write_cli_inputs(tmp_path)
+    _make_cli_scores_recalibration_required(paths)
+
+    result = subprocess.run(
+        [*_cli_args(paths), "--unlock-after-ratings-lock"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 2
+    assert result.stdout == ""
+    assert result.stderr == CLI_ERROR
+    assert not paths["summary"].exists()
 
 
 def test_cli_requires_explicit_post_lock_unlock_without_echoing_paths(tmp_path):

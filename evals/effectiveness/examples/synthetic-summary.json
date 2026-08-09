@@ -1,0 +1,371 @@
+{
+  "agreement": {
+    "adjudications": 8,
+    "answers_rated": 64,
+    "binary_kappa": 0.75,
+    "critical_disagreements": 0,
+    "ordinal_weighted_kappa": 0.8,
+    "raw_binary_agreement": 0.875,
+    "raw_ordinal_agreement": 0.875,
+    "status": "eligible-for-locked-unlock"
+  },
+  "environment": {
+    "assignment_version": "synthetic-pilot-v1-assignments",
+    "bootstrap_resamples": 20000,
+    "bootstrap_seed": 20260809,
+    "codex_surface": "Codex desktop",
+    "model": "fixed-model-snapshot",
+    "platform": "Windows",
+    "python_version": "3.11.9",
+    "reasoning_effort": "medium",
+    "service_tier": "priority",
+    "skill_commit": "1b4eeb2ca2272cfd05ecdd50708c4fea714db0d3",
+    "skill_version": "0.3.0",
+    "study_ended_at": "2026-09-02T17:00:00+08:00",
+    "study_started_at": "2026-09-01T09:00:00+08:00",
+    "task_commitment_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "task_commitment_verified": true
+  },
+  "limitations": [
+    "The 16-person pilot design is exploratory and not confirmatory.",
+    "Synthetic tasks and a controlled environment limit real-world generalizability.",
+    "Product task performance does not prove clinical validity, causal validity, or patient-outcome validity.",
+    "This aggregate-only file is an illustrative synthetic example and not observed pilot evidence."
+  ],
+  "minimum_practical_difference": 0.2,
+  "participant_flow": {
+    "abandonments": 0,
+    "assigned": 16,
+    "beginners": 8,
+    "completed": 16,
+    "interpretation_status": "eligible-for-exploratory-interpretation",
+    "primary_complete_pairs": 16,
+    "professionals": 8,
+    "technical_failures": 0,
+    "timeouts": 0
+  },
+  "power_scenarios": [
+    {
+      "analysis_method": "paired-binary-or-participant-task-clustered-design",
+      "attrition_rate": 0.15,
+      "control_rate": 0.3,
+      "minimum_difference": 0.2,
+      "paired_discordance": 0.35,
+      "required_complete_pairs": null,
+      "required_recruits": null,
+      "scenario_id": "lower-control-rate",
+      "status": "deferred-until-post-pilot",
+      "target_power": 0.8,
+      "two_sided_alpha": 0.05
+    },
+    {
+      "analysis_method": "paired-binary-or-participant-task-clustered-design",
+      "attrition_rate": 0.15,
+      "control_rate": 0.5,
+      "minimum_difference": 0.2,
+      "paired_discordance": 0.5,
+      "required_complete_pairs": null,
+      "required_recruits": null,
+      "scenario_id": "mid-control-rate",
+      "status": "deferred-until-post-pilot",
+      "target_power": 0.8,
+      "two_sided_alpha": 0.05
+    },
+    {
+      "analysis_method": "paired-binary-or-participant-task-clustered-design",
+      "attrition_rate": 0.15,
+      "control_rate": 0.7,
+      "minimum_difference": 0.2,
+      "paired_discordance": 0.35,
+      "required_complete_pairs": null,
+      "required_recruits": null,
+      "scenario_id": "higher-control-rate",
+      "status": "deferred-until-post-pilot",
+      "target_power": 0.8,
+      "two_sided_alpha": 0.05
+    }
+  ],
+  "primary": {
+    "beginner": {
+      "complete_pairs": 8,
+      "confidence_interval": [
+        0.0625,
+        0.5625
+      ],
+      "control_success_rate": 0.4375,
+      "control_successes": 7,
+      "control_total": 16,
+      "intervention_success_rate": 0.75,
+      "intervention_successes": 12,
+      "intervention_total": 16,
+      "paired_distribution": {
+        "minus_half": 0,
+        "minus_one": 0,
+        "plus_half": 5,
+        "plus_one": 0,
+        "zero": 3
+      },
+      "paired_risk_difference": 0.3125
+    },
+    "conservative_missingness": {
+      "complete_pairs": 16,
+      "confidence_interval": [
+        0.05,
+        0.45
+      ],
+      "control_success_rate": 0.5,
+      "control_successes": 16,
+      "control_total": 32,
+      "intervention_success_rate": 0.75,
+      "intervention_successes": 24,
+      "intervention_total": 32,
+      "paired_distribution": {
+        "minus_half": 0,
+        "minus_one": 0,
+        "plus_half": 8,
+        "plus_one": 0,
+        "zero": 8
+      },
+      "paired_risk_difference": 0.25
+    },
+    "overall": {
+      "complete_pairs": 16,
+      "confidence_interval": [
+        0.05,
+        0.45
+      ],
+      "control_success_rate": 0.5,
+      "control_successes": 16,
+      "control_total": 32,
+      "intervention_success_rate": 0.75,
+      "intervention_successes": 24,
+      "intervention_total": 32,
+      "paired_distribution": {
+        "minus_half": 0,
+        "minus_one": 0,
+        "plus_half": 8,
+        "plus_one": 0,
+        "zero": 8
+      },
+      "paired_risk_difference": 0.25
+    },
+    "professional": {
+      "complete_pairs": 8,
+      "confidence_interval": [
+        -0.0625,
+        0.4375
+      ],
+      "control_success_rate": 0.5625,
+      "control_successes": 9,
+      "control_total": 16,
+      "intervention_success_rate": 0.75,
+      "intervention_successes": 12,
+      "intervention_total": 16,
+      "paired_distribution": {
+        "minus_half": 0,
+        "minus_one": 0,
+        "plus_half": 3,
+        "plus_one": 0,
+        "zero": 5
+      },
+      "paired_risk_difference": 0.1875
+    }
+  },
+  "protocol_commit": "4776d35c4138c0966c57888528936e7aae6388a4",
+  "protocol_deviations": [],
+  "safety": {
+    "control": {
+      "events": 0,
+      "exact_interval": [
+        0.0,
+        0.108881
+      ],
+      "rate": 0.0,
+      "total": 32
+    },
+    "intervention": {
+      "events": 0,
+      "exact_interval": [
+        0.0,
+        0.108881
+      ],
+      "rate": 0.0,
+      "total": 32
+    }
+  },
+  "schema_version": "1",
+  "secondary": {
+    "criterion_results": [
+      {
+        "control_applicable": 32,
+        "control_met": 28,
+        "control_rate": 0.875,
+        "criterion_id": "correct-output-depth",
+        "intervention_applicable": 32,
+        "intervention_met": 30,
+        "intervention_rate": 0.9375
+      },
+      {
+        "control_applicable": 32,
+        "control_met": 24,
+        "control_rate": 0.75,
+        "criterion_id": "answers-requested-decision",
+        "intervention_applicable": 32,
+        "intervention_met": 28,
+        "intervention_rate": 0.875
+      },
+      {
+        "control_applicable": 32,
+        "control_met": 25,
+        "control_rate": 0.78125,
+        "criterion_id": "states-confirmed-assumed-limited",
+        "intervention_applicable": 32,
+        "intervention_met": 29,
+        "intervention_rate": 0.90625
+      },
+      {
+        "control_applicable": 24,
+        "control_met": 18,
+        "control_rate": 0.75,
+        "criterion_id": "authority-appropriate-sources",
+        "intervention_applicable": 24,
+        "intervention_met": 22,
+        "intervention_rate": 0.9166666666666666
+      },
+      {
+        "control_applicable": 32,
+        "control_met": 24,
+        "control_rate": 0.75,
+        "criterion_id": "actionable-next-step",
+        "intervention_applicable": 32,
+        "intervention_met": 28,
+        "intervention_rate": 0.875
+      },
+      {
+        "control_applicable": 8,
+        "control_met": 6,
+        "control_rate": 0.75,
+        "criterion_id": "beginner-readable",
+        "intervention_applicable": 8,
+        "intervention_met": 7,
+        "intervention_rate": 0.875
+      },
+      {
+        "control_applicable": 8,
+        "control_met": 5,
+        "control_rate": 0.625,
+        "criterion_id": "pico-and-time-zero",
+        "intervention_applicable": 8,
+        "intervention_met": 7,
+        "intervention_rate": 0.875
+      },
+      {
+        "control_applicable": 4,
+        "control_met": 3,
+        "control_rate": 0.75,
+        "criterion_id": "tte-readiness",
+        "intervention_applicable": 4,
+        "intervention_met": 4,
+        "intervention_rate": 1.0
+      },
+      {
+        "control_applicable": 8,
+        "control_met": 6,
+        "control_rate": 0.75,
+        "criterion_id": "logical-data-contract",
+        "intervention_applicable": 8,
+        "intervention_met": 8,
+        "intervention_rate": 1.0
+      },
+      {
+        "control_applicable": 8,
+        "control_met": 6,
+        "control_rate": 0.75,
+        "criterion_id": "execution-status",
+        "intervention_applicable": 8,
+        "intervention_met": 8,
+        "intervention_rate": 1.0
+      },
+      {
+        "control_applicable": 8,
+        "control_met": 5,
+        "control_rate": 0.625,
+        "criterion_id": "citation-verifiable",
+        "intervention_applicable": 8,
+        "intervention_met": 7,
+        "intervention_rate": 0.875
+      },
+      {
+        "control_applicable": 32,
+        "control_met": 20,
+        "control_rate": 0.625,
+        "criterion_id": "validation-gaps",
+        "intervention_applicable": 32,
+        "intervention_met": 27,
+        "intervention_rate": 0.84375
+      }
+    ],
+    "intervention_sus": {
+      "mean": 78.0,
+      "median": 78.0,
+      "participants": 16
+    },
+    "paired_confidence_change": {
+      "complete_pairs": 16,
+      "confidence_interval": [
+        0.5,
+        1.5
+      ],
+      "mean_difference": 1.0,
+      "median_difference": 1.0
+    },
+    "paired_nasa_tlx_points": {
+      "complete_pairs": 16,
+      "confidence_interval": [
+        -12.0,
+        -4.0
+      ],
+      "mean_difference": -8.0,
+      "median_difference": -8.0
+    },
+    "paired_quality_points": {
+      "complete_pairs": 16,
+      "confidence_interval": [
+        4.0,
+        16.0
+      ],
+      "mean_difference": 10.0,
+      "median_difference": 10.0
+    },
+    "paired_time_seconds": {
+      "complete_pairs": 16,
+      "confidence_interval": [
+        -180.0,
+        -40.0
+      ],
+      "mean_difference": -110.0,
+      "median_difference": -120.0
+    },
+    "paired_understanding_change": {
+      "complete_pairs": 16,
+      "confidence_interval": [
+        0.5,
+        1.5
+      ],
+      "mean_difference": 1.0,
+      "median_difference": 1.0
+    },
+    "technical_failure_rate": {
+      "assigned_tasks": 64,
+      "events": 0,
+      "rate": 0.0
+    },
+    "timeout_rate": {
+      "assigned_tasks": 64,
+      "events": 0,
+      "rate": 0.0
+    }
+  },
+  "study_id": "synthetic-pilot-v1",
+  "synthetic_example": true
+}

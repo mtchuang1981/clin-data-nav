@@ -14,11 +14,20 @@ ROOT = Path(__file__).resolve().parents[1]
 if __package__ in {None, ""}:
     sys.path.insert(0, str(ROOT))
 
-from scripts.effectiveness_analysis import summarize_effectiveness, unlock_observations
+from scripts.effectiveness_analysis import (
+    blinded_agreement_status,
+    summarize_effectiveness,
+    unlock_observations,
+    validate_blinded_agreement_inputs,
+)
 from scripts.effectiveness_contract import ensure_external_path
 
 
 CLI_ERROR = "effectiveness analysis failed\n"
+
+
+class _RecalibrationRequired(Exception):
+    """Signal the documented exit-3 pre-unlock stop status."""
 
 
 class _SafeArgumentParser(argparse.ArgumentParser):
@@ -42,6 +51,11 @@ def _argument_parser() -> argparse.ArgumentParser:
         "--unlock-after-ratings-lock", action="store_true", required=True
     )
     analyze.add_argument("--output-summary", required=True, type=Path)
+    agreement = subcommands.add_parser("agreement-check", allow_abbrev=False)
+    agreement.add_argument("--study-manifest", required=True, type=Path)
+    agreement.add_argument("--scores", required=True, type=Path)
+    agreement.add_argument("--ratings-lock", required=True, type=Path)
+    agreement.add_argument("--output-summary", required=True, type=Path)
     return parser
 
 
@@ -67,8 +81,19 @@ def _analyze(args: argparse.Namespace) -> None:
     scores_bytes = input_paths["scores"].read_bytes()
     scores = json.loads(scores_bytes.decode("utf-8"))
     lock = _read_json(input_paths["lock"])
+    if not all(isinstance(value, dict) for value in (manifest, scores, lock)):
+        raise ValueError("all effectiveness inputs must be JSON mappings")
+    errors = validate_blinded_agreement_inputs(
+        manifest, scores, lock, scores_bytes
+    )
+    if errors:
+        raise ValueError("invalid blinded agreement inputs")
+    agreement = blinded_agreement_status(scores)
+    if agreement["status"] != "eligible-for-locked-unlock":
+        raise ValueError("ratings are not eligible for unlock")
+
     key = _read_json(input_paths["key"])
-    if not all(isinstance(value, dict) for value in (manifest, scores, lock, key)):
+    if not isinstance(key, dict):
         raise ValueError("all effectiveness inputs must be JSON mappings")
 
     observations = unlock_observations(
@@ -76,6 +101,41 @@ def _analyze(args: argparse.Namespace) -> None:
     )
     summary = summarize_effectiveness(manifest, scores, observations)
     _write_summary_atomically(output_summary, summary)
+
+
+def _agreement_check(args: argparse.Namespace) -> None:
+    input_paths = {
+        "manifest": ensure_external_path(args.study_manifest),
+        "scores": ensure_external_path(args.scores),
+        "lock": ensure_external_path(args.ratings_lock),
+    }
+    output_summary = args.output_summary.resolve()
+    if output_summary in set(input_paths.values()) or any(
+        _same_existing_file(output_summary, input_path)
+        for input_path in input_paths.values()
+    ):
+        raise ValueError("aggregate output must not replace an external input")
+
+    manifest = _read_json(input_paths["manifest"])
+    scores_bytes = input_paths["scores"].read_bytes()
+    scores = json.loads(scores_bytes.decode("utf-8"))
+    lock = _read_json(input_paths["lock"])
+    if not all(isinstance(value, dict) for value in (manifest, scores, lock)):
+        raise ValueError("all effectiveness inputs must be JSON mappings")
+    errors = validate_blinded_agreement_inputs(manifest, scores, lock, scores_bytes)
+    if errors:
+        raise ValueError("invalid blinded agreement inputs")
+    agreement = blinded_agreement_status(scores)
+    _write_summary_atomically(
+        output_summary,
+        {
+            "schema_version": "1",
+            "study_id": scores["study_id"],
+            "agreement": agreement,
+        },
+    )
+    if agreement["status"] == "recalibrate-and-rescore-before-unlock":
+        raise _RecalibrationRequired
 
 
 def _same_existing_file(left: Path, right: Path) -> bool:
@@ -111,7 +171,12 @@ def main() -> None:
     parser = _argument_parser()
     try:
         args = parser.parse_args()
-        _analyze(args)
+        if args.command == "agreement-check":
+            _agreement_check(args)
+        else:
+            _analyze(args)
+    except _RecalibrationRequired:
+        parser.exit(3)
     except Exception:
         parser.exit(2, CLI_ERROR)
 
