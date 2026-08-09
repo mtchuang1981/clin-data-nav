@@ -1207,10 +1207,7 @@ def test_v040_release_notes_are_static_bilingual_and_uploadable():
         assert release_contract.casefold() in normalized
 
 
-def test_v040_local_release_evidence_records_verified_candidate():
-    report = (
-        ROOT / "docs/verification/2026-08-10-v0.4.0-local-release.md"
-    ).read_text(encoding="utf-8")
+def _assert_v040_local_release_evidence_contract(report: str) -> None:
     normalized = " ".join(report.split())
 
     for identity in (
@@ -1221,52 +1218,133 @@ def test_v040_local_release_evidence_records_verified_candidate():
     ):
         assert identity in normalized
 
-    pytest_results = re.findall(r"`(\d+) passed in (\d+\.\d+)s`", report)
-    assert len(pytest_results) >= 2
-    assert all(
-        int(count) > 0 and float(seconds) > 0
-        for count, seconds in pytest_results
+    implementation = _evidence_subsection(
+        report,
+        "## Implementation verification",
+        "## Local release artifacts",
     )
-    assert "`552 passed in 23.61s`" in report
-    assert "`552 passed in 26.17s`" in report
-
-    dual_runtime_commands = (
-        "python -m pytest -q -p no:cacheprovider",
-        "python scripts/validate_skill.py",
-        "python scripts/check_public_boundary.py",
-        "python scripts/package_skill.py --check-reproducible",
-        "python scripts/render_eval_summary.py --check",
+    host = _evidence_subsection(
+        implementation,
+        "### Host Python 3.13.13",
+        "### Official Python 3.11.9",
+    )
+    official = _evidence_subsection(
+        implementation,
+        "### Official Python 3.11.9",
+        None,
+    )
+    assert _evidence_table_rows(host) == (
         (
-            "python scripts/render_effectiveness_report.py --summary "
+            "`python -m pytest -q -p no:cacheprovider`",
+            "0",
+            "`552 passed in 23.61s`",
+            "`24,590 ms`",
+        ),
+        ("`python scripts/validate_skill.py`", "0", "no output/findings", "`68 ms`"),
+        (
+            "`python scripts/check_public_boundary.py`",
+            "0",
+            "no output/findings",
+            "`192 ms`",
+        ),
+        (
+            "`python scripts/package_skill.py --check-reproducible`",
+            "0",
+            "no output; reproducibility check accepted",
+            "`99 ms`",
+        ),
+        (
+            "`python scripts/render_eval_summary.py --check`",
+            "0",
+            "no output; checked-in deterministic Eval summary accepted",
+            "`96 ms`",
+        ),
+        (
+            "`python scripts/render_effectiveness_report.py --summary "
             "evals/effectiveness/examples/synthetic-summary.json --english "
             "evals/effectiveness/examples/synthetic-report.md "
             "--traditional-chinese "
-            "evals/effectiveness/examples/synthetic-report.zh-TW.md --check"
+            "evals/effectiveness/examples/synthetic-report.zh-TW.md --check`",
+            "0",
+            "no output; checked-in synthetic bilingual reports accepted",
+            "`110 ms`",
         ),
     )
-    for command in dual_runtime_commands:
-        assert report.count(f"`{command}`") >= 2
-        successful_rows = re.findall(
-            rf"^\| `{re.escape(command)}` \| 0 \|",
-            report,
-            flags=re.MULTILINE,
-        )
-        assert len(successful_rows) == 2
+    assert _evidence_table_rows(official) == (
+        (
+            "`python -m pytest -q -p no:cacheprovider`",
+            "0",
+            "`552 passed in 26.17s`",
+            "`27,301 ms`",
+        ),
+        ("`python scripts/validate_skill.py`", "0", "no output/findings", "`74 ms`"),
+        (
+            "`python scripts/check_public_boundary.py`",
+            "0",
+            "no output/findings",
+            "`199 ms`",
+        ),
+        (
+            "`python scripts/package_skill.py --check-reproducible`",
+            "0",
+            "no output; reproducibility check accepted",
+            "`125 ms`",
+        ),
+        (
+            "`python scripts/render_eval_summary.py --check`",
+            "0",
+            "no output; checked-in deterministic Eval summary accepted",
+            "`125 ms`",
+        ),
+        (
+            "`python scripts/render_effectiveness_report.py --summary "
+            "evals/effectiveness/examples/synthetic-summary.json --english "
+            "evals/effectiveness/examples/synthetic-report.md "
+            "--traditional-chinese "
+            "evals/effectiveness/examples/synthetic-report.zh-TW.md --check`",
+            "0",
+            "no output; checked-in synthetic bilingual reports accepted",
+            "`125 ms`",
+        ),
+    )
+    for official_runtime_fact in (
+        "`C:\\tmp\\python-3.11.9-embed-amd64\\python.exe`",
+        "`E:\\6GAI\\AGY\\clin-data-nav\\.worktrees\\v0.4.0-release`",
+    ):
+        assert official.count(official_runtime_fact) == 1
 
-    for asset_name in (
-        "clinical-data-research-navigator-0.4.0.zip",
-        "clinical-data-research-navigator-0.4.0.manifest.json",
-    ):
-        assert asset_name in report
-    for observed_artifact_fact in (
-        "ZIP size | `18591` bytes",
-        "Manifest size | `1265` bytes",
-        "ZIP file count | `8`",
-        "ce6a67a268e4266d094db31406a9c5dda3f005c3b6a5355ec851ea87abf3aded",
-        "9fe69bfa0a5fd9f8ce58082c1989316ed5b46683d74176319ba6c1187063a85a",
-    ):
-        assert observed_artifact_fact in report
-    assert "Manifest `archive_sha256`" in report
+    artifacts = _evidence_subsection(
+        report,
+        "## Local release artifacts",
+        "## Evidence and publication boundary",
+    )
+    artifact_rows = _evidence_table_rows(artifacts)
+    assert artifact_rows == (
+        ("ZIP filename", "`clinical-data-research-navigator-0.4.0.zip`"),
+        ("ZIP size", "`18591` bytes"),
+        (
+            "ZIP SHA-256",
+            "`ce6a67a268e4266d094db31406a9c5dda3f005c3b6a5355ec851ea87abf3aded`",
+        ),
+        (
+            "Manifest filename",
+            "`clinical-data-research-navigator-0.4.0.manifest.json`",
+        ),
+        ("Manifest size", "`1265` bytes"),
+        (
+            "Manifest SHA-256",
+            "`9fe69bfa0a5fd9f8ce58082c1989316ed5b46683d74176319ba6c1187063a85a`",
+        ),
+        (
+            "Manifest `archive_sha256`",
+            "`ce6a67a268e4266d094db31406a9c5dda3f005c3b6a5355ec851ea87abf3aded`",
+        ),
+        ("ZIP file count", "`8`"),
+    )
+    artifact_by_property = dict(artifact_rows)
+    assert artifact_by_property["Manifest `archive_sha256`"] == (
+        artifact_by_property["ZIP SHA-256"]
+    )
     assert "Manifest file records are sorted and unique." in normalized
     assert "ZIP members exactly equal the manifest paths." in normalized
 
@@ -1277,6 +1355,72 @@ def test_v040_local_release_evidence_records_verified_candidate():
         "The GitHub Release has not yet been published.",
     ):
         assert boundary_statement in normalized
+
+
+def test_v040_local_release_evidence_records_verified_candidate():
+    report = (
+        ROOT / "docs/verification/2026-08-10-v0.4.0-local-release.md"
+    ).read_text(encoding="utf-8")
+    _assert_v040_local_release_evidence_contract(report)
+
+
+def test_v040_local_release_evidence_binds_commands_to_each_runtime_section():
+    report = (
+        ROOT / "docs/verification/2026-08-10-v0.4.0-local-release.md"
+    ).read_text(encoding="utf-8")
+    official_heading = "### Official Python 3.11.9"
+    artifacts_heading = "## Local release artifacts"
+    official_start = report.index(official_heading)
+    official_end = report.index(artifacts_heading, official_start)
+    official_section = report[official_start:official_end]
+    table_start = official_section.index("| Command | Exit | Result | Elapsed |")
+    official_table = official_section[table_start:]
+    official_without_table = official_section[:table_start]
+    mutated = (
+        report[:official_start]
+        + official_table
+        + official_without_table
+        + report[official_end:]
+    )
+
+    with pytest.raises(AssertionError):
+        _assert_v040_local_release_evidence_contract(mutated)
+
+
+@pytest.mark.parametrize(
+    ("original", "replacement"),
+    (
+        (
+            "| ZIP filename | `clinical-data-research-navigator-0.4.0.zip` |",
+            "| ZIP filename | "
+            "`clinical-data-research-navigator-0.4.0.manifest.json` |",
+        ),
+        (
+            "| ZIP SHA-256 | "
+            "`ce6a67a268e4266d094db31406a9c5dda3f005c3b6a5355ec851ea87abf3aded` |",
+            "| ZIP SHA-256 | "
+            "`9fe69bfa0a5fd9f8ce58082c1989316ed5b46683d74176319ba6c1187063a85a` |",
+        ),
+        (
+            "| Manifest `archive_sha256` | "
+            "`ce6a67a268e4266d094db31406a9c5dda3f005c3b6a5355ec851ea87abf3aded` |",
+            "| Manifest `archive_sha256` | "
+            "`9fe69bfa0a5fd9f8ce58082c1989316ed5b46683d74176319ba6c1187063a85a` |",
+        ),
+    ),
+)
+def test_v040_local_release_evidence_binds_artifact_properties_to_values(
+    original,
+    replacement,
+):
+    report = (
+        ROOT / "docs/verification/2026-08-10-v0.4.0-local-release.md"
+    ).read_text(encoding="utf-8")
+    assert original in report
+    mutated = report.replace(original, replacement, 1)
+
+    with pytest.raises(AssertionError):
+        _assert_v040_local_release_evidence_contract(mutated)
 
 
 def test_release_process_requires_a_committed_post_release_evidence_report():
