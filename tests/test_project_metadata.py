@@ -1092,11 +1092,15 @@ def test_release_version_is_synchronized():
         .removeprefix("## ")
         .split(" - ", 1)[0],
         "release-notes": release_notes.splitlines()[0].rsplit("v", 1)[1],
-        "security-supported-release": f"{supported_release.group(1)}.0",
+    }
+    active_release_lines = {
+        "security-supported-release": supported_release.group(1),
     }
 
-    assert len(active_surfaces) == 8
+    assert len(active_surfaces) == 7
     assert set(active_surfaces.values()) == {current_version}
+    assert len(active_release_lines) == 1
+    assert set(active_release_lines.values()) == {current_version.rsplit(".", 1)[0]}
     assert "## 0.4.0 - 2026-08-10" in changelog
     assert "## 0.4.0 - 2026-08-10" in changelog_zh_tw
     assert citation["date-released"] == "2026-08-10"
@@ -1219,12 +1223,34 @@ def _assert_v040_local_release_evidence_contract(report: str) -> None:
     normalized = " ".join(report.split())
 
     for identity in (
-        "7c681b04a63beecdf20f528b1380060c55a7856f",
+        "2f6d999241c0f49e6754ba28d56dea637abdbaf9",
         "codex/v0.4.0-release",
         "Python 3.13.13",
         "Python 3.11.9",
     ):
         assert identity in normalized
+
+    fix = _evidence_subsection(
+        report,
+        "## Pre-publication security-policy fix",
+        "## Runtime identity and repository path",
+    )
+    normalized_fix = " ".join(fix.split())
+    for exact_fact in (
+        "Fix base: `144e5eb1f7de146c2609618de9c4e03347e17cfe`.",
+        "Functional implementation commit: `2f6d999241c0f49e6754ba28d56dea637abdbaf9`.",
+        "The stale-contract baseline passed with `2 passed in 0.04s`.",
+        "The updated contract then failed as intended with `2 failed in 0.31s`.",
+        (
+            "After the policy change, the focused GREEN was `2 passed in 0.16s` "
+            "and the related regression set was `144 passed in 3.35s`."
+        ),
+        (
+            "The evidence-refresh contract failed against the stale record with "
+            "`1 failed in 0.25s` before this record was changed."
+        ),
+    ):
+        assert normalized_fix.count(exact_fact) == 1
 
     implementation = _evidence_subsection(
         report,
@@ -1245,27 +1271,32 @@ def _assert_v040_local_release_evidence_contract(report: str) -> None:
         (
             "`python -m pytest -q -p no:cacheprovider`",
             "0",
-            "`552 passed in 23.61s`",
-            "`24,590 ms`",
+            "`557 passed in 25.08s`",
+            "`26,273 ms`",
         ),
-        ("`python scripts/validate_skill.py`", "0", "no output/findings", "`68 ms`"),
+        (
+            "`python scripts/validate_skill.py`",
+            "0",
+            "no output/findings",
+            "`401 ms`",
+        ),
         (
             "`python scripts/check_public_boundary.py`",
             "0",
             "no output/findings",
-            "`192 ms`",
+            "`182 ms`",
         ),
         (
             "`python scripts/package_skill.py --check-reproducible`",
             "0",
             "no output; reproducibility check accepted",
-            "`99 ms`",
+            "`104 ms`",
         ),
         (
             "`python scripts/render_eval_summary.py --check`",
             "0",
             "no output; checked-in deterministic Eval summary accepted",
-            "`96 ms`",
+            "`86 ms`",
         ),
         (
             "`python scripts/render_effectiveness_report.py --summary "
@@ -1275,34 +1306,34 @@ def _assert_v040_local_release_evidence_contract(report: str) -> None:
             "evals/effectiveness/examples/synthetic-report.zh-TW.md --check`",
             "0",
             "no output; checked-in synthetic bilingual reports accepted",
-            "`110 ms`",
+            "`97 ms`",
         ),
     )
     assert _evidence_table_rows(official) == (
         (
             "`python -m pytest -q -p no:cacheprovider`",
             "0",
-            "`552 passed in 26.17s`",
-            "`27,301 ms`",
+            "`557 passed in 24.24s`",
+            "`25,017 ms`",
         ),
-        ("`python scripts/validate_skill.py`", "0", "no output/findings", "`74 ms`"),
+        ("`python scripts/validate_skill.py`", "0", "no output/findings", "`68 ms`"),
         (
             "`python scripts/check_public_boundary.py`",
             "0",
             "no output/findings",
-            "`199 ms`",
+            "`186 ms`",
         ),
         (
             "`python scripts/package_skill.py --check-reproducible`",
             "0",
             "no output; reproducibility check accepted",
-            "`125 ms`",
+            "`120 ms`",
         ),
         (
             "`python scripts/render_eval_summary.py --check`",
             "0",
             "no output; checked-in deterministic Eval summary accepted",
-            "`125 ms`",
+            "`110 ms`",
         ),
         (
             "`python scripts/render_effectiveness_report.py --summary "
@@ -1312,7 +1343,7 @@ def _assert_v040_local_release_evidence_contract(report: str) -> None:
             "evals/effectiveness/examples/synthetic-report.zh-TW.md --check`",
             "0",
             "no output; checked-in synthetic bilingual reports accepted",
-            "`125 ms`",
+            "`123 ms`",
         ),
     )
     for official_runtime_fact in (
@@ -1327,7 +1358,31 @@ def _assert_v040_local_release_evidence_contract(report: str) -> None:
         "## Evidence and publication boundary",
     )
     artifact_rows = _evidence_table_rows(artifacts)
-    assert artifact_rows == (
+    assert artifact_rows[:3] == (
+        (
+            "`python scripts/package_skill.py --output-dir dist`",
+            "0",
+            "generated the clean ZIP and manifest",
+            "`112 ms`",
+        ),
+        (
+            "`python scripts/verify_release.py artifacts --archive "
+            "dist/clinical-data-research-navigator-0.4.0.zip --manifest "
+            "dist/clinical-data-research-navigator-0.4.0.manifest.json`",
+            "0",
+            "`release artifacts verified`",
+            "`128 ms`",
+        ),
+        (
+            "`python scripts/check_public_boundary.py "
+            "<fresh-extracted-directory>`",
+            "0",
+            "no output/findings",
+            "`121 ms`",
+        ),
+    )
+    artifact_property_rows = artifact_rows[3:]
+    assert artifact_property_rows == (
         ("ZIP filename", "`clinical-data-research-navigator-0.4.0.zip`"),
         ("ZIP size", "`18591` bytes"),
         (
@@ -1349,12 +1404,20 @@ def _assert_v040_local_release_evidence_contract(report: str) -> None:
         ),
         ("ZIP file count", "`8`"),
     )
-    artifact_by_property = dict(artifact_rows)
+    artifact_by_property = dict(artifact_property_rows)
     assert artifact_by_property["Manifest `archive_sha256`"] == (
         artifact_by_property["ZIP SHA-256"]
     )
     assert "Manifest file records are sorted and unique." in normalized
     assert "ZIP members exactly equal the manifest paths." in normalized
+    assert (
+        "ZIP member sizes and SHA-256 values exactly equal the manifest records."
+        in normalized
+    )
+    assert (
+        "exact root schema `archive,archive_sha256,files,name,version`" in normalized
+    )
+    assert "exact per-file schema `path,sha256,size`" in normalized
 
     for boundary_statement in (
         "No human pilot was conducted.",
