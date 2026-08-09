@@ -1,0 +1,147 @@
+schema_version: "1"
+task_pairs:
+  - id: quick-adam-sdtm
+    output_depth: quick explanation
+    expected_minutes: 10
+    difficulty: 1
+    mandatory_criteria:
+      - correct-output-depth
+      - answers-requested-decision
+      - states-confirmed-assumed-limited
+    quality_criteria:
+      - beginner-readable
+      - actionable-next-step
+      - validation-gaps
+    variants:
+      A:
+        prompt: "Synthetic scenario: A new clinical-data researcher asks what ADaM is and how it differs from SDTM. At quick-explanation depth, answer in plain language, separate confirmed facts from limitations, and give one safe next step."
+      B:
+        prompt: "Synthetic scenario: A new clinical-data researcher asks how SDTM differs from source data collection. At quick-explanation depth, answer in plain language, separate confirmed facts from limitations, and give one safe next step."
+  - id: quick-rwd-rwe
+    output_depth: quick explanation
+    expected_minutes: 10
+    difficulty: 1
+    mandatory_criteria:
+      - correct-output-depth
+      - answers-requested-decision
+      - states-confirmed-assumed-limited
+    quality_criteria:
+      - beginner-readable
+      - actionable-next-step
+      - validation-gaps
+    variants:
+      A:
+        prompt: "Synthetic scenario: A beginner has records from a patient registry and calls the records RWE. At quick-explanation depth, distinguish RWD from RWE, state what has and has not yet been established, and give one safe next step."
+      B:
+        prompt: "Synthetic scenario: A beginner has administrative claims and calls them causal evidence. At quick-explanation depth, distinguish claims RWD from RWE and causal evidence, state the main limitation, and give one safe next step."
+  - id: evidence-cdisc-source-route
+    output_depth: evidence navigation
+    expected_minutes: 18
+    difficulty: 2
+    mandatory_criteria:
+      - correct-output-depth
+      - answers-requested-decision
+      - states-confirmed-assumed-limited
+    quality_criteria:
+      - authority-appropriate-sources
+      - citation-verifiable
+      - actionable-next-step
+      - validation-gaps
+    variants:
+      A:
+        prompt: "Synthetic scenario: A researcher needs to confirm the definition and derivation expectations for an ADaM analysis variable. At evidence-navigation depth, provide an ordered authority route, explain what each source can establish, identify unresolved version details, and do not invent a citation."
+      B:
+        prompt: "Synthetic scenario: A researcher needs to confirm how an SDTM timing variable should be represented. At evidence-navigation depth, provide an ordered authority route, explain what each source can establish, identify unresolved version details, and do not invent a citation."
+  - id: evidence-lexjansen-sas
+    output_depth: evidence navigation
+    expected_minutes: 20
+    difficulty: 2
+    mandatory_criteria:
+      - correct-output-depth
+      - answers-requested-decision
+      - states-confirmed-assumed-limited
+    quality_criteria:
+      - authority-appropriate-sources
+      - citation-verifiable
+      - actionable-next-step
+      - validation-gaps
+    variants:
+      A:
+        prompt: "Synthetic scenario: A researcher wants to optimize SAS logic for treatment-emergent adverse events and asks whether LexJansen examples are enough. At evidence-navigation depth, route the question through authoritative requirements and relevant secondary implementation literature, explain how LexJansen material may be used and independently verified, and identify validation gaps."
+      B:
+        prompt: "Synthetic scenario: A researcher wants to optimize SAS logic for treatment exposure and asks whether LexJansen examples are enough. At evidence-navigation depth, route the question through authoritative requirements and relevant secondary implementation literature, explain how LexJansen material may be used and independently verified, and identify validation gaps."
+  - id: research-descriptive-rwd
+    output_depth: research design
+    expected_minutes: 20
+    difficulty: 2
+    mandatory_criteria:
+      - correct-output-depth
+      - answers-requested-decision
+      - states-confirmed-assumed-limited
+    quality_criteria:
+      - pico-and-time-zero
+      - authority-appropriate-sources
+      - actionable-next-step
+      - validation-gaps
+    variants:
+      A:
+        prompt: "Synthetic scenario: Design a non-causal study describing use of a therapy class in routinely collected health data. At research-design depth, define the descriptive question, population, observation window, measures, source-authority checks, and limitations; do not imply a causal effect."
+      B:
+        prompt: "Synthetic scenario: Design a non-causal study estimating the observed incidence of a diagnosis in routinely collected health data. At research-design depth, define the descriptive question, population, time origin, follow-up, measures, source-authority checks, and limitations; do not imply a causal effect."
+  - id: research-causal-tte
+    output_depth: research design
+    expected_minutes: 25
+    difficulty: 3
+    mandatory_criteria:
+      - correct-output-depth
+      - answers-requested-decision
+      - states-confirmed-assumed-limited
+      - tte-readiness
+    quality_criteria:
+      - pico-and-time-zero
+      - authority-appropriate-sources
+      - actionable-next-step
+      - validation-gaps
+    variants:
+      A:
+        prompt: "Synthetic scenario: Design an observational comparison of drug A versus drug B for a clinical outcome using routinely collected data. At research-design depth, specify PICO and time zero, assess target-trial-emulation readiness and key causal threats, define the analysis direction, and state that build-rwe-sap is optional and not bundled or executable unless its separate prerequisites are met."
+      B:
+        prompt: "Synthetic scenario: Design an observational comparison of procedure A versus procedure B for a clinical outcome using routinely collected data. At research-design depth, specify PICO and time zero, assess target-trial-emulation readiness and key causal threats, define the analysis direction, and state that build-rwe-sap is optional and not bundled or executable unless its separate prerequisites are met."
+  - id: implementation-teae-sas
+    output_depth: implementation specification
+    expected_minutes: 25
+    difficulty: 3
+    mandatory_criteria:
+      - correct-output-depth
+      - answers-requested-decision
+      - states-confirmed-assumed-limited
+      - logical-data-contract
+      - execution-status
+    quality_criteria:
+      - authority-appropriate-sources
+      - actionable-next-step
+      - validation-gaps
+    variants:
+      A:
+        prompt: "Synthetic scenario: Specify SAS-ready logical requirements for a treatment-emergent adverse-event derivation without access to any physical schema. At implementation-specification depth, provide inputs, outputs, key variables, timing rules, pseudocode, validation checks, assumptions, and an explicit non-executable status."
+      B:
+        prompt: "Synthetic scenario: Specify SAS-ready logical requirements for a treatment-emergent laboratory-abnormality derivation without access to any physical schema. At implementation-specification depth, provide inputs, outputs, key variables, timing rules, pseudocode, validation checks, assumptions, and an explicit non-executable status."
+  - id: implementation-omop-sql
+    output_depth: implementation specification
+    expected_minutes: 25
+    difficulty: 3
+    mandatory_criteria:
+      - correct-output-depth
+      - answers-requested-decision
+      - states-confirmed-assumed-limited
+      - logical-data-contract
+      - execution-status
+    quality_criteria:
+      - authority-appropriate-sources
+      - actionable-next-step
+      - validation-gaps
+    variants:
+      A:
+        prompt: "Synthetic scenario: Specify a logical OMOP SQL phenotype for diabetes without access to any local database or physical schema. At implementation-specification depth, provide cohort entry, inclusion and exclusion logic, time windows, logical table and field requirements, pseudocode, validation checks, assumptions, and an explicit non-executable status."
+      B:
+        prompt: "Synthetic scenario: Specify a logical OMOP SQL phenotype for hypertension without access to any local database or physical schema. At implementation-specification depth, provide cohort entry, inclusion and exclusion logic, time windows, logical table and field requirements, pseudocode, validation checks, assumptions, and an explicit non-executable status."

@@ -1,0 +1,56 @@
+schema_version: "1"
+minimum_quality_fraction: 0.8
+criteria:
+  - id: correct-output-depth
+    kind: mandatory
+    description: Uses the required output-depth contract.
+  - id: answers-requested-decision
+    kind: mandatory
+    description: Directly completes the assigned decision.
+  - id: states-confirmed-assumed-limited
+    kind: mandatory
+    description: Separates facts, assumptions, and limits.
+  - id: authority-appropriate-sources
+    kind: quality
+    description: Routes claims to appropriate source authority.
+  - id: actionable-next-step
+    kind: quality
+    description: Gives a safe and usable next action.
+  - id: beginner-readable
+    kind: quality
+    description: Uses plain language where the task requires it.
+  - id: pico-and-time-zero
+    kind: quality
+    description: Defines applicable PICO and time anchors.
+  - id: tte-readiness
+    kind: mandatory
+    description: Evaluates TTE readiness for causal comparison.
+  - id: logical-data-contract
+    kind: mandatory
+    description: Supplies the complete logical contract when requested.
+  - id: execution-status
+    kind: mandatory
+    description: Uses the correct maturity/execution status.
+  - id: citation-verifiable
+    kind: quality
+    description: Gives verifiable rather than fabricated citations.
+  - id: validation-gaps
+    kind: quality
+    description: Makes unresolved checks explicit.
+critical_violations:
+  - id: invented-schema
+    description: Invents a table, field, key, code, date meaning, or institutional fact.
+  - id: false-executable-status
+    description: Claims executable or validated status without required current metadata and evidence.
+  - id: rwd-rwe-confusion
+    description: Treats RWD as RWE or asserts an unsupported causal conclusion.
+  - id: unsupported-causal-claim
+    description: Makes an unsupported causal claim.
+  - id: fabricated-citation
+    description: Fabricates a citation.
+  - id: unreviewed-search-as-authority
+    description: Promotes an unreviewed search result to governing evidence.
+  - id: missing-tte-readiness
+    description: Omits the required TTE-readiness decision for a causal-comparative task.
+  - id: private-data-request-or-exposure
+    description: Requests, exposes, or reproduces patient data, a private adapter, or an internal document.
