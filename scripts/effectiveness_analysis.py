@@ -80,6 +80,8 @@ SCORES_KEYS = frozenset(
     {
         "schema_version",
         "study_id",
+        "protocol_deviations",
+        "study_limitations",
         "observations",
         "rater_scores",
         "adjudications",
@@ -134,6 +136,35 @@ ADJUDICATION_KEYS = frozenset(
 )
 SUS_RESPONSE_KEYS = frozenset({"participant_code", "items"})
 CRITERION_SCORE_KEYS = frozenset({"criterion_id", "applicable", "met"})
+CONTROLLED_REVIEW_KEYS = frozenset({"review_status", "items"})
+CONTROLLED_COUNT_KEYS = frozenset({"category_id", "count"})
+CONTROLLED_REVIEW_STATUSES = frozenset(
+    {"reviewed-none", "reviewed-with-findings"}
+)
+PROTOCOL_DEVIATION_CATEGORIES = (
+    "eligibility",
+    "assignment",
+    "orientation",
+    "fresh-conversation",
+    "time-limit",
+    "rest-period",
+    "environment-consistency",
+    "task-pack-integrity",
+    "rating-procedure",
+    "data-lock-or-unlock",
+)
+STUDY_LIMITATION_CATEGORIES = (
+    "small-exploratory-sample",
+    "synthetic-task-generalizability",
+    "controlled-environment-generalizability",
+    "participant-completion-below-threshold",
+    "technical-failure",
+    "task-pack-leakage",
+    "environment-batch-change",
+    "low-rater-agreement",
+    "protocol-deviation-present",
+    "no-clinical-validity-inference",
+)
 RATINGS_LOCK_KEYS = frozenset(
     {
         "schema_version",
@@ -429,12 +460,14 @@ def clopper_pearson(
     lower = (
         0.0
         if successes == 0
-        else _binomial_cdf_quantile(total, successes - 1, 1.0 - alpha_tail)
+        else _binomial_survival_quantile(total, successes, alpha_tail)
     )
     upper = (
         1.0
         if successes == total
-        else _binomial_cdf_quantile(total, successes, alpha_tail)
+        else 1.0 - _binomial_survival_quantile(
+            total, total - successes, alpha_tail
+        )
     )
     return lower, upper
 
@@ -742,12 +775,8 @@ def summarize_effectiveness(
         "secondary": secondary,
         "agreement": blinded_agreement_status(scores),
         "power_scenarios": _deferred_power_scenarios(),
-        "protocol_deviations": [],
-        "limitations": [
-            "This 16-person pilot is exploratory and not confirmatory.",
-            "Synthetic tasks and a controlled environment limit real-world generalizability.",
-            "Product task performance does not prove clinical validity, causal validity, or patient-outcome validity.",
-        ],
+        "protocol_deviations": deepcopy(scores["protocol_deviations"]),
+        "limitations": deepcopy(scores["study_limitations"]),
     }
 
 
@@ -939,11 +968,42 @@ def _binomial_cdf_quantile(total: int, maximum_successes: int, target: float) ->
     return (lower + upper) / 2.0
 
 
+def _binomial_survival_quantile(
+    total: int, minimum_successes: int, target: float
+) -> float:
+    lower = 0.0
+    upper = 1.0
+    for _ in range(100):
+        midpoint = (lower + upper) / 2.0
+        probability = _binomial_survival(total, minimum_successes, midpoint)
+        if probability < target:
+            lower = midpoint
+        else:
+            upper = midpoint
+    return (lower + upper) / 2.0
+
+
 def _binomial_cdf(total: int, maximum_successes: int, probability: float) -> float:
+    relative_probabilities = _scaled_binomial_probabilities(total, probability)
+    denominator = math.fsum(relative_probabilities)
+    numerator = math.fsum(relative_probabilities[: maximum_successes + 1])
+    return _bounded_probability(numerator / denominator)
+
+
+def _binomial_survival(
+    total: int, minimum_successes: int, probability: float
+) -> float:
+    relative_probabilities = _scaled_binomial_probabilities(total, probability)
+    denominator = math.fsum(relative_probabilities)
+    numerator = math.fsum(relative_probabilities[minimum_successes:])
+    return _bounded_probability(numerator / denominator)
+
+
+def _scaled_binomial_probabilities(total: int, probability: float) -> list[float]:
     if probability <= 0.0:
-        return 1.0
+        return [1.0, *([0.0] * total)]
     if probability >= 1.0:
-        return 1.0 if maximum_successes >= total else 0.0
+        return [*([0.0] * total), 1.0]
 
     # Scale the modal PMF to one. Ratios moving away from a binomial mode are
     # at most one, so neither combinatorial coefficients nor huge terms arise.
@@ -967,9 +1027,10 @@ def _binomial_cdf(total: int, maximum_successes: int, probability: float) -> flo
         )
         relative_probabilities[successes + 1] = relative_probability
 
-    denominator = math.fsum(relative_probabilities)
-    numerator = math.fsum(relative_probabilities[: maximum_successes + 1])
-    result = numerator / denominator
+    return relative_probabilities
+
+
+def _bounded_probability(result: float) -> float:
     if not math.isfinite(result):
         raise ArithmeticError("binomial CDF calculation is non-finite")
     rounding_tolerance = 16 * math.ulp(1.0)
@@ -1120,6 +1181,19 @@ def validate_blinded_scores(payload: object) -> list[str]:
         errors.append('blinded scores: schema_version must be "1"')
     if not _is_safe_string(payload.get("study_id")):
         errors.append("blinded scores: study_id must be a non-empty safe string")
+
+    _validate_controlled_review(
+        payload.get("protocol_deviations"),
+        "protocol deviations",
+        PROTOCOL_DEVIATION_CATEGORIES,
+        errors,
+    )
+    _validate_controlled_review(
+        payload.get("study_limitations"),
+        "study limitations",
+        STUDY_LIMITATION_CATEGORIES,
+        errors,
+    )
 
     observations = payload.get("observations")
     rater_scores = payload.get("rater_scores")
@@ -1468,6 +1542,12 @@ def unlock_observations(
         errors.append("effectiveness study: lock rater set mismatch")
 
     _validate_study_timing(manifest, scores, lock, errors)
+    if (
+        not errors
+        and blinded_agreement_status(scores)["status"]
+        != "eligible-for-locked-unlock"
+    ):
+        errors.append("effectiveness study: ratings agreement is not eligible for unlock")
     if errors:
         raise ValueError("invalid effectiveness study: " + "; ".join(errors))
 
@@ -1546,6 +1626,55 @@ def _validate_observation(
         for field in _nullable_observation_fields():
             if observation.get(field) is not None:
                 errors.append(f"{label}: {field} must be null for an unscored status")
+
+
+def _validate_controlled_review(
+    value: object,
+    label: str,
+    categories: tuple[str, ...],
+    errors: list[str],
+) -> None:
+    if not isinstance(value, dict):
+        errors.append(f"{label}: must be a mapping")
+        return
+    _validate_exact_keys(label, value, CONTROLLED_REVIEW_KEYS, errors)
+    review_status = value.get("review_status")
+    if not _is_enum_value(review_status, CONTROLLED_REVIEW_STATUSES):
+        errors.append(f"{label}: review_status is invalid")
+    items = value.get("items")
+    if not isinstance(items, list):
+        errors.append(f"{label}: items must be a list")
+        return
+    if review_status == "reviewed-none" and items:
+        errors.append(f"{label}: reviewed-none requires an empty items list")
+    if review_status == "reviewed-with-findings" and not items:
+        errors.append(f"{label}: reviewed-with-findings requires non-empty items")
+
+    category_positions = {
+        category_id: index for index, category_id in enumerate(categories)
+    }
+    observed_categories: list[str] = []
+    for index, item in enumerate(items):
+        item_label = f"{label} item {index}"
+        if not isinstance(item, dict):
+            errors.append(f"{item_label}: must be a mapping")
+            continue
+        _validate_exact_keys(item_label, item, CONTROLLED_COUNT_KEYS, errors)
+        category_id = item.get("category_id")
+        if not _is_enum_value(category_id, set(categories)):
+            errors.append(f"{item_label}: category_id is invalid")
+        else:
+            observed_categories.append(category_id)
+        count = item.get("count")
+        if type(count) is not int or count <= 0:
+            errors.append(f"{item_label}: count must be a positive integer")
+
+    if len(observed_categories) != len(set(observed_categories)):
+        errors.append(f"{label}: category IDs must be unique")
+    if [category_positions[item] for item in observed_categories] != sorted(
+        category_positions[item] for item in observed_categories
+    ):
+        errors.append(f"{label}: items must use deterministic category order")
 
 
 def _validate_populated_observation_scores(

@@ -107,6 +107,22 @@ def valid_scores():
     return {
         "schema_version": "1",
         "study_id": "synthetic-pilot-v1",
+        "protocol_deviations": {
+            "review_status": "reviewed-none",
+            "items": [],
+        },
+        "study_limitations": {
+            "review_status": "reviewed-with-findings",
+            "items": [
+                {"category_id": "small-exploratory-sample", "count": 1},
+                {"category_id": "synthetic-task-generalizability", "count": 1},
+                {
+                    "category_id": "controlled-environment-generalizability",
+                    "count": 1,
+                },
+                {"category_id": "no-clinical-validity-inference", "count": 1},
+            ],
+        },
         "observations": [
             {
                 "answer_id": "A000000000000001",
@@ -253,6 +269,22 @@ def full_pilot_payloads():
     scores = {
         "schema_version": "1",
         "study_id": "synthetic-pilot-v1",
+        "protocol_deviations": {
+            "review_status": "reviewed-none",
+            "items": [],
+        },
+        "study_limitations": {
+            "review_status": "reviewed-with-findings",
+            "items": [
+                {"category_id": "small-exploratory-sample", "count": 1},
+                {"category_id": "synthetic-task-generalizability", "count": 1},
+                {
+                    "category_id": "controlled-environment-generalizability",
+                    "count": 1,
+                },
+                {"category_id": "no-clinical-validity-inference", "count": 1},
+            ],
+        },
         "observations": observations,
         "rater_scores": rater_scores,
         "adjudications": [],
@@ -390,6 +422,27 @@ def scores_for_agreement(binary_pairs, ordinal_pairs=None, critical_pairs=None):
                 }
             )
     return {"rater_scores": rater_scores, "adjudications": []}
+
+
+def make_recalibration_required(scores):
+    answer_ids = [row["answer_id"] for row in scores["observations"][:13]]
+    r2_by_answer = {
+        row["answer_id"]: row
+        for row in scores["rater_scores"]
+        if row["rater_code"] == "R2"
+    }
+    for answer_id in answer_ids:
+        r2_by_answer[answer_id]["success"] = False
+        scores["adjudications"].append(
+            {
+                "answer_id": answer_id,
+                "adjudicator_code": "R3",
+                "final_success": True,
+                "final_critical_violation": False,
+                "final_ordinal_quality": 4,
+                "rationale_code": "mandatory-criterion",
+            }
+        )
 
 
 def test_nasa_tlx_uses_six_weights_summing_to_fifteen():
@@ -630,6 +683,16 @@ def test_clopper_pearson_large_tail_intervals_have_complement_symmetry():
     assert 0.99 < high_successes[0] < high_successes[1] < 1.0
     assert low_successes[0] == pytest.approx(1.0 - high_successes[1], abs=1e-12)
     assert low_successes[1] == pytest.approx(1.0 - high_successes[0], abs=1e-12)
+
+
+def test_clopper_pearson_extreme_confidence_is_finite_ordered_and_centrally_symmetric():
+    confidence = math.nextafter(1.0, 0.0)
+
+    lower, upper = clopper_pearson(1000, 2000, confidence)
+
+    assert all(map(math.isfinite, (lower, upper)))
+    assert 0.4 < lower < 0.5 < upper < 0.6
+    assert lower == 1.0 - upper
 
 
 @pytest.mark.parametrize(
@@ -892,8 +955,11 @@ def test_summary_has_fixed_aggregate_contract_and_paired_denominators():
         assert scenario["required_complete_pairs"] is None
         assert scenario["required_recruits"] is None
         assert scenario["status"] == "deferred-until-post-pilot"
-    assert summary["protocol_deviations"] == []
-    assert summary["limitations"]
+    assert summary["protocol_deviations"] == {
+        "review_status": "reviewed-none",
+        "items": [],
+    }
+    assert summary["limitations"] == scores["study_limitations"]
 
 
 def test_summary_excludes_technical_failure_and_adds_conservative_sensitivity():
@@ -927,6 +993,27 @@ def test_summary_excludes_technical_failure_and_adds_conservative_sensitivity():
         "plus_half": 0,
         "plus_one": 0,
     }
+
+
+def test_conservative_missingness_treats_control_technical_failure_as_success():
+    manifest, scores, lock, key, raw_scores = full_pilot_payloads()
+    observations = unlock_observations(manifest, scores, lock, key, raw_scores)
+    technical_row = next(
+        row
+        for row in observations
+        if row["participant_code"] == "B01" and row["condition"] == "control"
+    )
+    mark_unscored(technical_row, "technical_failure")
+
+    summary = summarize_effectiveness(manifest, scores, observations)
+
+    sensitivity = summary["primary"]["conservative_missingness"]
+    assert sensitivity["complete_pairs"] == 16
+    assert sensitivity["control_successes"] == 32
+    assert sensitivity["control_total"] == 32
+    assert sensitivity["intervention_successes"] == 32
+    assert sensitivity["intervention_total"] == 32
+    assert sensitivity["paired_risk_difference"] == 0.0
 
 
 @pytest.mark.parametrize(
@@ -988,6 +1075,119 @@ def test_valid_closed_schema_payloads_are_accepted():
     assert validate_condition_key(
         valid_key(), {"A000000000000001"}
     ) == []
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "marker"),
+    [
+        (
+            "protocol_deviations",
+            {
+                "review_status": "reviewed-none",
+                "items": [{"category_id": "orientation", "count": 1}],
+            },
+            "reviewed-none requires an empty items list",
+        ),
+        (
+            "protocol_deviations",
+            {"review_status": "reviewed-with-findings", "items": []},
+            "reviewed-with-findings requires non-empty items",
+        ),
+        (
+            "protocol_deviations",
+            {
+                "review_status": "reviewed-with-findings",
+                "items": [{"category_id": "unknown-category", "count": 1}],
+            },
+            "category_id is invalid",
+        ),
+        (
+            "protocol_deviations",
+            {
+                "review_status": "reviewed-with-findings",
+                "items": [
+                    {"category_id": "rating-procedure", "count": 1},
+                    {"category_id": "orientation", "count": 1},
+                ],
+            },
+            "items must use deterministic category order",
+        ),
+        (
+            "study_limitations",
+            {
+                "review_status": "reviewed-with-findings",
+                "items": [{"category_id": "technical-failure", "count": 0}],
+            },
+            "count must be a positive integer",
+        ),
+        (
+            "study_limitations",
+            {
+                "review_status": "reviewed-with-findings",
+                "items": [
+                    {
+                        "category_id": "technical-failure",
+                        "count": 1,
+                        "condition": "control",
+                    }
+                ],
+            },
+            "keys must match the closed schema",
+        ),
+        (
+            "study_limitations",
+            {
+                "review_status": "reviewed-with-findings",
+                "items": [
+                    {"category_id": "technical-failure", "count": 1},
+                    {"category_id": "technical-failure", "count": 2},
+                ],
+                "free_text": "must never be accepted",
+            },
+            "keys must match the closed schema",
+        ),
+    ],
+)
+def test_controlled_protocol_review_is_strict_condition_free_and_deterministic(
+    field, value, marker
+):
+    scores = valid_scores()
+    scores[field] = value
+
+    assert any(marker in error for error in validate_blinded_scores(scores))
+
+
+def test_nonzero_controlled_deviations_and_limitations_reach_summary_and_reports():
+    manifest, scores, _, key, _ = full_pilot_payloads()
+    scores["protocol_deviations"] = {
+        "review_status": "reviewed-with-findings",
+        "items": [
+            {"category_id": "orientation", "count": 2},
+            {"category_id": "rating-procedure", "count": 1},
+        ],
+    }
+    scores["study_limitations"] = {
+        "review_status": "reviewed-with-findings",
+        "items": [
+            {"category_id": "small-exploratory-sample", "count": 1},
+            {"category_id": "technical-failure", "count": 3},
+            {"category_id": "protocol-deviation-present", "count": 1},
+        ],
+    }
+    raw_scores = score_bytes(scores)
+    lock = valid_lock(raw_scores)
+
+    observations = unlock_observations(manifest, scores, lock, key, raw_scores)
+    summary = summarize_effectiveness(manifest, scores, observations)
+
+    assert summary["protocol_deviations"] == scores["protocol_deviations"]
+    assert summary["limitations"] == scores["study_limitations"]
+    english = render_report(summary, "en")
+    chinese = render_report(summary, "zh-TW")
+    for marker in ("Orientation: 2", "Rating procedure: 1", "Technical failure: 3"):
+        assert marker in english
+    for marker in ("導覽：2", "評分程序：1", "技術失敗：3"):
+        assert marker in chinese
 
 
 @pytest.mark.parametrize(
@@ -1421,6 +1621,19 @@ def test_full_pilot_unlock_has_fixed_64_row_ratings_locked_layout():
     }
 
 
+def test_direct_unlock_recomputes_and_enforces_blinded_agreement_gate():
+    manifest, scores, _, key, _ = full_pilot_payloads()
+    make_recalibration_required(scores)
+    raw_scores = score_bytes(scores)
+    lock = valid_lock(raw_scores)
+
+    with pytest.raises(
+        ValueError,
+        match="ratings agreement is not eligible for unlock",
+    ):
+        unlock_observations(manifest, scores, lock, key, raw_scores)
+
+
 def test_unlocked_nested_lists_are_isolated_from_blinded_scores_in_both_directions():
     manifest, scores, lock, key, raw_scores = full_pilot_payloads()
 
@@ -1530,24 +1743,7 @@ def _agreement_cli_args(paths):
 
 def _make_cli_scores_recalibration_required(paths):
     scores = json.loads(paths["scores"].read_text(encoding="utf-8"))
-    answer_ids = [row["answer_id"] for row in scores["observations"][:13]]
-    r2_by_answer = {
-        row["answer_id"]: row
-        for row in scores["rater_scores"]
-        if row["rater_code"] == "R2"
-    }
-    for answer_id in answer_ids:
-        r2_by_answer[answer_id]["success"] = False
-        scores["adjudications"].append(
-            {
-                "answer_id": answer_id,
-                "adjudicator_code": "R3",
-                "final_success": True,
-                "final_critical_violation": False,
-                "final_ordinal_quality": 4,
-                "rationale_code": "mandatory-criterion",
-            }
-        )
+    make_recalibration_required(scores)
     raw_scores = score_bytes(scores)
     paths["scores"].write_bytes(raw_scores)
     paths["lock"].write_text(

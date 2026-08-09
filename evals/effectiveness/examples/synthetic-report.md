@@ -85,12 +85,13 @@ Every scenario uses the predeclared 20.0 percentage points plus conservative dis
 
 ## Protocol deviations
 
-Protocol deviations: 0.
+Review status: `reviewed-none`; no protocol deviations were recorded.
 
 ## Limitations
 
-- The 16-person pilot design is exploratory and not confirmatory.
-- Synthetic tasks and a controlled environment limit real-world generalizability.
-- Product task performance does not prove clinical validity, causal validity, or patient-outcome validity.
-- This aggregate-only file is an illustrative synthetic example and not observed pilot evidence.
+Review status: `reviewed-with-findings`.
+- Small exploratory sample: 1.
+- Synthetic-task generalizability: 1.
+- Controlled-environment generalizability: 1.
+- No clinical-validity inference: 1.
 - Negative and neutral findings must use this same structure and must not be suppressed.

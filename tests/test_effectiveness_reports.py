@@ -8,6 +8,7 @@ import sys
 
 import pytest
 
+import scripts.render_effectiveness_report as report_module
 from scripts.render_effectiveness_report import render_report
 
 
@@ -164,7 +165,17 @@ def test_checked_in_example_is_aggregate_only_and_explicitly_synthetic():
     serialized = json.dumps(summary, ensure_ascii=False, sort_keys=True)
 
     assert summary["synthetic_example"] is True
-    assert "not observed pilot evidence" in summary["limitations"][-1]
+    assert summary["protocol_deviations"] == {
+        "review_status": "reviewed-none",
+        "items": [],
+    }
+    assert summary["limitations"]["review_status"] == "reviewed-with-findings"
+    assert {
+        item["category_id"] for item in summary["limitations"]["items"]
+    } >= {
+        "small-exploratory-sample",
+        "no-clinical-validity-inference",
+    }
     for forbidden in (
         '"participant_code"',
         '"answer_id"',
@@ -224,6 +235,52 @@ def test_check_mode_is_deterministic_and_never_modifies_files(tmp_path):
     assert stale.returncode == 1
     assert english.read_bytes() == stale_english
     assert chinese.read_bytes() == original_chinese
+
+
+def test_non_synthetic_report_does_not_call_observed_interval_illustrative():
+    summary = json.loads(SUMMARY.read_text(encoding="utf-8"))
+    summary["synthetic_example"] = False
+
+    english = render_report(summary, "en")
+    chinese = render_report(summary, "zh-TW")
+
+    assert "illustrative 95% interval" not in english
+    assert "with a 95% interval" in english
+    assert "示例性 95%" not in chinese
+    assert "95% 區間" in chinese
+
+
+def test_bilingual_publication_rolls_back_first_replace_when_second_replace_fails(
+    tmp_path, monkeypatch
+):
+    english = tmp_path / "report.md"
+    chinese = tmp_path / "report.zh-TW.md"
+    english.write_bytes(b"old english\n")
+    chinese.write_bytes("舊版中文\n".encode("utf-8"))
+    real_replace = report_module.os.replace
+    replace_calls = 0
+
+    def fail_second_replace(source, destination):
+        nonlocal replace_calls
+        replace_calls += 1
+        if replace_calls == 2:
+            raise OSError("synthetic second replace failure")
+        return real_replace(source, destination)
+
+    monkeypatch.setattr(report_module.os, "replace", fail_second_replace)
+
+    with pytest.raises(OSError, match="synthetic second replace failure"):
+        report_module._write_reports_transactionally(
+            english,
+            "new english\n",
+            chinese,
+            "新版中文\n",
+        )
+
+    assert english.read_bytes() == b"old english\n"
+    assert chinese.read_bytes() == "舊版中文\n".encode("utf-8")
+    assert list(tmp_path.glob(".*.tmp")) == []
+    assert list(tmp_path.glob(".*.bak")) == []
 
 
 def test_renderer_rejects_hardlink_output_alias_without_corrupting_summary(tmp_path):

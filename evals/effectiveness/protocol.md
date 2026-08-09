@@ -48,10 +48,11 @@ may be repeated once only without changing the pinned environment.
 
 **Canonical fact `environment-stop`:** The manifest fixes one environment fingerprint; any model, Skill, surface, or material setting change stops the open batch and prevents silent pooling, while offline tooling makes no external model call.
 
-The environment fingerprint inputs are protocol and Skill commits, Skill version,
-Codex surface, model, reasoning effort, service tier, Python version, platform,
-study dates, verified task commitment, assignment version, and bootstrap
-settings.
+The environment fingerprint hashes exactly `skill_version`, `skill_commit`,
+`codex_surface`, `model`, `reasoning_effort`, `service_tier`, `python_version`,
+and `platform`. Protocol commit, study dates, task-commitment verification,
+assignment version, and bootstrap settings are separately validated and are
+not hashed into this fingerprint.
 
 The Skill emits no telemetry.
 
@@ -117,6 +118,12 @@ Beginner and professional strata are reported without claiming powered
 between-stratum differences; critical-event rates use exact binomial intervals.
 Reports enumerate abandonment, timeout, technical failure, missingness, and
 every protocol deviation.
+
+Before lock, the blinded score document records mandatory condition-free
+reviews for protocol deviations and study limitations. `reviewed-none` is an
+explicit reviewed state, never a default for missing data. Findings use only
+prespecified category IDs and positive aggregate counts in deterministic order;
+free text, identifiers, and condition fields are forbidden.
 
 ## 13. Practical difference and later power scenarios
 

@@ -26,12 +26,27 @@
     "task_commitment_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
     "task_commitment_verified": true
   },
-  "limitations": [
-    "The 16-person pilot design is exploratory and not confirmatory.",
-    "Synthetic tasks and a controlled environment limit real-world generalizability.",
-    "Product task performance does not prove clinical validity, causal validity, or patient-outcome validity.",
-    "This aggregate-only file is an illustrative synthetic example and not observed pilot evidence."
-  ],
+  "limitations": {
+    "items": [
+      {
+        "category_id": "small-exploratory-sample",
+        "count": 1
+      },
+      {
+        "category_id": "synthetic-task-generalizability",
+        "count": 1
+      },
+      {
+        "category_id": "controlled-environment-generalizability",
+        "count": 1
+      },
+      {
+        "category_id": "no-clinical-validity-inference",
+        "count": 1
+      }
+    ],
+    "review_status": "reviewed-with-findings"
+  },
   "minimum_practical_difference": 0.2,
   "participant_flow": {
     "abandonments": 0,
@@ -172,7 +187,10 @@
     }
   },
   "protocol_commit": "4776d35c4138c0966c57888528936e7aae6388a4",
-  "protocol_deviations": [],
+  "protocol_deviations": {
+    "items": [],
+    "review_status": "reviewed-none"
+  },
   "safety": {
     "control": {
       "events": 0,

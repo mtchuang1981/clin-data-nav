@@ -87,6 +87,11 @@ round, create a new lock, and rerun the check. Keep the superseded round in
 approved external audit storage; do not combine rounds and do not inspect or
 use the condition key.
 
+The blinded score document must also contain mandatory, condition-free
+`protocol_deviations` and `study_limitations` review objects. They use only
+prespecified category IDs and positive aggregate counts; `reviewed-none` means
+the review was completed and found none, not that the fields were omitted.
+
 ## Explicitly unlock and analyze
 
 Analysis has four external inputs: the study manifest, blinded scores, ratings
@@ -98,6 +103,9 @@ python scripts/analyze_effectiveness.py analyze --study-manifest <external-dir>/
 ```
 
 Only the aggregate summary may be considered for later publication. This
+agreement check is also recomputed inside the library unlock function, so a
+direct call cannot bypass the gate. The CLI still does not read the condition
+key until the condition-blind gate passes. This
 command is not authorization to recruit, collect, unlock, analyze, or publish
 human-study data. The four strict input contracts and unlock sequence are in
 [input-schema.md](input-schema.md).
@@ -110,6 +118,10 @@ modifying them:
 ```bash
 python scripts/render_effectiveness_report.py --summary evals/effectiveness/examples/synthetic-summary.json --english evals/effectiveness/examples/synthetic-report.md --traditional-chinese evals/effectiveness/examples/synthetic-report.zh-TW.md --check
 ```
+
+Writing uses staged files and rollback across the English and Traditional
+Chinese outputs so a failure replacing the second file does not leave mixed
+report versions.
 
 The [English protocol](protocol.md), [Taiwan Traditional Chinese protocol](protocol.zh-TW.md),
 [English template](report-template.md), and [Traditional Chinese template](report-template.zh-TW.md)

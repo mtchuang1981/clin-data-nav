@@ -57,16 +57,44 @@ than 200 characters.
 - `environment_fingerprint`.
 
 Participant codes are exactly `B01` through `B08` with `beginner`, and `P01`
-through `P08` with `professional`. The assignment version is shared, session
-dates fall inside the study period, and the environment fingerprint is the
-SHA-256 of canonical sorted JSON containing exactly the eight environment
-fields listed above. A fingerprint mismatch is a stop-rule failure.
+through `P08` with `professional`. The assignment version is shared and
+session dates fall inside the study period. The environment fingerprint is the
+SHA-256 of canonical sorted JSON containing exactly `skill_version`,
+`skill_commit`, `codex_surface`, `model`, `reasoning_effort`, `service_tier`,
+`python_version`, and `platform`. Protocol commit, study dates,
+task-commitment verification, assignment version, and bootstrap settings are
+separately validated and are not hashed into this fingerprint. A fingerprint
+mismatch is a stop-rule failure.
 
 ## 2. Condition-blinded scores
 
-The top-level object has exactly `schema_version`, `study_id`, `observations`,
-`rater_scores`, `adjudications`, and `sus_responses`. It contains no condition
-mapping.
+The top-level object has exactly `schema_version`, `study_id`,
+`protocol_deviations`, `study_limitations`, `observations`, `rater_scores`,
+`adjudications`, and `sus_responses`. It contains no condition mapping.
+
+### Controlled protocol review
+
+Each controlled review object has exactly `review_status` and `items`. Each
+`items` value is a list of controlled aggregate counts. `review_status` is
+mandatory: `reviewed-none` requires an empty `items` list, while
+`reviewed-with-findings` requires at least one controlled count row. Missing
+review is never treated as no finding.
+
+Each controlled count row has exactly `category_id` and `count`. Counts are
+positive integers. Categories are unique and appear in the deterministic order
+below; unknown or out-of-order categories fail closed. Free text, identifiers,
+and condition fields are forbidden.
+
+`protocol_deviations` categories, in order, are `eligibility`, `assignment`,
+`orientation`, `fresh-conversation`, `time-limit`, `rest-period`,
+`environment-consistency`, `task-pack-integrity`, `rating-procedure`, and
+`data-lock-or-unlock`.
+
+`study_limitations` categories, in order, are `small-exploratory-sample`,
+`synthetic-task-generalizability`, `controlled-environment-generalizability`,
+`participant-completion-below-threshold`, `technical-failure`,
+`task-pack-leakage`, `environment-batch-change`, `low-rater-agreement`,
+`protocol-deviation-present`, and `no-clinical-validity-inference`.
 
 ### Observation rows
 
@@ -195,6 +223,8 @@ set: no missing or additional mapping is accepted.
    at least 0.80; each estimable binary or linear-weighted ordinal kappa must be
    at least 0.60. A null kappa caused by zero marginal variation does not fail
    by itself because raw binary agreement remains the guardrail.
+   `unlock_observations()` independently recomputes the same eligibility state;
+   direct library use cannot bypass this gate.
 3. If status is `recalibrate-and-rescore-before-unlock`, stop before reading the
    key. Calibrate on designated synthetic examples, independently rescore every
    affected answer, create a new complete lock, and rerun the gate. Never merge

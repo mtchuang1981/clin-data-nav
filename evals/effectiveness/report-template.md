@@ -60,12 +60,15 @@ invent a power result from the pilot point estimate.
 
 ## Protocol deviations
 
-Report zero or every aggregate deviation using prespecified categories.
+Report the mandatory controlled review status. `reviewed-none` means the review
+was completed and the controlled item list is empty. Otherwise report every
+prespecified category ID and positive aggregate count in deterministic order.
 
 ## Limitations
 
-Report all material limitations and preserve the product-effectiveness versus
-clinical-validity boundary.
+Report the mandatory controlled review status and every prespecified limitation
+category and positive aggregate count. Preserve the product-effectiveness
+versus clinical-validity boundary.
 
 ## Field dictionary
 
@@ -79,5 +82,5 @@ clinical-validity boundary.
 | `secondary` | Paired continuous outcomes, SUS, failures, and criterion aggregates |
 | `agreement` | Original pre-adjudication agreement and pre-unlock status |
 | `power_scenarios` | Prespecified conservative inputs and deferred/calculated state |
-| `protocol_deviations` | Aggregate deviations only |
-| `limitations` | Material interpretation and generalizability limits |
+| `protocol_deviations` | Controlled review status and aggregate category counts only |
+| `limitations` | Controlled review status and material limitation category counts |

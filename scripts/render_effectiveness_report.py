@@ -12,6 +12,18 @@ import tempfile
 
 
 ROOT = Path(__file__).resolve().parents[1]
+if __package__ in {None, ""}:
+    sys.path.insert(0, str(ROOT))
+
+from scripts.effectiveness_analysis import (
+    CONTROLLED_COUNT_KEYS,
+    CONTROLLED_REVIEW_KEYS,
+    CONTROLLED_REVIEW_STATUSES,
+    PROTOCOL_DEVIATION_CATEGORIES,
+    STUDY_LIMITATION_CATEGORIES,
+)
+
+
 LANGUAGES = ("en", "zh-TW")
 REPORT_ERROR = "effectiveness report rendering failed\n"
 
@@ -160,6 +172,7 @@ def _render_english(summary: dict) -> str:
     secondary = summary["secondary"]
     agreement = summary["agreement"]
     example_label = " — synthetic example" if summary["synthetic_example"] else ""
+    interval_article = "an illustrative" if summary["synthetic_example"] else "a"
     lines = [
         f"# Effectiveness pilot aggregate report{example_label}",
         "",
@@ -215,7 +228,7 @@ def _render_english(summary: dict) -> str:
             f"{overall['intervention_successes']}/{overall['intervention_total']} "
             f"({_pct(overall['intervention_success_rate'], 1)}). The paired risk "
             f"difference was {_pct(overall['paired_risk_difference'], 1)} "
-            "(intervention minus control), with an illustrative 95% interval of "
+            f"(intervention minus control), with {interval_article} 95% interval of "
             f"[{_pct(overall['confidence_interval'][0], 1)}, "
             f"{_pct(overall['confidence_interval'][1], 1)}], based on "
             f"{overall['complete_pairs']} complete pairs."
@@ -293,11 +306,13 @@ def _render_english(summary: dict) -> str:
         "",
         "## Protocol deviations",
         "",
-        *_list_or_none(summary["protocol_deviations"], "Protocol deviations: 0."),
+        *_controlled_review_lines(
+            summary["protocol_deviations"], "protocol_deviations", "en"
+        ),
         "",
         "## Limitations",
         "",
-        *[f"- {_localized_limitation(item, 'en')}" for item in summary["limitations"]],
+        *_controlled_review_lines(summary["limitations"], "limitations", "en"),
         "- Negative and neutral findings must use this same structure and must not be suppressed.",
         "",
     ]
@@ -315,6 +330,7 @@ def _render_traditional_chinese(summary: dict) -> str:
     secondary = summary["secondary"]
     agreement = summary["agreement"]
     example_label = "—合成範例" if summary["synthetic_example"] else ""
+    interval_label = "示例性 95%" if summary["synthetic_example"] else "95%"
     lines = [
         f"# 效果評估先導研究彙總報告{example_label}",
         "",
@@ -363,7 +379,7 @@ def _render_traditional_chinese(summary: dict) -> str:
             f"（{_pct(overall['control_success_rate'], 1)}）；介入組："
             f"{overall['intervention_successes']}/{overall['intervention_total']} "
             f"（{_pct(overall['intervention_success_rate'], 1)}）。配對風險差為 "
-            f"{_pct(overall['paired_risk_difference'], 1)}（介入減對照），示例性 95% 區間為 "
+            f"{_pct(overall['paired_risk_difference'], 1)}（介入減對照），{interval_label} 區間為 "
             f"[{_pct(overall['confidence_interval'][0], 1)}, "
             f"{_pct(overall['confidence_interval'][1], 1)}]，完整配對 "
             f"{overall['complete_pairs']} 人。"
@@ -439,14 +455,13 @@ def _render_traditional_chinese(summary: dict) -> str:
         "",
         "## 規格偏離",
         "",
-        *_list_or_none(summary["protocol_deviations"], "規格偏離：0。"),
+        *_controlled_review_lines(
+            summary["protocol_deviations"], "protocol_deviations", "zh-TW"
+        ),
         "",
         "## 限制",
         "",
-        *[
-            f"- {_localized_limitation(item, 'zh-TW')}"
-            for item in summary["limitations"]
-        ],
+        *_controlled_review_lines(summary["limitations"], "limitations", "zh-TW"),
         "- 負向或中性結果必須使用相同結構發布，不得隱匿。",
         "",
     ]
@@ -633,12 +648,16 @@ def _validate_summary(summary: object) -> None:
             or row.get("required_recruits") is not None
         ):
             raise ValueError("pre-pilot power scenarios must remain explicitly deferred")
-    for key in ("protocol_deviations", "limitations"):
-        values = summary.get(key)
-        if not isinstance(values, list) or (key == "limitations" and not values):
-            raise ValueError(f"{key} must be a valid list")
-        for value in values:
-            _safe_text(value, key)
+    _validate_controlled_summary(
+        summary.get("protocol_deviations"),
+        "protocol deviations",
+        PROTOCOL_DEVIATION_CATEGORIES,
+    )
+    _validate_controlled_summary(
+        summary.get("limitations"),
+        "limitations",
+        STUDY_LIMITATION_CATEGORIES,
+    )
 
 
 def _validate_primary(value: object, label: str) -> None:
@@ -812,27 +831,88 @@ def _synthetic_notice(summary: dict, language: str) -> str:
     )
 
 
-def _localized_limitation(value: str, language: str) -> str:
-    if language == "en":
-        return value
-    translations = {
-        "The 16-person pilot design is exploratory and not confirmatory.": "16 人先導研究設計屬探索性，並非確認性研究。",
-        "This 16-person pilot is exploratory and not confirmatory.": "此 16 人先導研究屬探索性，並非確認性研究。",
-        "Synthetic tasks and a controlled environment limit real-world generalizability.": "合成任務與受控環境限制了對真實使用情境的可推廣性。",
-        "Product task performance does not prove clinical validity, causal validity, or patient-outcome validity.": "產品任務表現不能證明臨床效度、因果效度或病人結果效度。",
-        "This aggregate-only file is an illustrative synthetic example and not observed pilot evidence.": "此僅含彙總資料的檔案為示例性合成範例，不是實際觀察到的先導研究證據。",
-    }
-    return translations.get(value, value)
+CONTROLLED_CATEGORY_LABELS = {
+    "en": {
+        "eligibility": "Eligibility",
+        "assignment": "Assignment",
+        "orientation": "Orientation",
+        "fresh-conversation": "Fresh conversation",
+        "time-limit": "Time limit",
+        "rest-period": "Rest period",
+        "environment-consistency": "Environment consistency",
+        "task-pack-integrity": "Task-pack integrity",
+        "rating-procedure": "Rating procedure",
+        "data-lock-or-unlock": "Data lock or unlock",
+        "small-exploratory-sample": "Small exploratory sample",
+        "synthetic-task-generalizability": "Synthetic-task generalizability",
+        "controlled-environment-generalizability": "Controlled-environment generalizability",
+        "participant-completion-below-threshold": "Participant completion below threshold",
+        "technical-failure": "Technical failure",
+        "task-pack-leakage": "Task-pack leakage",
+        "environment-batch-change": "Environment batch change",
+        "low-rater-agreement": "Low rater agreement",
+        "protocol-deviation-present": "Protocol deviation present",
+        "no-clinical-validity-inference": "No clinical-validity inference",
+    },
+    "zh-TW": {
+        "eligibility": "納入條件",
+        "assignment": "分派",
+        "orientation": "導覽",
+        "fresh-conversation": "全新對話",
+        "time-limit": "時限",
+        "rest-period": "休息期間",
+        "environment-consistency": "環境一致性",
+        "task-pack-integrity": "任務包完整性",
+        "rating-procedure": "評分程序",
+        "data-lock-or-unlock": "資料鎖定或解盲",
+        "small-exploratory-sample": "小型探索性樣本",
+        "synthetic-task-generalizability": "合成任務推廣性",
+        "controlled-environment-generalizability": "受控環境推廣性",
+        "participant-completion-below-threshold": "參與者完成數低於門檻",
+        "technical-failure": "技術失敗",
+        "task-pack-leakage": "任務包外洩",
+        "environment-batch-change": "環境批次變更",
+        "low-rater-agreement": "評分者一致性偏低",
+        "protocol-deviation-present": "存在規格偏離",
+        "no-clinical-validity-inference": "不得推論臨床效度",
+    },
+}
+
+
+def _controlled_review_lines(value: dict, kind: str, language: str) -> list[str]:
+    status = value["review_status"]
+    items = value["items"]
+    if not items:
+        if language == "en":
+            subject = (
+                "no protocol deviations"
+                if kind == "protocol_deviations"
+                else "no controlled limitations"
+            )
+            return [f"Review status: `reviewed-none`; {subject} were recorded."]
+        subject = "未記錄規格偏離" if kind == "protocol_deviations" else "未記錄受控限制"
+        return [f"審查狀態：`reviewed-none`；{subject}。"]
+    prefix = (
+        f"Review status: `{status}`."
+        if language == "en"
+        else f"審查狀態：`{status}`。"
+    )
+    labels = CONTROLLED_CATEGORY_LABELS[language]
+    punctuation = "." if language == "en" else "。"
+    separator = ": " if language == "en" else "："
+    return [
+        prefix,
+        *[
+            f"- {labels[item['category_id']]}{separator}{item['count']}{punctuation}"
+            for item in items
+        ],
+    ]
 
 
 def _verified(value: bool, language: str) -> str:
     if language == "en":
         return "verified" if value else "not verified"
     return "已驗證" if value else "未驗證"
-
-
-def _list_or_none(values: list[str], empty: str) -> list[str]:
-    return [f"- {value}" for value in values] if values else [empty]
 
 
 def _flatten(values: list[object]) -> list[str]:
@@ -849,6 +929,37 @@ def _closed_mapping(value: object, keys: frozenset[str], label: str) -> dict:
     if not isinstance(value, dict) or set(value) != keys:
         raise ValueError(f"{label} must match its closed schema")
     return value
+
+
+def _validate_controlled_summary(
+    value: object, label: str, categories: tuple[str, ...]
+) -> None:
+    review = _closed_mapping(value, CONTROLLED_REVIEW_KEYS, label)
+    status = review.get("review_status")
+    if status not in CONTROLLED_REVIEW_STATUSES:
+        raise ValueError(f"{label} review status is invalid")
+    items = review.get("items")
+    if not isinstance(items, list):
+        raise ValueError(f"{label} items must be a list")
+    if status == "reviewed-none" and items:
+        raise ValueError(f"{label} reviewed-none requires no items")
+    if status == "reviewed-with-findings" and not items:
+        raise ValueError(f"{label} reviewed-with-findings requires items")
+    positions = {category_id: index for index, category_id in enumerate(categories)}
+    observed: list[str] = []
+    for index, item in enumerate(items):
+        row = _closed_mapping(item, CONTROLLED_COUNT_KEYS, f"{label} item {index}")
+        category_id = row.get("category_id")
+        if category_id not in positions:
+            raise ValueError(f"{label} item {index} category is invalid")
+        _integer(row.get("count"), f"{label} item {index} count", minimum=1)
+        observed.append(category_id)
+    if len(observed) != len(set(observed)):
+        raise ValueError(f"{label} categories must be unique")
+    if [positions[item] for item in observed] != sorted(
+        positions[item] for item in observed
+    ):
+        raise ValueError(f"{label} items must use deterministic category order")
 
 
 def _safe_text(value: object, label: str) -> None:
@@ -938,10 +1049,10 @@ def _normalize_lf(text: str) -> str:
     return text.replace("\r\n", "\n").replace("\r", "\n")
 
 
-def _atomic_write(path: Path, text: str) -> None:
+def _stage_text(path: Path, text: str, suffix: str = ".tmp") -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     descriptor, temporary_name = tempfile.mkstemp(
-        prefix=f".{path.name}.", suffix=".tmp", dir=path.parent
+        prefix=f".{path.name}.", suffix=suffix, dir=path.parent
     )
     temporary = Path(temporary_name)
     try:
@@ -949,9 +1060,65 @@ def _atomic_write(path: Path, text: str) -> None:
             stream.write(text)
             stream.flush()
             os.fsync(stream.fileno())
-        os.replace(temporary, path)
-    finally:
+    except Exception:
         temporary.unlink(missing_ok=True)
+        raise
+    return temporary
+
+
+def _stage_backup(path: Path) -> Path:
+    descriptor, temporary_name = tempfile.mkstemp(
+        prefix=f".{path.name}.", suffix=".bak", dir=path.parent
+    )
+    backup = Path(temporary_name)
+    try:
+        with path.open("rb") as source, os.fdopen(descriptor, "wb") as target:
+            descriptor = -1
+            while chunk := source.read(64 * 1024):
+                target.write(chunk)
+            target.flush()
+            os.fsync(target.fileno())
+    except Exception:
+        if descriptor >= 0:
+            os.close(descriptor)
+        backup.unlink(missing_ok=True)
+        raise
+    return backup
+
+
+def _write_reports_transactionally(
+    english_path: Path,
+    english_text: str,
+    chinese_path: Path,
+    chinese_text: str,
+) -> None:
+    staged = {
+        english_path: _stage_text(english_path, english_text),
+        chinese_path: _stage_text(chinese_path, chinese_text),
+    }
+    backups: dict[Path, Path | None] = {}
+    replaced: list[Path] = []
+    try:
+        for path in (english_path, chinese_path):
+            backups[path] = _stage_backup(path) if path.exists() else None
+        for path in (english_path, chinese_path):
+            os.replace(staged[path], path)
+            replaced.append(path)
+    except Exception:
+        for path in reversed(replaced):
+            backup = backups.get(path)
+            if backup is None:
+                path.unlink(missing_ok=True)
+            else:
+                os.replace(backup, path)
+                backups[path] = None
+        raise
+    finally:
+        for temporary in staged.values():
+            temporary.unlink(missing_ok=True)
+        for backup in backups.values():
+            if backup is not None:
+                backup.unlink(missing_ok=True)
 
 
 def _same_existing_file(left: Path, right: Path) -> bool:
@@ -999,8 +1166,12 @@ def main() -> None:
             if current_english != english or current_chinese != chinese:
                 parser.exit(1)
         else:
-            _atomic_write(args.english, english)
-            _atomic_write(args.traditional_chinese, chinese)
+            _write_reports_transactionally(
+                args.english,
+                english,
+                args.traditional_chinese,
+                chinese,
+            )
     except SystemExit:
         raise
     except Exception:

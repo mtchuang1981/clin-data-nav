@@ -16,6 +16,8 @@ from scripts.effectiveness_analysis import (
     ADJUDICATION_KEYS,
     CONDITION_KEY_KEYS,
     CONDITION_MAPPING_KEYS,
+    CONTROLLED_COUNT_KEYS,
+    CONTROLLED_REVIEW_KEYS,
     CRITERION_SCORE_KEYS,
     MANIFEST_KEYS,
     OBSERVATION_KEYS,
@@ -2186,6 +2188,39 @@ def test_effectiveness_protocols_fix_the_approved_design_and_stay_bilingual():
     _assert_effectiveness_canonical_facts(english, traditional_chinese)
 
 
+def test_effectiveness_docs_name_exactly_eight_fingerprint_fields_and_separate_other_validation():
+    english_protocol = (ROOT / "evals/effectiveness/protocol.md").read_text(
+        encoding="utf-8"
+    )
+    chinese_protocol = (
+        ROOT / "evals/effectiveness/protocol.zh-TW.md"
+    ).read_text(encoding="utf-8")
+    schema = (ROOT / "evals/effectiveness/input-schema.md").read_text(
+        encoding="utf-8"
+    )
+    exact_fields = (
+        "`skill_version`, `skill_commit`, `codex_surface`, `model`, "
+        "`reasoning_effort`, `service_tier`, `python_version`, and `platform`"
+    )
+    separate = (
+        "Protocol commit, study dates, task-commitment verification, assignment "
+        "version, and bootstrap settings are separately validated and are not "
+        "hashed into this fingerprint."
+    )
+
+    normalized_english = " ".join(english_protocol.split())
+    normalized_schema = " ".join(schema.split())
+    normalized_chinese = "".join(chinese_protocol.split())
+    assert exact_fields in normalized_english
+    assert exact_fields in normalized_schema
+    assert separate in normalized_english
+    assert separate in normalized_schema
+    assert (
+        "研究規格commit、研究日期、任務承諾驗證、分派版本與bootstrap設定"
+        "另行驗證，不會雜湊進此指紋。"
+    ) in normalized_chinese
+
+
 @pytest.mark.parametrize(
     ("fact_id", "replacement"),
     [
@@ -2411,6 +2446,8 @@ EFFECTIVENESS_SCHEMA_KEY_GROUPS = {
         {
             "schema_version",
             "study_id",
+            "protocol_deviations",
+            "study_limitations",
             "observations",
             "rater_scores",
             "adjudications",
@@ -2459,6 +2496,8 @@ EFFECTIVENESS_SCHEMA_KEY_GROUPS = {
         }
     ),
     "sus_response": frozenset({"participant_code", "items"}),
+    "controlled_review": frozenset({"review_status", "items"}),
+    "controlled_count": frozenset({"category_id", "count"}),
     "ratings_lock": frozenset(
         {
             "schema_version",
@@ -2481,6 +2520,8 @@ IMPLEMENTED_EFFECTIVENESS_SCHEMA_KEY_GROUPS = {
     "rater_score": RATER_SCORE_KEYS,
     "adjudication": ADJUDICATION_KEYS,
     "sus_response": SUS_RESPONSE_KEYS,
+    "controlled_review": CONTROLLED_REVIEW_KEYS,
+    "controlled_count": CONTROLLED_COUNT_KEYS,
     "ratings_lock": RATINGS_LOCK_KEYS,
     "condition_key": CONDITION_KEY_KEYS,
     "condition_mapping": CONDITION_MAPPING_KEYS,
@@ -2642,6 +2683,20 @@ def _assert_effectiveness_input_schema_contract(
         "scores": _backtick_key_set(
             _between(normalized, "The top-level object has exactly", ". It contains no condition")
         ),
+        "controlled_review": _backtick_key_set(
+            _between(
+                normalized,
+                "Each controlled review object has exactly",
+                ". Each `items` value",
+            )
+        ),
+        "controlled_count": _backtick_key_set(
+            _between(
+                normalized,
+                "Each controlled count row has exactly",
+                ". Counts are positive",
+            )
+        ),
         "observation": _backtick_key_set(
             _between(normalized, "Every observation has exactly:", "`answer_id` is 16")
         ),
@@ -2677,7 +2732,7 @@ def _assert_effectiveness_input_schema_contract(
     }
     assert IMPLEMENTED_EFFECTIVENESS_SCHEMA_KEY_GROUPS == EFFECTIVENESS_SCHEMA_KEY_GROUPS
     assert documented_groups == EFFECTIVENESS_SCHEMA_KEY_GROUPS
-    assert sum(len(fields) for fields in EFFECTIVENESS_SCHEMA_KEY_GROUPS.values()) == 79
+    assert sum(len(fields) for fields in EFFECTIVENESS_SCHEMA_KEY_GROUPS.values()) == 85
 
     for marker in (
         "`criterion_scores` is in the task contract's exact order",
@@ -2691,6 +2746,10 @@ def _assert_effectiveness_input_schema_contract(
         "quality_met=0",
         "quality rate is null and not estimable",
         "criterion_scores",
+        "`review_status` is mandatory",
+        "`reviewed-none` requires an empty `items` list",
+        "`reviewed-with-findings` requires at least one controlled count row",
+        "Free text, identifiers, and condition fields are forbidden",
     ):
         assert marker in normalized
 

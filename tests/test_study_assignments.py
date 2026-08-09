@@ -163,7 +163,7 @@ def test_assignment_validator_rejects_fixed_schedule_or_answer_id_tampering(muta
 
     errors = validate_assignments(rows, catalog, "pilot-v1", 20260809)
 
-    assert "assignment 0: does not match the fixed schedule" in errors
+    assert errors[0] == "assignment 0: does not match the fixed schedule"
 
 
 @pytest.mark.parametrize(
