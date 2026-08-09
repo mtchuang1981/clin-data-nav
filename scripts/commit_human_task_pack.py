@@ -31,6 +31,14 @@ COMMITMENT_KEYS = {
     "depth_counts",
     "pair_ids",
 }
+CLI_ERROR = "human task commitment operation failed\n"
+
+
+class _SafeArgumentParser(argparse.ArgumentParser):
+    """Keep all command-line failures independent of external input text."""
+
+    def error(self, message: str) -> None:
+        self.exit(2, CLI_ERROR)
 
 
 def canonical_task_pack_bytes(path: Path) -> bytes:
@@ -147,7 +155,7 @@ def _commitment_schema_errors(commitment: object) -> list[str]:
 
 
 def _argument_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = _SafeArgumentParser(description=__doc__)
     subcommands = parser.add_subparsers(dest="command", required=True)
 
     create = subcommands.add_parser("create")
@@ -193,14 +201,14 @@ def _canonical_json_bytes(value: object) -> bytes:
 
 def main() -> None:
     parser = _argument_parser()
-    args = parser.parse_args()
     try:
+        args = parser.parse_args()
         if args.command == "create":
             _create(args)
         else:
             _verify(args)
-    except (OSError, UnicodeDecodeError, ValueError, yaml.YAMLError) as error:
-        parser.error(str(error))
+    except Exception:
+        parser.exit(2, CLI_ERROR)
 
 
 if __name__ == "__main__":
