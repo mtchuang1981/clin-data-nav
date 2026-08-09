@@ -9,6 +9,19 @@ import yaml
 
 from scripts.install_local import PACKAGE_VERSION as INSTALLER_VERSION
 from scripts.package_skill import PACKAGE_VERSION as PACKAGER_VERSION
+from scripts.effectiveness_analysis import (
+    ADJUDICATION_KEYS,
+    CONDITION_KEY_KEYS,
+    CONDITION_MAPPING_KEYS,
+    CRITERION_SCORE_KEYS,
+    MANIFEST_KEYS,
+    OBSERVATION_KEYS,
+    RATER_SCORE_KEYS,
+    RATINGS_LOCK_KEYS,
+    SCORES_KEYS,
+    SESSION_KEYS,
+    SUS_RESPONSE_KEYS,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -1863,6 +1876,198 @@ def test_effectiveness_docs_distinguish_contract_evals_from_human_evidence():
     assert "no telemetry" in effectiveness
 
 
+EFFECTIVENESS_METHOD_URLS = (
+    "https://nvlpubs.nist.gov/nistpubs/ai/NIST.AI.600-1.pdf",
+    "https://airc.nist.gov/",
+    "https://www.nasa.gov/human-systems-integration-division/nasa-task-load-index-tlx/",
+    "https://hci-studies.org/methods-and-measures/downloads/SUS_Brooke1996.pdf",
+    "https://www.bmj.com/content/390/bmj-2024-083405",
+)
+EFFECTIVENESS_PROTOCOL_SECTION_CONTRACTS = (
+    (
+        "## 1. Purpose and evidence boundary",
+        "## 1. 目的與證據邊界",
+        ("synthetic clinical-data research tasks", "does not establish", "clinical validity"),
+        ("合成臨床資料研究任務", "不能證明", "臨床效度"),
+    ),
+    (
+        "## 2. Governance and authorization",
+        "## 2. 治理與授權",
+        ("does not authorize recruitment", "ethics-review determination", "storage platform"),
+        ("不代表已核准招募", "倫理審查", "儲存平台"),
+    ),
+    (
+        "## 3. Eligibility and strata",
+        "## 3. 納入條件與分層",
+        ("8 beginners", "8 professionals", "before recruitment"),
+        ("初學者 8 人", "專業者 8 人", "招募前"),
+    ),
+    (
+        "## 4. Four-task balanced crossover",
+        "## 4. 四任務平衡交叉設計",
+        ("four synthetic tasks", "2:2 balanced crossover", "never gives both variants"),
+        ("四個合成任務", "2:2 平衡交叉", "同一人不會收到"),
+    ),
+    (
+        "## 5. Standardized task execution",
+        "## 5. 標準化任務執行",
+        ("ten-minute", "fresh conversation", "time limits", "Rest is offered"),
+        ("十分鐘", "全新對話", "時限", "休息"),
+    ),
+    (
+        "## 6. Environment manifest and version stop rule",
+        "## 6. 環境 manifest 與版本停止規則",
+        ("environment fingerprint", "stop the open batch", "no external model call"),
+        ("環境指紋", "停止開放批次", "不會呼叫外部模型"),
+    ),
+    (
+        "## 7. Human-task commitment and leakage rule",
+        "## 7. 人類任務承諾與外洩規則",
+        ("32-byte nonce", "SHA-256", "leakage stops the affected batch"),
+        ("32-byte nonce", "SHA-256", "外洩", "停止受影響批次"),
+    ),
+    (
+        "## 8. Safety-gated primary outcome",
+        "## 8. 通過安全門檻的主要結果",
+        (
+            "mandatory criterion",
+            "no critical violation",
+            "secondary and never determine",
+            "invented-schema",
+            "false-executable-status",
+            "rwd-rwe-confusion",
+            "unsupported-causal-claim",
+            "fabricated-citation",
+            "unreviewed-search-as-authority",
+            "missing-tte-readiness",
+            "private-data-request-or-exposure",
+        ),
+        (
+            "必備準則",
+            "沒有重大違規",
+            "屬次要結果",
+            "invented-schema",
+            "false-executable-status",
+            "rwd-rwe-confusion",
+            "unsupported-causal-claim",
+            "fabricated-citation",
+            "unreviewed-search-as-authority",
+            "missing-tte-readiness",
+            "private-data-request-or-exposure",
+        ),
+    ),
+    (
+        "## 9. Secondary outcomes and fixed scoring",
+        "## 9. 次要結果與固定計分",
+        ("NASA-TLX", "sum to 15", "SUS", "multiplied by 2.5", "null and not estimable"),
+        ("NASA-TLX", "總和為 15", "SUS", "乘以 2.5", "無法估計"),
+    ),
+    (
+        "## 10. Blinded ratings and adjudication",
+        "## 10. 盲化評分與第三人裁定",
+        ("Two independent raters", "third-person adjudication", "original ratings remain unchanged"),
+        ("兩位獨立評分者", "第三人裁定", "原始評分", "維持不變"),
+    ),
+    (
+        "## 11. Ratings lock, agreement gate, and explicit unlock",
+        "## 11. 評分鎖定、一致性閘門與明確解盲",
+        ("raw blinded score-file", "condition key", "0.80", "0.60", "--unlock-after-ratings-lock"),
+        ("原始位元組", "condition key", "0.80", "0.60", "--unlock-after-ratings-lock"),
+    ),
+    (
+        "## 12. Paired exploratory analysis",
+        "## 12. 配對探索性分析",
+        (
+            "95%",
+            "participant-cluster bootstrap",
+            "technical failure",
+            "conservative sensitivity",
+            "No null-hypothesis significance",
+        ),
+        ("95%", "參與者叢集 bootstrap", "技術失敗", "保守敏感度", "不得以虛無假設顯著性"),
+    ),
+    (
+        "## 13. Practical difference and later power scenarios",
+        "## 13. 實務差異與後續檢定力情境",
+        (
+            "20 percentage points",
+            "conservative scenarios",
+            "pilot point estimate alone",
+            "deferred-until-post-pilot",
+        ),
+        ("20 個百分點", "保守情境", "絕不只使用先導研究點估計", "deferred-until-post-pilot"),
+    ),
+    (
+        "## 14. Completion threshold and non-positive reporting",
+        "## 14. 完成門檻與非正向結果報告",
+        ("14 of 16", "Positive, neutral, and negative", "not changed after seeing"),
+        ("14/16", "正向、中性與負向", "不得更改"),
+    ),
+    (
+        "## 15. Raw-data, incident, and publication boundaries",
+        "## 15. 原始資料、事件與發布邊界",
+        (
+            "stay outside the repository",
+            "least privilege",
+            "retention",
+            "incident",
+            "No participant row",
+            "Packaging the Skill",
+        ),
+        ("儲存庫外", "最小權限", "保存", "事件", "不得發布參與者", "封裝 Skill"),
+    ),
+    (
+        "## 16. Method references",
+        "## 16. 方法參考資料",
+        EFFECTIVENESS_METHOD_URLS,
+        EFFECTIVENESS_METHOD_URLS,
+    ),
+)
+
+
+def _assert_effectiveness_protocol_contract(
+    english: str,
+    traditional_chinese: str,
+) -> None:
+    english_headings = [item[0] for item in EFFECTIVENESS_PROTOCOL_SECTION_CONTRACTS]
+    chinese_headings = [item[1] for item in EFFECTIVENESS_PROTOCOL_SECTION_CONTRACTS]
+    assert re.findall(r"^## .+$", english, flags=re.MULTILINE) == english_headings
+    assert re.findall(
+        r"^## .+$", traditional_chinese, flags=re.MULTILINE
+    ) == chinese_headings
+
+    for index, (english_heading, chinese_heading, english_markers, chinese_markers) in enumerate(
+        EFFECTIVENESS_PROTOCOL_SECTION_CONTRACTS
+    ):
+        next_english = (
+            english_headings[index + 1] if index + 1 < len(english_headings) else None
+        )
+        next_chinese = (
+            chinese_headings[index + 1] if index + 1 < len(chinese_headings) else None
+        )
+        english_section = _markdown_section(english, english_heading, next_english)
+        chinese_section = _markdown_section(
+            traditional_chinese, chinese_heading, next_chinese
+        )
+        normalized_english_section = " ".join(english_section.split())
+        normalized_chinese_section = " ".join(chinese_section.split())
+        for marker in english_markers:
+            assert marker in normalized_english_section
+        for marker in chinese_markers:
+            assert marker in normalized_chinese_section
+
+    for url in EFFECTIVENESS_METHOD_URLS:
+        assert english.count(url) == 1
+        assert traditional_chinese.count(url) == 1
+
+
+def _markdown_section(text: str, heading: str, next_heading: str | None) -> str:
+    assert text.count(heading) == 1
+    start = text.index(heading)
+    end = text.index(next_heading, start) if next_heading is not None else len(text)
+    return text[start:end]
+
+
 def test_effectiveness_protocols_fix_the_approved_design_and_stay_bilingual():
     english = (ROOT / "evals/effectiveness/protocol.md").read_text(
         encoding="utf-8"
@@ -1871,48 +2076,337 @@ def test_effectiveness_protocols_fix_the_approved_design_and_stay_bilingual():
         ROOT / "evals/effectiveness/protocol.zh-TW.md"
     ).read_text(encoding="utf-8")
 
-    for marker in (
-        "8 beginners",
-        "8 professionals",
-        "20 percentage points",
-        "14 of 16",
-        "does not authorize recruitment",
-    ):
-        assert marker in english
-    for marker in (
-        "初學者 8 人",
-        "專業者 8 人",
-        "20 個百分點",
-        "14/16",
-        "不代表已核准招募",
-    ):
-        assert marker in traditional_chinese
+    _assert_effectiveness_protocol_contract(english, traditional_chinese)
 
 
-def test_effectiveness_command_map_matches_current_cli_and_unlock_gate():
-    text = (ROOT / "evals/effectiveness/README.md").read_text(encoding="utf-8")
+@pytest.mark.parametrize(
+    ("language", "old", "replacement"),
+    [
+        ("en", "20 percentage points", "twenty percentage points"),
+        ("zh-TW", "14/16", "十四位"),
+        ("en", EFFECTIVENESS_METHOD_URLS[0], "https://example.invalid/reference"),
+    ],
+)
+def test_effectiveness_protocol_contract_rejects_missing_facts(
+    language,
+    old,
+    replacement,
+):
+    english = (ROOT / "evals/effectiveness/protocol.md").read_text(
+        encoding="utf-8"
+    )
+    traditional_chinese = (
+        ROOT / "evals/effectiveness/protocol.zh-TW.md"
+    ).read_text(encoding="utf-8")
+    if language == "en":
+        english = english.replace(old, replacement, 1)
+    else:
+        traditional_chinese = traditional_chinese.replace(old, replacement, 1)
 
-    for command in (
-        "python -m pytest tests/test_effectiveness_contract.py -q",
-        "python scripts/generate_study_assignments.py",
-        "python scripts/commit_human_task_pack.py create",
-        "python scripts/commit_human_task_pack.py verify",
-        "python scripts/analyze_effectiveness.py agreement-check",
-        "python scripts/analyze_effectiveness.py analyze",
-        "python scripts/render_effectiveness_report.py",
-    ):
-        assert command in text
-    for flag in (
+    with pytest.raises(AssertionError):
+        _assert_effectiveness_protocol_contract(english, traditional_chinese)
+
+
+def test_effectiveness_protocol_contract_rejects_reordered_sections():
+    english = (ROOT / "evals/effectiveness/protocol.md").read_text(
+        encoding="utf-8"
+    )
+    traditional_chinese = (
+        ROOT / "evals/effectiveness/protocol.zh-TW.md"
+    ).read_text(encoding="utf-8")
+    fourth = EFFECTIVENESS_PROTOCOL_SECTION_CONTRACTS[3][0]
+    fifth = EFFECTIVENESS_PROTOCOL_SECTION_CONTRACTS[4][0]
+    reordered = english.replace(fourth, "__FOURTH_SECTION__", 1)
+    reordered = reordered.replace(fifth, fourth, 1).replace(
+        "__FOURTH_SECTION__", fifth, 1
+    )
+
+    with pytest.raises(AssertionError):
+        _assert_effectiveness_protocol_contract(reordered, traditional_chinese)
+
+
+EFFECTIVENESS_COMMAND_BLOCKS = (
+    "python -m pytest tests/test_effectiveness_contract.py -q",
+    "python scripts/generate_study_assignments.py --study-id pilot-v1 --seed 20260809 --output <external-dir>/assignments.json",
+    "python scripts/commit_human_task_pack.py create --task-pack <external-dir>/human-tasks.yaml --nonce-output <external-dir>/human-tasks.nonce --commitment-output <external-dir>/human-task-commitment.json",
+    "python scripts/commit_human_task_pack.py verify --task-pack <external-dir>/human-tasks.yaml --nonce-file <external-dir>/human-tasks.nonce --commitment <external-dir>/human-task-commitment.json",
+    "python scripts/analyze_effectiveness.py agreement-check --study-manifest <external-dir>/study-manifest.json --scores <external-dir>/blinded-scores.json --ratings-lock <external-dir>/ratings-lock.json --output-summary <external-dir>/agreement-summary.json",
+    "python scripts/analyze_effectiveness.py analyze --study-manifest <external-dir>/study-manifest.json --scores <external-dir>/blinded-scores.json --ratings-lock <external-dir>/ratings-lock.json --condition-key <external-dir>/condition-key.json --unlock-after-ratings-lock --output-summary <external-dir>/aggregate-summary.json",
+    "python scripts/render_effectiveness_report.py --summary evals/effectiveness/examples/synthetic-summary.json --english evals/effectiveness/examples/synthetic-report.md --traditional-chinese evals/effectiveness/examples/synthetic-report.zh-TW.md --check",
+)
+
+
+def _assert_effectiveness_command_map_contract(text: str) -> None:
+    command_blocks = tuple(
+        " ".join(match.group("body").split())
+        for match in FENCED_BLOCK_PATTERN.finditer(text)
+    )
+    assert command_blocks == EFFECTIVENESS_COMMAND_BLOCKS
+
+    assignment, agreement, analyze = (
+        command_blocks[1],
+        command_blocks[4],
+        command_blocks[5],
+    )
+    assert "validate_assignments(rows, catalog, study_id, seed)" in text
+    assert text.index(assignment) < text.index(agreement) < text.index(analyze)
+    assert {token for token in agreement.split() if token.startswith("--")} == {
+        "--study-manifest",
+        "--scores",
+        "--ratings-lock",
+        "--output-summary",
+    }
+    assert "--condition-key" not in agreement
+    assert "--unlock-after-ratings-lock" not in agreement
+    assert {token for token in analyze.split() if token.startswith("--")} == {
         "--study-manifest",
         "--scores",
         "--ratings-lock",
         "--condition-key",
         "--unlock-after-ratings-lock",
-    ):
-        assert flag in text
+        "--output-summary",
+    }
     assert "exit code 3" in text
     assert "recalibrate-and-rescore-before-unlock" in text
     assert "eligible-for-locked-unlock" in text
+    assert text.index("recalibrate-and-rescore-before-unlock") < text.index(analyze)
+
+
+def _swap_once(text: str, left: str, right: str) -> str:
+    assert text.count(left) == 1
+    assert text.count(right) == 1
+    return text.replace(left, "__LEFT_COMMAND__", 1).replace(
+        right, left, 1
+    ).replace("__LEFT_COMMAND__", right, 1)
+
+
+def test_effectiveness_command_map_matches_current_cli_and_unlock_gate():
+    text = (ROOT / "evals/effectiveness/README.md").read_text(encoding="utf-8")
+
+    _assert_effectiveness_command_map_contract(text)
+
+
+@pytest.mark.parametrize(
+    "mutate",
+    [
+        lambda text: text.replace(
+            "--ratings-lock <external-dir>/ratings-lock.json --output-summary",
+            "--ratings-lock <external-dir>/ratings-lock.json --condition-key <external-dir>/condition-key.json --output-summary",
+            1,
+        ),
+        lambda text: text.replace(" --unlock-after-ratings-lock", "", 1),
+        lambda text: text.replace(
+            "validate_assignments(rows, catalog, study_id, seed)",
+            "validate_assignments(rows, catalog)",
+            1,
+        ),
+        lambda text: _swap_once(
+            text,
+            EFFECTIVENESS_COMMAND_BLOCKS[4],
+            EFFECTIVENESS_COMMAND_BLOCKS[5],
+        ),
+    ],
+)
+def test_effectiveness_command_map_rejects_unsafe_argument_or_order_drift(mutate):
+    text = (ROOT / "evals/effectiveness/README.md").read_text(encoding="utf-8")
+    mutated = mutate(text)
+    assert mutated != text
+
+    with pytest.raises(AssertionError):
+        _assert_effectiveness_command_map_contract(mutated)
+
+
+EFFECTIVENESS_SCHEMA_KEY_GROUPS = {
+    "manifest": frozenset(
+        {
+            "schema_version",
+            "study_id",
+            "protocol_commit",
+            "skill_version",
+            "skill_commit",
+            "codex_surface",
+            "model",
+            "reasoning_effort",
+            "service_tier",
+            "python_version",
+            "platform",
+            "study_started_at",
+            "study_ended_at",
+            "task_commitment_sha256",
+            "task_commitment_verified",
+            "bootstrap_seed",
+            "bootstrap_resamples",
+            "sessions",
+        }
+    ),
+    "session": frozenset(
+        {
+            "participant_code",
+            "stratum",
+            "assignment_version",
+            "session_date",
+            "environment_fingerprint",
+        }
+    ),
+    "scores": frozenset(
+        {
+            "schema_version",
+            "study_id",
+            "observations",
+            "rater_scores",
+            "adjudications",
+            "sus_responses",
+        }
+    ),
+    "observation": frozenset(
+        {
+            "answer_id",
+            "participant_code",
+            "stratum",
+            "task_pair_id",
+            "task_variant",
+            "output_depth",
+            "order",
+            "started_at",
+            "ended_at",
+            "completion_status",
+            "completion_seconds",
+            "mandatory_complete",
+            "quality_met",
+            "quality_applicable",
+            "quality_score",
+            "critical_violation",
+            "criterion_scores",
+            "nasa_tlx_ratings",
+            "nasa_tlx_weights",
+            "confidence_before",
+            "confidence_after",
+            "understanding_before",
+            "understanding_after",
+        }
+    ),
+    "criterion_score": frozenset({"criterion_id", "applicable", "met"}),
+    "rater_score": frozenset(
+        {"answer_id", "rater_code", "success", "critical_violation", "ordinal_quality"}
+    ),
+    "adjudication": frozenset(
+        {
+            "answer_id",
+            "adjudicator_code",
+            "final_success",
+            "final_critical_violation",
+            "final_ordinal_quality",
+            "rationale_code",
+        }
+    ),
+    "sus_response": frozenset({"participant_code", "items"}),
+    "ratings_lock": frozenset(
+        {
+            "schema_version",
+            "study_id",
+            "scores_sha256",
+            "ratings_complete",
+            "rater_codes",
+            "locked_at",
+        }
+    ),
+    "condition_key": frozenset({"schema_version", "study_id", "mappings"}),
+    "condition_mapping": frozenset({"answer_id", "condition"}),
+}
+IMPLEMENTED_EFFECTIVENESS_SCHEMA_KEY_GROUPS = {
+    "manifest": MANIFEST_KEYS,
+    "session": SESSION_KEYS,
+    "scores": SCORES_KEYS,
+    "observation": OBSERVATION_KEYS,
+    "criterion_score": CRITERION_SCORE_KEYS,
+    "rater_score": RATER_SCORE_KEYS,
+    "adjudication": ADJUDICATION_KEYS,
+    "sus_response": SUS_RESPONSE_KEYS,
+    "ratings_lock": RATINGS_LOCK_KEYS,
+    "condition_key": CONDITION_KEY_KEYS,
+    "condition_mapping": CONDITION_MAPPING_KEYS,
+}
+
+
+def _assert_effectiveness_input_schema_contract(text: str) -> None:
+    normalized = " ".join(text.split())
+    documented_groups = {
+        "manifest": _backtick_key_set(
+            _between(normalized, "The manifest has exactly these keys:", "Commit fields are")
+        ),
+        "session": _backtick_key_set(
+            _between(
+                normalized,
+                "`sessions` contains exactly 16 rows. Every row has exactly:",
+                "Participant codes are exactly",
+            )
+        ),
+        "scores": _backtick_key_set(
+            _between(normalized, "The top-level object has exactly", ". It contains no condition")
+        ),
+        "observation": _backtick_key_set(
+            _between(normalized, "Every observation has exactly:", "`answer_id` is 16")
+        ),
+        "criterion_score": _backtick_key_set(
+            _between(normalized, "Every criterion row has exactly", ": - mandatory criteria")
+        ),
+        "rater_score": _backtick_key_set(
+            _between(
+                normalized,
+                "unscored answers have none. A row has exactly",
+                ". Rater codes",
+            )
+        ),
+        "adjudication": _backtick_key_set(
+            _between(
+                normalized,
+                "Complete agreement forbids adjudication. A row has exactly",
+                ". The adjudicator",
+            )
+        ),
+        "sus_response": _backtick_key_set(
+            _between(normalized, "Each `sus_responses` row has exactly", ". Participant codes")
+        ),
+        "ratings_lock": _backtick_key_set(
+            _between(normalized, "The lock has exactly", ". `scores_sha256`")
+        ),
+        "condition_key": _backtick_key_set(
+            _between(normalized, "The key has exactly", ". Each mapping")
+        ),
+        "condition_mapping": _backtick_key_set(
+            _between(normalized, "Each mapping has exactly", ", where condition is")
+        ),
+    }
+    assert IMPLEMENTED_EFFECTIVENESS_SCHEMA_KEY_GROUPS == EFFECTIVENESS_SCHEMA_KEY_GROUPS
+    assert documented_groups == EFFECTIVENESS_SCHEMA_KEY_GROUPS
+    assert sum(len(fields) for fields in EFFECTIVENESS_SCHEMA_KEY_GROUPS.values()) == 79
+
+    for marker in (
+        "`criterion_scores` is in the task contract's exact order",
+        "mandatory criteria always have `applicable: true` and boolean `met`",
+        "when applicable, `met` is boolean",
+        "when not applicable, `met` is JSON null",
+        "`abandoned` and `technical_failure` are unscored.",
+        "The following fields are JSON null",
+        "All quality criteria may be N/A.",
+        "quality_applicable=0",
+        "quality_met=0",
+        "quality rate is null and not estimable",
+        "Primary success depends only on mandatory completion",
+        "criterion_scores",
+    ):
+        assert marker in normalized
+
+
+def _between(text: str, start_marker: str, end_marker: str) -> str:
+    assert text.count(start_marker) == 1
+    start = text.index(start_marker) + len(start_marker)
+    end = text.index(end_marker, start)
+    return text[start:end]
+
+
+def _backtick_key_set(text: str) -> frozenset[str]:
+    return frozenset(re.findall(r"`([a-z][a-z0-9_]*)`", text))
 
 
 def test_effectiveness_input_schema_records_strict_rows_and_quality_na():
@@ -1920,26 +2414,33 @@ def test_effectiveness_input_schema_records_strict_rows_and_quality_na():
         encoding="utf-8"
     )
 
-    for key in (
-        "`schema_version`",
-        "`study_id`",
-        "`sessions`",
-        "`observations`",
-        "`criterion_scores`",
-        "`rater_scores`",
-        "`adjudications`",
-        "`sus_responses`",
-        "`scores_sha256`",
-        "`mappings`",
-    ):
-        assert key in text
-    assert "validate_assignments(rows, catalog, study_id, seed)" in text
-    assert "raw score-file bytes" in text
-    assert "quality_applicable=0" in text
-    assert "quality_met=0" in text
-    assert "quality rate is null and not estimable" in text
-    assert "Primary success depends only on mandatory completion" in text
-    assert "free-text answers" in text
+    _assert_effectiveness_input_schema_contract(text)
+
+
+@pytest.mark.parametrize(
+    ("old", "replacement"),
+    [
+        ("`task_commitment_verified`;", ""),
+        ("`rater_codes`, and `locked_at`", "`rater_codes`"),
+        (
+            "`criterion_id`, `applicable`, and `met`",
+            "`criterion_id`, `applicable`, `met`, and `unexpected`",
+        ),
+        ("All quality criteria may be N/A.", "All quality criteria are applicable."),
+    ],
+)
+def test_effectiveness_input_schema_contract_rejects_field_or_na_drift(
+    old,
+    replacement,
+):
+    text = (ROOT / "evals/effectiveness/input-schema.md").read_text(
+        encoding="utf-8"
+    )
+    mutated = text.replace(old, replacement, 1)
+    assert mutated != text
+
+    with pytest.raises(AssertionError):
+        _assert_effectiveness_input_schema_contract(mutated)
 
 
 def test_effectiveness_navigation_and_architecture_preserve_public_boundary():
