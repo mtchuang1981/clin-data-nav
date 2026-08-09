@@ -2,12 +2,14 @@ import copy
 from datetime import datetime, timedelta
 import hashlib
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
 
 import pytest
 
+import scripts.analyze_effectiveness as analyze_module
 from scripts.effectiveness_analysis import (
     compute_environment_fingerprint,
     unlock_observations,
@@ -565,6 +567,20 @@ def test_full_pilot_unlock_has_fixed_64_row_ratings_locked_layout():
     }
 
 
+def test_unlocked_nested_lists_are_isolated_from_blinded_scores_in_both_directions():
+    manifest, scores, lock, key, raw_scores = full_pilot_payloads()
+
+    unlocked = unlock_observations(manifest, scores, lock, key, raw_scores)
+    original_score_ratings = scores["observations"][0]["nasa_tlx_ratings"].copy()
+    original_unlocked_weights = unlocked[0]["nasa_tlx_weights"].copy()
+
+    unlocked[0]["nasa_tlx_ratings"][0] = 99
+    scores["observations"][0]["nasa_tlx_weights"][0] = 5
+
+    assert scores["observations"][0]["nasa_tlx_ratings"] == original_score_ratings
+    assert unlocked[0]["nasa_tlx_weights"] == original_unlocked_weights
+
+
 @pytest.mark.parametrize(
     "mutate",
     [
@@ -648,6 +664,33 @@ def test_cli_requires_explicit_post_lock_unlock_without_echoing_paths(tmp_path):
     assert not paths["summary"].exists()
 
 
+@pytest.mark.parametrize(
+    "unlock_prefix",
+    (
+        "--unlock",
+        "--unlock-after",
+        "--unlock-after-ratings",
+        "--unlock-after-ratings-loc",
+    ),
+)
+def test_cli_rejects_abbreviated_unlock_flags_content_free(tmp_path, unlock_prefix):
+    paths = _write_cli_inputs(tmp_path)
+
+    result = subprocess.run(
+        [*_cli_args(paths), unlock_prefix],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 2
+    assert result.stdout == ""
+    assert result.stderr == CLI_ERROR
+    assert unlock_prefix not in result.stderr
+    assert str(paths["summary"]) not in result.stderr
+    assert not paths["summary"].exists()
+
+
 def test_cli_hides_rejected_values_paths_and_tracebacks(tmp_path):
     paths = _write_cli_inputs(tmp_path)
     marker = "SENSITIVE-SYNTHETIC-MARKER-31d5"
@@ -671,8 +714,54 @@ def test_cli_hides_rejected_values_paths_and_tracebacks(tmp_path):
     assert not paths["summary"].exists()
 
 
-def test_cli_writes_only_the_minimal_canonical_aggregate_summary(tmp_path):
+@pytest.mark.parametrize("aliased_input", ("manifest", "scores", "lock", "key"))
+def test_cli_rejects_hardlink_output_alias_without_corrupting_input(
+    tmp_path, aliased_input
+):
     paths = _write_cli_inputs(tmp_path)
+    original_bytes = paths[aliased_input].read_bytes()
+    os.link(paths[aliased_input], paths["summary"])
+
+    result = subprocess.run(
+        [*_cli_args(paths), "--unlock-after-ratings-lock"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 2
+    assert result.stdout == ""
+    assert result.stderr == CLI_ERROR
+    assert str(paths[aliased_input]) not in result.stderr
+    assert paths[aliased_input].read_bytes() == original_bytes
+    assert paths["summary"].read_bytes() == original_bytes
+
+
+def test_atomic_summary_failure_preserves_existing_output_and_cleans_temp_file(
+    tmp_path, monkeypatch
+):
+    paths = _write_cli_inputs(tmp_path)
+    original_summary = b"existing aggregate summary\n"
+    paths["summary"].write_bytes(original_summary)
+    args = analyze_module._argument_parser().parse_args(
+        [*_cli_args(paths)[2:], "--unlock-after-ratings-lock"]
+    )
+
+    def fail_replace(source, destination):
+        raise OSError("synthetic replace failure")
+
+    monkeypatch.setattr(analyze_module.os, "replace", fail_replace)
+
+    with pytest.raises(OSError, match="synthetic replace failure"):
+        analyze_module._analyze(args)
+
+    assert paths["summary"].read_bytes() == original_summary
+    assert list(tmp_path.glob(".summary.json.*.tmp")) == []
+
+
+def test_cli_atomically_replaces_existing_output_with_minimal_canonical_summary(tmp_path):
+    paths = _write_cli_inputs(tmp_path)
+    paths["summary"].write_bytes(b"stale aggregate summary\n")
 
     result = subprocess.run(
         [*_cli_args(paths), "--unlock-after-ratings-lock"],

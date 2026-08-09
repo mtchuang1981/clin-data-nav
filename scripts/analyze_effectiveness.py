@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from pathlib import Path
 import sys
+import tempfile
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -27,11 +29,11 @@ class _SafeArgumentParser(argparse.ArgumentParser):
 
 
 def _argument_parser() -> argparse.ArgumentParser:
-    parser = _SafeArgumentParser(description=__doc__)
+    parser = _SafeArgumentParser(description=__doc__, allow_abbrev=False)
     subcommands = parser.add_subparsers(
         dest="command", required=True, parser_class=_SafeArgumentParser
     )
-    analyze = subcommands.add_parser("analyze")
+    analyze = subcommands.add_parser("analyze", allow_abbrev=False)
     analyze.add_argument("--study-manifest", required=True, type=Path)
     analyze.add_argument("--scores", required=True, type=Path)
     analyze.add_argument("--ratings-lock", required=True, type=Path)
@@ -55,7 +57,10 @@ def _analyze(args: argparse.Namespace) -> None:
         "key": ensure_external_path(args.condition_key),
     }
     output_summary = args.output_summary.resolve()
-    if output_summary in set(input_paths.values()):
+    if output_summary in set(input_paths.values()) or any(
+        _same_existing_file(output_summary, input_path)
+        for input_path in input_paths.values()
+    ):
         raise ValueError("aggregate output must not replace an external input")
 
     manifest = _read_json(input_paths["manifest"])
@@ -74,13 +79,36 @@ def _analyze(args: argparse.Namespace) -> None:
         "study_id": scores["study_id"],
         "validated_observation_count": len(observations),
     }
+    _write_summary_atomically(output_summary, summary)
+
+
+def _same_existing_file(left: Path, right: Path) -> bool:
+    return left.exists() and right.exists() and left.samefile(right)
+
+
+def _write_summary_atomically(output_summary: Path, summary: dict) -> None:
     output_summary.parent.mkdir(parents=True, exist_ok=True)
-    output_summary.write_bytes(
-        (
-            json.dumps(summary, ensure_ascii=False, indent=2, sort_keys=True)
-            + "\n"
-        ).encode("utf-8")
+    contents = (
+        json.dumps(summary, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
+    ).encode("utf-8")
+    descriptor, temporary_name = tempfile.mkstemp(
+        prefix=f".{output_summary.name}.",
+        suffix=".tmp",
+        dir=output_summary.parent,
     )
+    temporary_path = Path(temporary_name)
+    try:
+        temporary_file = os.fdopen(descriptor, "wb")
+        descriptor = -1
+        with temporary_file:
+            temporary_file.write(contents)
+            temporary_file.flush()
+            os.fsync(temporary_file.fileno())
+        os.replace(temporary_path, output_summary)
+    finally:
+        if descriptor >= 0:
+            os.close(descriptor)
+        temporary_path.unlink(missing_ok=True)
 
 
 def main() -> None:

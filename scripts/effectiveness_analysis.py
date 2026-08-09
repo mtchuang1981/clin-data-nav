@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections import Counter, defaultdict
+from copy import deepcopy
 from datetime import date, datetime
 import hashlib
 import json
@@ -563,7 +564,10 @@ def unlock_observations(
         mapping["answer_id"]: mapping["condition"] for mapping in key["mappings"]
     }
     unlocked = [
-        {**observation, "condition": condition_by_answer[observation["answer_id"]]}
+        {
+            **deepcopy(observation),
+            "condition": condition_by_answer[observation["answer_id"]],
+        }
         for observation in scores["observations"]
     ]
     layout_errors = validate_pilot_layout(unlocked)
