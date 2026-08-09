@@ -10,6 +10,12 @@ from scripts.check_public_boundary import scan_repository
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def test_repository_checkout_preserves_canonical_lf_text_bytes():
+    attributes = (ROOT / ".gitattributes").read_text(encoding="utf-8").splitlines()
+
+    assert "* text=auto eol=lf" in attributes
+
+
 def test_agents_policy_contains_public_boundary_and_release_stop():
     text = (ROOT / "AGENTS.md").read_text(encoding="utf-8")
     assert "Do not read or copy private TMUCRD adapters" in text
