@@ -124,6 +124,18 @@ def remove_one_assignment(rows):
     rows.pop()
 
 
+def swap_b01_and_b02(rows):
+    for row in rows:
+        if row["participant_code"] == "B01":
+            row["participant_code"] = "B02"
+        elif row["participant_code"] == "B02":
+            row["participant_code"] = "B01"
+
+
+def change_answer_id(rows):
+    rows[0]["answer_id"] = "A000000000000000"
+
+
 @pytest.mark.parametrize(
     ("mutate", "expected_error"),
     [
@@ -137,4 +149,42 @@ def test_assignment_validator_rejects_adversarial_mutations(mutate, expected_err
     catalog, generated = _rows()
     rows = copy.deepcopy(generated)
     mutate(rows)
-    assert any(expected_error in error for error in validate_assignments(rows, catalog))
+    assert any(
+        expected_error in error
+        for error in validate_assignments(rows, catalog, "pilot-v1", 20260809)
+    )
+
+
+@pytest.mark.parametrize("mutate", [swap_b01_and_b02, change_answer_id])
+def test_assignment_validator_rejects_fixed_schedule_or_answer_id_tampering(mutate):
+    catalog, generated = _rows()
+    rows = copy.deepcopy(generated)
+    mutate(rows)
+
+    errors = validate_assignments(rows, catalog, "pilot-v1", 20260809)
+
+    assert "assignment 0: does not match the fixed schedule" in errors
+
+
+@pytest.mark.parametrize(
+    "field",
+    (
+        "answer_id",
+        "participant_code",
+        "stratum",
+        "pair_id",
+        "variant",
+        "output_depth",
+        "condition",
+        "order",
+    ),
+)
+def test_assignment_validator_rejects_non_hashable_field_values_without_traceback(field):
+    catalog, generated = _rows()
+    rows = copy.deepcopy(generated)
+    rows[0][field] = []
+
+    errors = validate_assignments(rows, catalog, "pilot-v1", 20260809)
+
+    assert errors
+    assert errors == validate_assignments(rows, catalog, "pilot-v1", 20260809)

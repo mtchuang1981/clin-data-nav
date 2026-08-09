@@ -30,6 +30,15 @@ DEPTH_ORDER = (
 )
 STRATA = (("beginner", "B"), ("professional", "P"))
 ANSWER_ID_PATTERN = re.compile(r"^[A-F0-9]{16}$")
+ROW_STRING_FIELDS = (
+    "answer_id",
+    "participant_code",
+    "stratum",
+    "pair_id",
+    "variant",
+    "output_depth",
+    "condition",
+)
 
 
 def _structured_slot(catalog: dict, slot: int, depth_index: int) -> tuple[dict, str, str]:
@@ -82,11 +91,16 @@ def generate_assignments(catalog: dict, study_id: str, seed: int) -> list[dict]:
     return sorted(rows, key=lambda row: (row["stratum"], row["participant_code"], row["order"]))
 
 
-def validate_assignments(rows: list[dict], catalog: dict) -> list[str]:
+def validate_assignments(
+    rows: list[dict], catalog: dict, study_id: str, seed: int
+) -> list[str]:
     """Return deterministic errors for violations of the fixed pilot schedule."""
     errors: list[str] = []
+    if not isinstance(rows, list):
+        return ["assignments: must be a list"]
     if len(rows) != 64:
         errors.append(f"expected 64 assignments, received {len(rows)}")
+    _validate_fixed_schedule(rows, catalog, study_id, seed, errors)
 
     expected_people = {
         f"{prefix}{index:02d}"
@@ -94,27 +108,24 @@ def validate_assignments(rows: list[dict], catalog: dict) -> list[str]:
         for index in range(1, 9)
     }
     by_person: dict[str, list[dict]] = defaultdict(list)
-    answer_ids: Counter[object] = Counter()
     pairs = {pair["id"]: pair for pair in catalog.get("task_pairs", [])}
+    valid_rows: list[dict] = []
 
     for index, row in enumerate(rows):
         if not isinstance(row, dict):
             errors.append(f"assignment {index}: must be a mapping")
             continue
-        answer_id = row.get("answer_id")
-        answer_ids[answer_id] += 1
-        participant_code = row.get("participant_code")
-        if not isinstance(participant_code, str):
-            errors.append(f"assignment {index}: participant_code must be a string")
+        if not _has_valid_row_types(row, index, errors):
             continue
+        valid_rows.append(row)
+        participant_code = row["participant_code"]
         by_person[participant_code].append(row)
         _validate_row_catalog_values(row, index, pairs, errors)
 
-    for answer_id, count in sorted(answer_ids.items(), key=lambda item: repr(item[0])):
+    answer_ids = Counter(row["answer_id"] for row in valid_rows)
+    for answer_id, count in sorted(answer_ids.items()):
         if count > 1:
             errors.append(f"duplicate answer_id: {answer_id}")
-        if not isinstance(answer_id, str) or not ANSWER_ID_PATTERN.fullmatch(answer_id):
-            errors.append(f"invalid answer_id: {answer_id}")
 
     observed_people = set(by_person)
     if observed_people != expected_people:
@@ -128,9 +139,34 @@ def validate_assignments(rows: list[dict], catalog: dict) -> list[str]:
     for person in sorted(expected_people):
         _validate_person_rows(person, by_person.get(person, []), errors)
 
-    _validate_variant_condition_stratum_balance(rows, pairs, errors)
-    _validate_first_order_balance(rows, errors)
+    _validate_variant_condition_stratum_balance(valid_rows, pairs, errors)
+    _validate_first_order_balance(valid_rows, errors)
     return errors
+
+
+def _validate_fixed_schedule(
+    rows: list[dict], catalog: dict, study_id: str, seed: int, errors: list[str]
+) -> None:
+    expected_rows = generate_assignments(catalog, study_id, seed)
+    for index, (row, expected) in enumerate(zip(rows, expected_rows)):
+        if row != expected:
+            errors.append(f"assignment {index}: does not match the fixed schedule")
+            return
+    if len(rows) != len(expected_rows):
+        errors.append("assignments: do not match the fixed schedule")
+
+
+def _has_valid_row_types(row: dict, index: int, errors: list[str]) -> bool:
+    valid = True
+    for field in ROW_STRING_FIELDS:
+        if not isinstance(row.get(field), str):
+            errors.append(f"assignment {index}: {field} must be a string")
+            valid = False
+    order = row.get("order")
+    if isinstance(order, bool) or not isinstance(order, int):
+        errors.append(f"assignment {index}: order must be an integer")
+        valid = False
+    return valid
 
 
 def _answer_id(
@@ -152,6 +188,9 @@ def _validate_row_catalog_values(
     row: dict, index: int, pairs: dict[str, dict], errors: list[str]
 ) -> None:
     participant_code = row.get("participant_code")
+    answer_id = row["answer_id"]
+    if not ANSWER_ID_PATTERN.fullmatch(answer_id):
+        errors.append(f"invalid answer_id: {answer_id}")
     expected_stratum = _stratum_for_code(participant_code)
     if expected_stratum is None:
         errors.append(f"assignment {index}: invalid participant_code: {participant_code}")
@@ -168,7 +207,7 @@ def _validate_row_catalog_values(
         errors.append(f"assignment {index}: variant must be A or B")
     if row.get("condition") not in {"control", "intervention"}:
         errors.append(f"assignment {index}: condition must be control or intervention")
-    if row.get("order") not in {1, 2, 3, 4}:
+    if row["order"] not in {1, 2, 3, 4}:
         errors.append(f"assignment {index}: order must be an integer from 1 through 4")
 
 
@@ -268,7 +307,7 @@ def main() -> None:
         parser.error(str(error))
     catalog, _ = load_effectiveness_contract(args.tasks, args.rubric)
     rows = generate_assignments(catalog, args.study_id, args.seed)
-    errors = validate_assignments(rows, catalog)
+    errors = validate_assignments(rows, catalog, args.study_id, args.seed)
     if errors:
         raise SystemExit("invalid assignment schedule: " + "; ".join(errors))
     output.parent.mkdir(parents=True, exist_ok=True)
