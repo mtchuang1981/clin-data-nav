@@ -12,6 +12,29 @@ exactly `answer_id`, `participant_code`, `stratum`, `pair_id`, `variant`,
 `output_depth`, `condition`, and `order`. Its current validator API is
 `validate_assignments(rows, catalog, study_id, seed)`.
 
+The following machine-readable contract is normative. Lists are exact: keys
+may not be omitted or added.
+
+<!-- BEGIN ASSIGNMENT SCHEMA CONTRACT -->
+```yaml
+assignment_top_level_keys:
+  - schema_version
+  - study_id
+  - seed
+  - assignments
+assignment_row_keys:
+  - answer_id
+  - participant_code
+  - stratum
+  - pair_id
+  - variant
+  - output_depth
+  - condition
+  - order
+validator_api: validate_assignments(rows, catalog, study_id, seed)
+```
+<!-- END ASSIGNMENT SCHEMA CONTRACT -->
+
 ## 1. Study manifest
 
 The manifest has exactly these keys:
@@ -100,6 +123,18 @@ critical violation; quality criteria and the 0.8 catalog reference are
 secondary and cannot create or remove primary success. Abandonment is primary
 failure, while technical failure is missing for complete-case primary
 analysis.
+
+This machine-readable rule is normative: primary success requires both facts
+below, and quality criteria never alter that result.
+
+<!-- BEGIN PRIMARY OUTCOME CONTRACT -->
+```yaml
+primary_success:
+  mandatory_complete: required
+  critical_violation: forbidden
+quality_criteria_affect_primary: false
+```
+<!-- END PRIMARY OUTCOME CONTRACT -->
 
 `quality_score` is an integer from 0 through 100. NASA-TLX has six integer
 ratings from 0 through 100 and six integer weights from 0 through 5 that sum to

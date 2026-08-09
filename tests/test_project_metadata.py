@@ -2025,6 +2025,141 @@ EFFECTIVENESS_PROTOCOL_SECTION_CONTRACTS = (
 )
 
 
+EFFECTIVENESS_CANONICAL_FACTS = (
+    (
+        "purpose-boundary",
+        "The exploratory pilot evaluates product task performance on synthetic tasks and does not establish real-use effectiveness or clinical validity.",
+        "探索性先導研究評估合成任務的產品任務表現，不證明真實使用效果或臨床效度。",
+    ),
+    (
+        "separate-authorization",
+        "The protocol does not authorize recruitment, collection, unlock, analysis, or publication; ethics review, consent, storage platform, retention, access, and incident decisions remain separate.",
+        "本規格不授權招募、蒐集、解盲、分析或發布；倫理審查、同意、儲存平台、保留、存取與事件處理決定須另行辦理。",
+    ),
+    (
+        "fixed-strata",
+        "The fixed pilot has 8 beginners and 8 professionals, with eligibility frozen before recruitment.",
+        "固定先導研究包含初學者 8 人與專業者 8 人，納入條件於招募前固定。",
+    ),
+    (
+        "balanced-crossover",
+        "Each participant receives four tasks in a 2:2 intervention-control balanced crossover, one task per output depth and never both variants of a pair.",
+        "每位參與者在 2:2 介入對照平衡交叉設計中接受四個任務，每個輸出深度各一個，且不會同時收到同一配對的兩個版本。",
+    ),
+    (
+        "standardized-execution",
+        "Both conditions use the same standardized ten-minute orientation; every task starts in a fresh conversation with fixed time limits and rest between tasks.",
+        "兩個條件使用相同的標準化十分鐘導覽；每個任務從全新對話開始，採固定時限，並於任務間休息。",
+    ),
+    (
+        "environment-stop",
+        "The manifest fixes one environment fingerprint; any model, Skill, surface, or material setting change stops the open batch and prevents silent pooling, while offline tooling makes no external model call.",
+        "manifest 固定單一環境指紋；模型、Skill、介面或重要設定一旦改變，就停止開放批次且不得直接合併，離線工具也不會呼叫外部模型。",
+    ),
+    (
+        "commitment-leakage",
+        "The external task pack uses a fresh 32-byte nonce and SHA-256 commitment; early leakage stops the batch and requires a new pack, nonce, and commitment.",
+        "外部任務包使用新的 32-byte nonce 與 SHA-256 承諾；若提前外洩，須停止批次並更換任務包、nonce 與承諾。",
+    ),
+    (
+        "primary-safety",
+        "Primary success requires every mandatory criterion and no critical violation; the fixed critical categories are invented-schema, false-executable-status, rwd-rwe-confusion, unsupported-causal-claim, fabricated-citation, unreviewed-search-as-authority, missing-tte-readiness, and private-data-request-or-exposure; quality criteria are secondary and cannot offset safety.",
+        "主要成功須完成所有必答判準且沒有重大違規；固定重大違規類別為 invented-schema、false-executable-status、rwd-rwe-confusion、unsupported-causal-claim、fabricated-citation、unreviewed-search-as-authority、missing-tte-readiness 與 private-data-request-or-exposure；品質判準屬次要結果，不能抵銷安全問題。",
+    ),
+    (
+        "secondary-scoring",
+        "NASA-TLX weights sum to 15, SUS uses the fixed 2.5 multiplier, and a quality rate with no applicable criteria is null and not estimable.",
+        "NASA-TLX 權重總和為 15，SUS 使用固定的 2.5 倍轉換，沒有適用品質判準時品質率為 null 且不可估計。",
+    ),
+    (
+        "blinded-rating",
+        "Two independent raters receive only opaque answer codes and condition-free material; any disagreement requires third-person adjudication while original ratings remain unchanged.",
+        "兩位獨立評分者只會收到不透明答案代碼與不含條件標示的材料；任何不一致均須由第三人裁定，原始評分保持不變。",
+    ),
+    (
+        "lock-unlock",
+        "The raw blinded score bytes are locked before agreement review; raw agreement below 0.80 or an estimable kappa below 0.60 blocks condition-key unlock, which requires explicit --unlock-after-ratings-lock.",
+        "一致性檢查前須鎖定原始盲化分數位元組；原始一致率低於 0.80 或可估計 kappa 低於 0.60 時禁止以 condition key 解盲，且解盲必須明確傳入 --unlock-after-ratings-lock。",
+    ),
+    (
+        "paired-analysis",
+        "The paired analysis reports a risk difference with a 95% participant-cluster bootstrap interval, handles technical failures conservatively, and performs no null-hypothesis significance test.",
+        "配對分析報告風險差與 95% 參與者群聚 bootstrap 區間，並以保守方式處理技術失敗，不做虛無假設顯著性檢定。",
+    ),
+    (
+        "power-rule",
+        "The practical threshold is an absolute 20 percentage points; later power scenarios are conservative, do not use the pilot point estimate alone, and remain deferred until after the pilot.",
+        "實務門檻為絕對 20 個百分點；後續檢定力情境採保守設定，不得只使用先導研究點估計值，並延後至先導研究完成後。",
+    ),
+    (
+        "completion-reporting",
+        "At least 14 of 16 participants must complete all four tasks for exploratory interpretation; positive, neutral, and negative findings use the same report structure, and endpoints cannot change after results are seen.",
+        "至少 14/16 位參與者須完成全部四個任務，才進行探索性解讀；正向、中性與負向發現皆使用相同報告結構，且看到結果後不得變更終點。",
+    ),
+    (
+        "data-boundary",
+        "Raw human-study data stay outside the repository under least-privilege access, retention, and incident controls; no participant row may be published, only aggregate outputs, and packaging does not run a human study.",
+        "人類研究原始資料須留在儲存庫外，並受最小權限存取、保留與事件處理規範管控；不得發布參與者資料列，只能發布彙總輸出，且封裝不代表執行人類研究。",
+    ),
+    (
+        "method-references",
+        "The protocol uses the five fixed method references listed in this section.",
+        "本規格使用本節列出的五項固定方法參考資料。",
+    ),
+)
+ENGLISH_CANONICAL_FACT_PATTERN = re.compile(
+    r"^\*\*Canonical fact `(?P<fact_id>[a-z0-9-]+)`:"
+    r"\*\* (?P<statement>.+)$",
+    flags=re.MULTILINE,
+)
+TRADITIONAL_CHINESE_CANONICAL_FACT_PATTERN = re.compile(
+    r"^\*\*固定事實 `(?P<fact_id>[a-z0-9-]+)`："
+    r"\*\* (?P<statement>.+)$",
+    flags=re.MULTILINE,
+)
+
+
+def _assert_effectiveness_canonical_facts(
+    english: str,
+    traditional_chinese: str,
+) -> None:
+    english_facts = {}
+    chinese_facts = {}
+    for index, (fact_id, english_statement, chinese_statement) in enumerate(
+        EFFECTIVENESS_CANONICAL_FACTS
+    ):
+        english_heading, chinese_heading, _, _ = (
+            EFFECTIVENESS_PROTOCOL_SECTION_CONTRACTS[index]
+        )
+        next_english = (
+            EFFECTIVENESS_PROTOCOL_SECTION_CONTRACTS[index + 1][0]
+            if index + 1 < len(EFFECTIVENESS_PROTOCOL_SECTION_CONTRACTS)
+            else None
+        )
+        next_chinese = (
+            EFFECTIVENESS_PROTOCOL_SECTION_CONTRACTS[index + 1][1]
+            if index + 1 < len(EFFECTIVENESS_PROTOCOL_SECTION_CONTRACTS)
+            else None
+        )
+        english_section = _markdown_section(english, english_heading, next_english)
+        chinese_section = _markdown_section(
+            traditional_chinese, chinese_heading, next_chinese
+        )
+        assert ENGLISH_CANONICAL_FACT_PATTERN.findall(english_section) == [
+            (fact_id, english_statement)
+        ]
+        assert TRADITIONAL_CHINESE_CANONICAL_FACT_PATTERN.findall(chinese_section) == [
+            (fact_id, chinese_statement)
+        ]
+        english_facts[fact_id] = english_statement
+        chinese_facts[fact_id] = chinese_statement
+
+    expected_fact_ids = [fact[0] for fact in EFFECTIVENESS_CANONICAL_FACTS]
+    assert list(english_facts) == expected_fact_ids
+    assert list(chinese_facts) == expected_fact_ids
+    assert len(english_facts) == len(chinese_facts) == 16
+
+
 def _assert_effectiveness_protocol_contract(
     english: str,
     traditional_chinese: str,
@@ -2077,6 +2212,45 @@ def test_effectiveness_protocols_fix_the_approved_design_and_stay_bilingual():
     ).read_text(encoding="utf-8")
 
     _assert_effectiveness_protocol_contract(english, traditional_chinese)
+    _assert_effectiveness_canonical_facts(english, traditional_chinese)
+
+
+@pytest.mark.parametrize(
+    ("old", "replacement"),
+    [
+        (
+            "Both conditions use the same standardized ten-minute orientation",
+            "Each condition uses a condition-specific orientation",
+        ),
+        (
+            "any model, Skill, surface, or material setting change stops the open batch",
+            "a model, Skill, surface, or material setting change does not stop the open batch",
+        ),
+        (
+            "receive only opaque answer codes and condition-free material",
+            "receive condition-labelled material",
+        ),
+        (
+            "At least 14 of 16 participants",
+            "At most 14 of 16 participants",
+        ),
+    ],
+)
+def test_effectiveness_protocol_contract_rejects_semantic_reversals(
+    old,
+    replacement,
+):
+    english = (ROOT / "evals/effectiveness/protocol.md").read_text(
+        encoding="utf-8"
+    )
+    traditional_chinese = (
+        ROOT / "evals/effectiveness/protocol.zh-TW.md"
+    ).read_text(encoding="utf-8")
+    mutated = english.replace(old, replacement, 1)
+    assert mutated != english
+
+    with pytest.raises(AssertionError):
+        _assert_effectiveness_canonical_facts(mutated, traditional_chinese)
 
 
 @pytest.mark.parametrize(
@@ -2105,6 +2279,7 @@ def test_effectiveness_protocol_contract_rejects_missing_facts(
 
     with pytest.raises(AssertionError):
         _assert_effectiveness_protocol_contract(english, traditional_chinese)
+        _assert_effectiveness_canonical_facts(english, traditional_chinese)
 
 
 def test_effectiveness_protocol_contract_rejects_reordered_sections():
@@ -2326,9 +2501,56 @@ IMPLEMENTED_EFFECTIVENESS_SCHEMA_KEY_GROUPS = {
     "condition_key": CONDITION_KEY_KEYS,
     "condition_mapping": CONDITION_MAPPING_KEYS,
 }
+EFFECTIVENESS_ASSIGNMENT_SCHEMA_CONTRACT = {
+    "assignment_top_level_keys": [
+        "schema_version",
+        "study_id",
+        "seed",
+        "assignments",
+    ],
+    "assignment_row_keys": [
+        "answer_id",
+        "participant_code",
+        "stratum",
+        "pair_id",
+        "variant",
+        "output_depth",
+        "condition",
+        "order",
+    ],
+    "validator_api": "validate_assignments(rows, catalog, study_id, seed)",
+}
+EFFECTIVENESS_PRIMARY_OUTCOME_CONTRACT = {
+    "primary_success": {
+        "mandatory_complete": "required",
+        "critical_violation": "forbidden",
+    },
+    "quality_criteria_affect_primary": False,
+}
+
+
+def _effectiveness_yaml_contract(text: str, contract_name: str) -> dict:
+    body = _between(
+        text,
+        f"<!-- BEGIN {contract_name} -->",
+        f"<!-- END {contract_name} -->",
+    )
+    matches = list(FENCED_BLOCK_PATTERN.finditer(body))
+    assert len(matches) == 1
+    assert matches[0].group("language").strip() == "yaml"
+    parsed = yaml.safe_load(matches[0].group("body"))
+    assert isinstance(parsed, dict)
+    return parsed
 
 
 def _assert_effectiveness_input_schema_contract(text: str) -> None:
+    assert _effectiveness_yaml_contract(
+        text, "ASSIGNMENT SCHEMA CONTRACT"
+    ) == EFFECTIVENESS_ASSIGNMENT_SCHEMA_CONTRACT
+    assert _effectiveness_yaml_contract(
+        text, "PRIMARY OUTCOME CONTRACT"
+    ) == EFFECTIVENESS_PRIMARY_OUTCOME_CONTRACT
+
     normalized = " ".join(text.split())
     documented_groups = {
         "manifest": _backtick_key_set(
@@ -2430,6 +2652,32 @@ def test_effectiveness_input_schema_records_strict_rows_and_quality_na():
     ],
 )
 def test_effectiveness_input_schema_contract_rejects_field_or_na_drift(
+    old,
+    replacement,
+):
+    text = (ROOT / "evals/effectiveness/input-schema.md").read_text(
+        encoding="utf-8"
+    )
+    mutated = text.replace(old, replacement, 1)
+    assert mutated != text
+
+    with pytest.raises(AssertionError):
+        _assert_effectiveness_input_schema_contract(mutated)
+
+
+@pytest.mark.parametrize(
+    ("old", "replacement"),
+    [
+        ("  - seed\n", ""),
+        ("  - variant\n", ""),
+        (
+            "validator_api: validate_assignments(rows, catalog, study_id, seed)",
+            "validator_api: validate_assignments(rows, catalog)",
+        ),
+        ("critical_violation: forbidden", "critical_violation: allowed"),
+    ],
+)
+def test_effectiveness_input_schema_contract_rejects_assignment_or_primary_drift(
     old,
     replacement,
 ):
