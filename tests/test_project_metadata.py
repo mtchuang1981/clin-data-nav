@@ -1494,6 +1494,128 @@ def test_v040_local_release_evidence_binds_artifact_properties_to_values(
         _assert_v040_local_release_evidence_contract(mutated)
 
 
+def _assert_v040_publication_evidence_contract(report: str) -> None:
+    normalized = " ".join(report.split())
+
+    identity = _evidence_subsection(
+        report,
+        "## Immutable publication identity",
+        "## Public workflows and Release",
+    )
+    assert _evidence_table_rows(identity) == (
+        (
+            "Main candidate commit",
+            "`a5b5ad01e8fe6c72e4ea7f317b0bc5eed8644d52`",
+        ),
+        (
+            "Annotated tag object",
+            "`a1c99c0296d490dd9c56b96343ab0c285717775a`",
+        ),
+        (
+            "Peeled tag commit",
+            "`a5b5ad01e8fe6c72e4ea7f317b0bc5eed8644d52`",
+        ),
+        ("Release ID", "`367634803`"),
+    )
+
+    workflows = _evidence_subsection(
+        report,
+        "## Public workflows and Release",
+        "## Fresh public download",
+    )
+    assert _evidence_table_rows(workflows) == (
+        (
+            "Main validation",
+            "`https://github.com/mtchuang1981/clin-data-nav/actions/runs/31328169760`",
+        ),
+        (
+            "CodeQL",
+            "`https://github.com/mtchuang1981/clin-data-nav/actions/runs/31328168985`",
+        ),
+        (
+            "Guarded Release",
+            "`https://github.com/mtchuang1981/clin-data-nav/actions/runs/31347179873`",
+        ),
+        (
+            "Public Release",
+            "`https://github.com/mtchuang1981/clin-data-nav/releases/tag/v0.4.0`",
+        ),
+    )
+
+    fresh_directory_match = re.search(
+        r"Fresh directory: `(?P<path>C:\\tmp\\clin-data-nav-v0\.4\.0-public-"
+        r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})`",
+        report,
+    )
+    assert fresh_directory_match is not None
+    fresh_directory = fresh_directory_match.group("path")
+    assert normalized.count(fresh_directory) == 1
+    for command in (
+        "gh release download v0.4.0 --repo mtchuang1981/clin-data-nav",
+        "python scripts/verify_release.py artifacts --archive $archive --manifest $manifest",
+        "Get-FileHash -LiteralPath $archive -Algorithm SHA256",
+        "Get-FileHash -LiteralPath $manifest -Algorithm SHA256",
+        "python scripts/check_public_boundary.py $extractDir",
+    ):
+        assert command in normalized
+    assert "The download directory did not exist before creation." in normalized
+    assert "The new directory was empty before download." in normalized
+    assert "The completed download contained exactly two files." in normalized
+    assert "Every recorded verification command exited `0`." in normalized
+
+    assets = _evidence_subsection(
+        report,
+        "## Release asset metadata and independently measured bytes",
+        "## Manifest and ZIP inspection",
+    )
+    assert _evidence_table_rows(assets) == (
+        (
+            "ZIP",
+            "`508116851`",
+            "`clinical-data-research-navigator-0.4.0.zip`",
+            "`18591`",
+            "`18591`",
+            "`sha256:ce6a67a268e4266d094db31406a9c5dda3f005c3b6a5355ec851ea87abf3aded`",
+            "`ce6a67a268e4266d094db31406a9c5dda3f005c3b6a5355ec851ea87abf3aded`",
+        ),
+        (
+            "Manifest",
+            "`508116852`",
+            "`clinical-data-research-navigator-0.4.0.manifest.json`",
+            "`1265`",
+            "`1265`",
+            "`sha256:9fe69bfa0a5fd9f8ce58082c1989316ed5b46683d74176319ba6c1187063a85a`",
+            "`9fe69bfa0a5fd9f8ce58082c1989316ed5b46683d74176319ba6c1187063a85a`",
+        ),
+    )
+
+    for exact_fact in (
+        "Manifest `archive_sha256`: `ce6a67a268e4266d094db31406a9c5dda3f005c3b6a5355ec851ea87abf3aded`.",
+        "The manifest root keys were exactly `archive,archive_sha256,files,name,version`.",
+        "The manifest version was exactly `0.4.0`.",
+        "The manifest archive was exactly `clinical-data-research-navigator-0.4.0.zip`.",
+        "The eight manifest file records were sorted and unique.",
+        "Every file record had exactly `path,sha256,size`.",
+        "ZIP members were unique and exactly matched the manifest paths in order.",
+        "Every ZIP member size and SHA-256 matched its manifest record.",
+        "The independently calculated ZIP SHA-256 equalled the manifest `archive_sha256`.",
+        "Both local sizes and both local SHA-256 values exactly matched the GitHub asset metadata and digests.",
+        "The remote annotated tag was not moved, recreated, or replaced.",
+        "The GitHub Release was not edited, and neither published asset was replaced.",
+        "The Release workflow was not rerun.",
+        "No human pilot was conducted.",
+        "This evidence does not claim that the Skill is effective.",
+    ):
+        assert normalized.count(exact_fact) == 1
+
+
+def test_v040_publication_report_records_exact_public_evidence():
+    report = (
+        ROOT / "docs/verification/2026-08-10-v0.4.0-publication.md"
+    ).read_text(encoding="utf-8")
+    _assert_v040_publication_evidence_contract(report)
+
+
 def test_release_process_requires_a_committed_post_release_evidence_report():
     process = " ".join(
         (ROOT / "docs/release.md").read_text(encoding="utf-8").split()
