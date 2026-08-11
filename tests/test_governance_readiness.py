@@ -1,6 +1,8 @@
 import copy
 import json
 from pathlib import Path
+import subprocess
+import sys
 
 import pytest
 
@@ -16,6 +18,8 @@ SYNTHETIC = (
     ROOT
     / "evals/effectiveness/governance/examples/synthetic-readiness.json"
 )
+CLI = ROOT / "scripts/validate_governance_readiness.py"
+CLI_ERROR = "governance readiness validation failed\n"
 EXPECTED_CONTROL_IDS = (
     "study-owner-role",
     "institutional-path-request",
@@ -34,6 +38,16 @@ EXPECTED_CONTROL_IDS = (
 
 def load_json(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def run_cli(path: Path, option: str = "--input") -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        [sys.executable, str(CLI), option, str(path)],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
 
 
 def test_template_is_valid_incomplete_and_never_authorized():
@@ -189,3 +203,85 @@ def test_summary_rejects_invalid_input():
 
     with pytest.raises(ValueError, match="^invalid governance readiness input$"):
         summarize_governance_readiness(payload)
+
+
+def test_cli_returns_zero_for_review_ready_external_input(tmp_path):
+    path = tmp_path / "governance-readiness.json"
+    path.write_bytes(SYNTHETIC.read_bytes())
+
+    result = run_cli(path)
+
+    assert result.returncode == 0
+    assert json.loads(result.stdout) == {
+        "schema_version": "1",
+        "status": "ready-for-institutional-review",
+        "authorization": "not-authorized-to-recruit",
+        "documented_controls": 12,
+        "required_controls": 12,
+        "missing_control_ids": [],
+    }
+    assert result.stderr == ""
+
+
+def test_cli_returns_three_for_valid_incomplete_external_input(tmp_path):
+    path = tmp_path / "governance-readiness.json"
+    path.write_bytes(TEMPLATE.read_bytes())
+
+    result = run_cli(path)
+    summary = json.loads(result.stdout)
+
+    assert result.returncode == 3
+    assert summary["status"] == "incomplete"
+    assert summary["authorization"] == "not-authorized-to-recruit"
+    assert result.stderr == ""
+
+
+def test_cli_rejects_repository_internal_input_without_disclosure():
+    result = run_cli(SYNTHETIC)
+
+    assert result.returncode == 2
+    assert result.stdout == ""
+    assert result.stderr == CLI_ERROR
+    assert str(SYNTHETIC) not in result.stderr
+
+
+def test_cli_rejects_malformed_json_without_disclosure(tmp_path):
+    path = tmp_path / "private-governance-input.json"
+    marker = "PRIVATE-GOVERNANCE-MARKER-7F31"
+    path.write_text('{"marker": "' + marker, encoding="utf-8")
+
+    result = run_cli(path)
+
+    assert result.returncode == 2
+    assert result.stdout == ""
+    assert result.stderr == CLI_ERROR
+    for hidden in (str(path), marker, "Traceback"):
+        assert hidden not in result.stdout + result.stderr
+
+
+def test_cli_rejects_invalid_schema_without_disclosure(tmp_path):
+    path = tmp_path / "private-governance-input.json"
+    marker = "PRIVATE@GOVERNANCE@MARKER"
+    payload = copy.deepcopy(load_json(SYNTHETIC))
+    payload["controls"][0]["evidence_reference"] = marker
+    path.write_text(json.dumps(payload), encoding="utf-8")
+
+    result = run_cli(path)
+
+    assert result.returncode == 2
+    assert result.stdout == ""
+    assert result.stderr == CLI_ERROR
+    for hidden in (str(path), marker, "Traceback"):
+        assert hidden not in result.stdout + result.stderr
+
+
+def test_cli_rejects_abbreviated_input_option_content_free(tmp_path):
+    path = tmp_path / "governance-readiness.json"
+    path.write_bytes(SYNTHETIC.read_bytes())
+
+    result = run_cli(path, option="--inp")
+
+    assert result.returncode == 2
+    assert result.stdout == ""
+    assert result.stderr == CLI_ERROR
+    assert str(path) not in result.stderr
