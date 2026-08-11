@@ -2,6 +2,8 @@ import copy
 from decimal import Decimal
 import json
 from pathlib import Path
+import subprocess
+import sys
 
 import pytest
 
@@ -30,10 +32,53 @@ from tests.effectiveness_fixtures import (
 ROOT = Path(__file__).resolve().parents[1]
 TEMPLATE = ROOT / "evals/effectiveness/recovery/recovery-template.json"
 SYNTHETIC = ROOT / "evals/effectiveness/recovery/examples/synthetic-recovery.json"
+CLI = ROOT / "scripts/validate_effectiveness_recovery.py"
+CLI_ERROR = "effectiveness recovery validation failed\n"
 
 
 def load_json(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def write_json(path: Path, payload: object) -> None:
+    path.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+
+
+def run_recovery_cli(*args: object) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        [sys.executable, str(CLI), *(str(arg) for arg in args)],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+
+def canonical_stdout(payload: dict) -> str:
+    return json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
+
+
+def write_green_cli_inputs(tmp_path: Path) -> tuple[dict[str, Path], tuple]:
+    tmp_path.mkdir(parents=True, exist_ok=True)
+    record, manifest, scores, lock, key, raw_scores, summary = green_gate_inputs()
+    payloads = {
+        "recovery_record": record,
+        "study_manifest": manifest,
+        "ratings_lock": lock,
+        "condition_key": key,
+        "aggregate_summary": summary,
+    }
+    paths = {
+        name: tmp_path / f"{name.replace('_', '-')}.json" for name in payloads
+    }
+    paths["scores"] = tmp_path / "scores.json"
+    for name, payload in payloads.items():
+        write_json(paths[name], payload)
+    paths["scores"].write_bytes(raw_scores)
+    return paths, (record, manifest, scores, lock, key, raw_scores, summary)
 
 
 def invalid_errors(payload: object) -> list[str]:
@@ -794,3 +839,348 @@ def test_green_status_blocks_each_prohibited_finding_despite_favorable_effect(
 
     assert_not_green(result)
     assert "replacement-integrity-findings" in result["blocked_gate_ids"]
+
+
+def assert_cli_status(
+    result: subprocess.CompletedProcess[str], exit_code: int, status: str
+) -> dict:
+    assert result.returncode == exit_code
+    assert result.stderr == ""
+    payload = json.loads(result.stdout)
+    assert result.stdout == canonical_stdout(payload)
+    assert set(payload) == {
+        "schema_version",
+        "status",
+        "passed_gate_ids",
+        "blocked_gate_ids",
+        "synthetic_example",
+    }
+    assert payload["status"] == status
+    return payload
+
+
+def test_cli_restart_check_accepts_only_the_recovery_record(tmp_path):
+    paths, _ = write_green_cli_inputs(tmp_path)
+
+    result = run_recovery_cli(
+        "restart-check", "--recovery-record", paths["recovery_record"]
+    )
+
+    payload = assert_cli_status(result, 0, "authorized-for-fresh-batch")
+    assert payload["blocked_gate_ids"] == []
+
+
+def test_cli_collection_check_binds_the_external_manifest(tmp_path):
+    paths, _ = write_green_cli_inputs(tmp_path)
+
+    result = run_recovery_cli(
+        "collection-check",
+        "--recovery-record",
+        paths["recovery_record"],
+        "--study-manifest",
+        paths["study_manifest"],
+    )
+
+    payload = assert_cli_status(result, 0, "ready-for-blinded-rating")
+    assert payload["blocked_gate_ids"] == []
+
+
+def test_cli_rating_check_uses_the_exact_locked_score_bytes(tmp_path):
+    paths, _ = write_green_cli_inputs(tmp_path)
+
+    result = run_recovery_cli(
+        "rating-check",
+        "--recovery-record",
+        paths["recovery_record"],
+        "--study-manifest",
+        paths["study_manifest"],
+        "--scores",
+        paths["scores"],
+        "--ratings-lock",
+        paths["ratings_lock"],
+    )
+
+    payload = assert_cli_status(result, 0, "eligible-for-locked-unlock")
+    assert payload["blocked_gate_ids"] == []
+
+
+def test_cli_green_check_is_canonical_and_does_not_mutate_any_input(tmp_path):
+    paths, _ = write_green_cli_inputs(tmp_path)
+    before = {name: path.read_bytes() for name, path in paths.items()}
+
+    result = run_recovery_cli(
+        "green-check",
+        "--recovery-record",
+        paths["recovery_record"],
+        "--study-manifest",
+        paths["study_manifest"],
+        "--scores",
+        paths["scores"],
+        "--ratings-lock",
+        paths["ratings_lock"],
+        "--condition-key",
+        paths["condition_key"],
+        "--aggregate-summary",
+        paths["aggregate_summary"],
+        "--unlock-after-ratings-lock",
+    )
+
+    payload = assert_cli_status(result, 0, "evaluation-green")
+    assert payload["blocked_gate_ids"] == []
+    assert {name: path.read_bytes() for name, path in paths.items()} == before
+
+
+def test_cli_returns_exit_3_for_each_valid_incomplete_or_blocked_stage(tmp_path):
+    paths, inputs = write_green_cli_inputs(tmp_path)
+    record, _, scores, _, _, _, _ = inputs
+
+    open_record = load_json(TEMPLATE)
+    write_json(paths["recovery_record"], open_record)
+    restart = run_recovery_cli(
+        "restart-check", "--recovery-record", paths["recovery_record"]
+    )
+    assert_cli_status(restart, 3, "blocked-incident-open")
+
+    record["environment_change_detected"] = True
+    write_json(paths["recovery_record"], record)
+    collection = run_recovery_cli(
+        "collection-check",
+        "--recovery-record",
+        paths["recovery_record"],
+        "--study-manifest",
+        paths["study_manifest"],
+    )
+    assert_cli_status(collection, 3, "authorized-for-fresh-batch")
+
+    record["environment_change_detected"] = False
+    add_disagreements(scores, [("R2", {"success": False})] * 13)
+    lock, raw_scores = refresh_lock(scores)
+    write_json(paths["recovery_record"], record)
+    paths["scores"].write_bytes(raw_scores)
+    write_json(paths["ratings_lock"], lock)
+    rating = run_recovery_cli(
+        "rating-check",
+        "--recovery-record",
+        paths["recovery_record"],
+        "--study-manifest",
+        paths["study_manifest"],
+        "--scores",
+        paths["scores"],
+        "--ratings-lock",
+        paths["ratings_lock"],
+    )
+    assert_cli_status(rating, 3, "ready-for-blinded-rating")
+
+    paths, inputs = write_green_cli_inputs(tmp_path / "synthetic-green")
+    record = inputs[0]
+    record["synthetic_example"] = True
+    write_json(paths["recovery_record"], record)
+    green = run_recovery_cli(
+        "green-check",
+        "--recovery-record",
+        paths["recovery_record"],
+        "--study-manifest",
+        paths["study_manifest"],
+        "--scores",
+        paths["scores"],
+        "--ratings-lock",
+        paths["ratings_lock"],
+        "--condition-key",
+        paths["condition_key"],
+        "--aggregate-summary",
+        paths["aggregate_summary"],
+        "--unlock-after-ratings-lock",
+    )
+    assert_cli_status(green, 3, "eligible-for-locked-unlock")
+
+
+def test_cli_rejects_repository_internal_paths_without_reading_them():
+    result = run_recovery_cli(
+        "restart-check", "--recovery-record", SYNTHETIC
+    )
+
+    assert result.returncode == 2
+    assert result.stdout == ""
+    assert result.stderr == CLI_ERROR
+
+
+def test_cli_rejects_malformed_json_without_disclosing_content(tmp_path):
+    marker = "SENSITIVE-MALFORMED-RECOVERY-MARKER"
+    record_path = tmp_path / "recovery.json"
+    record_path.write_text(f'{{"marker":"{marker}"', encoding="utf-8")
+
+    result = run_recovery_cli(
+        "restart-check", "--recovery-record", record_path
+    )
+
+    assert result.returncode == 2
+    assert result.stdout == ""
+    assert result.stderr == CLI_ERROR
+    assert marker not in result.stdout + result.stderr
+
+
+def test_cli_rejects_abbreviated_flags_with_the_fixed_error(tmp_path):
+    paths, _ = write_green_cli_inputs(tmp_path)
+
+    result = run_recovery_cli(
+        "restart-check", "--recovery-rec", paths["recovery_record"]
+    )
+
+    assert result.returncode == 2
+    assert result.stdout == ""
+    assert result.stderr == CLI_ERROR
+
+
+def test_cli_green_check_requires_the_literal_unlock_flag(tmp_path):
+    paths, _ = write_green_cli_inputs(tmp_path)
+
+    result = run_recovery_cli(
+        "green-check",
+        "--recovery-record",
+        paths["recovery_record"],
+        "--study-manifest",
+        paths["study_manifest"],
+        "--scores",
+        paths["scores"],
+        "--ratings-lock",
+        paths["ratings_lock"],
+        "--condition-key",
+        paths["condition_key"],
+        "--aggregate-summary",
+        paths["aggregate_summary"],
+    )
+
+    assert result.returncode == 2
+    assert result.stdout == ""
+    assert result.stderr == CLI_ERROR
+
+
+def test_cli_rejects_hardlink_aliases_between_aggregate_and_raw_inputs(tmp_path):
+    paths, _ = write_green_cli_inputs(tmp_path)
+    aggregate_alias = tmp_path / "aggregate-alias.json"
+    aggregate_alias.hardlink_to(paths["scores"])
+
+    result = run_recovery_cli(
+        "green-check",
+        "--recovery-record",
+        paths["recovery_record"],
+        "--study-manifest",
+        paths["study_manifest"],
+        "--scores",
+        paths["scores"],
+        "--ratings-lock",
+        paths["ratings_lock"],
+        "--condition-key",
+        paths["condition_key"],
+        "--aggregate-summary",
+        aggregate_alias,
+        "--unlock-after-ratings-lock",
+    )
+
+    assert result.returncode == 2
+    assert result.stdout == ""
+    assert result.stderr == CLI_ERROR
+
+
+def test_cli_rating_check_treats_an_incomplete_lock_as_valid_but_blocked(tmp_path):
+    paths, inputs = write_green_cli_inputs(tmp_path)
+    lock = inputs[3]
+    lock["ratings_complete"] = False
+    write_json(paths["ratings_lock"], lock)
+
+    result = run_recovery_cli(
+        "rating-check",
+        "--recovery-record",
+        paths["recovery_record"],
+        "--study-manifest",
+        paths["study_manifest"],
+        "--scores",
+        paths["scores"],
+        "--ratings-lock",
+        paths["ratings_lock"],
+    )
+
+    payload = assert_cli_status(result, 3, "ready-for-blinded-rating")
+    assert payload["blocked_gate_ids"][-1] == "ratings-lock-and-blinded-inputs"
+
+
+def test_cli_rejects_score_lock_mismatch_without_dynamic_text(tmp_path):
+    paths, _ = write_green_cli_inputs(tmp_path)
+    paths["scores"].write_bytes(paths["scores"].read_bytes() + b" ")
+
+    result = run_recovery_cli(
+        "rating-check",
+        "--recovery-record",
+        paths["recovery_record"],
+        "--study-manifest",
+        paths["study_manifest"],
+        "--scores",
+        paths["scores"],
+        "--ratings-lock",
+        paths["ratings_lock"],
+    )
+
+    assert result.returncode == 2
+    assert result.stdout == ""
+    assert result.stderr == CLI_ERROR
+
+
+def test_cli_rejects_recovery_manifest_cross_file_mismatch(tmp_path):
+    paths, inputs = write_green_cli_inputs(tmp_path)
+    marker = "SENSITIVE-MISMATCHED-STUDY"
+    record = inputs[0]
+    record["replacement_study_id"] = marker
+    write_json(paths["recovery_record"], record)
+
+    result = run_recovery_cli(
+        "collection-check",
+        "--recovery-record",
+        paths["recovery_record"],
+        "--study-manifest",
+        paths["study_manifest"],
+    )
+
+    assert result.returncode == 2
+    assert result.stdout == ""
+    assert result.stderr == CLI_ERROR
+    assert marker not in result.stdout + result.stderr
+
+
+@pytest.mark.parametrize(
+    ("target", "payload"),
+    (
+        ("recovery_record", {"marker": "SENSITIVE-INVALID-RECORD"}),
+        ("study_manifest", {"marker": "SENSITIVE-INVALID-MANIFEST"}),
+        ("scores", {"marker": "SENSITIVE-INVALID-SCORES"}),
+        ("condition_key", {"marker": "SENSITIVE-INVALID-KEY"}),
+        ("ratings_lock", {"marker": "SENSITIVE-INVALID-LOCK"}),
+        ("aggregate_summary", {"marker": "SENSITIVE-STALE-SUMMARY"}),
+    ),
+)
+def test_cli_rejects_schema_and_cross_file_failures_without_dynamic_text(
+    tmp_path, target, payload
+):
+    paths, _ = write_green_cli_inputs(tmp_path)
+    write_json(paths[target], payload)
+
+    result = run_recovery_cli(
+        "green-check",
+        "--recovery-record",
+        paths["recovery_record"],
+        "--study-manifest",
+        paths["study_manifest"],
+        "--scores",
+        paths["scores"],
+        "--ratings-lock",
+        paths["ratings_lock"],
+        "--condition-key",
+        paths["condition_key"],
+        "--aggregate-summary",
+        paths["aggregate_summary"],
+        "--unlock-after-ratings-lock",
+    )
+
+    assert result.returncode == 2
+    assert result.stdout == ""
+    assert result.stderr == CLI_ERROR
+    assert payload["marker"] not in result.stdout + result.stderr
