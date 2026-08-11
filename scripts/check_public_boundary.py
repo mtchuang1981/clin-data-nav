@@ -26,7 +26,10 @@ PRIVATE_NAMES = {
     "tmucrd-v2.16-guide.md",
 }
 PRIVATE_PARTS = ("codingbook", "codebook", "dictionary.txt")
-PRIVATE_STUDY_ROOTS = {Path("study-data")}
+PRIVATE_STUDY_ROOTS = {
+    Path("study-data"),
+    Path("study-governance"),
+}
 PRIVATE_EFFECTIVENESS_PARTS = {"raw", "private", "participant-data"}
 SECRET_PATTERNS = (
     re.compile(r"(?i)\b(api[_-]?key|token|password)\b\s*[:=]\s*['\"][^'\"]{12,}"),

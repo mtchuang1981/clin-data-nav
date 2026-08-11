@@ -13,6 +13,7 @@ __pycache__/
 *.pyc
 .worktrees/
 study-data/
+study-governance/
 evals/effectiveness/raw/
 evals/effectiveness/private/
 evals/effectiveness/participant-data/

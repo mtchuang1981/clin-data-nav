@@ -246,6 +246,7 @@ def test_scanner_returns_findings_in_path_and_rule_order(tmp_path):
     "relative_path",
     [
         "study-data/participants.json",
+        "study-governance/readiness.json",
         "evals/effectiveness/raw/answers.json",
         "evals/effectiveness/private/condition-key.json",
         "evals/effectiveness/participant-data/scores.json",
@@ -273,6 +274,26 @@ def test_scanner_does_not_print_private_study_payload(tmp_path):
 
     assert finding.detail == "human-study raw data is not permitted in the public project"
     assert payload not in finding.detail
+
+
+def test_scanner_does_not_read_or_print_governance_payload(tmp_path):
+    marker = "PRIVATE-GOVERNANCE-MARKER-7F31"
+    path = tmp_path / "study-governance/readiness.json"
+    path.parent.mkdir()
+    path.write_text(marker, encoding="utf-8")
+
+    finding = scan_repository(tmp_path)[0]
+
+    assert (finding.path, finding.rule) == (
+        "study-governance/readiness.json",
+        "private-study-data",
+    )
+    assert marker not in finding.detail
+
+
+def test_gitignore_keeps_study_governance_out_of_the_checkout():
+    lines = (ROOT / ".gitignore").read_text(encoding="utf-8").splitlines()
+    assert "study-governance/" in lines
 
 
 def test_public_profile_has_required_public_source_guards():
