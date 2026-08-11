@@ -473,7 +473,7 @@ git commit -m "docs: add clin-nav migration guidance"
 
 ---
 
-### Task 5: Verify Skill Behavior, Artifacts, and Isolated Installation
+### Task 5: Verify Skill Behavior, Artifacts, and Isolated Local Installation
 
 **Files:**
 - No tracked production changes expected
@@ -527,13 +527,17 @@ every ZIP member's size and SHA-256, require exact member order, and run the
 public-boundary scanner against a fresh extraction. Record both artifact
 SHA-256 values; do not commit `dist/`.
 
-- [ ] **Step 5: Perform an isolated `npx skills` smoke test**
+- [ ] **Step 5: Perform an isolated local-source `npx skills` smoke test**
 
 Create an empty temporary project outside the checkout. Run
-`npx skills add mtchuang1981/clin-data-nav` there, require discovery of exactly
-one Skill named `clin-nav`, verify its `SKILL.md` frontmatter and
-`agents/openai.yaml`, then remove only the temporary project after resolving
-and checking its absolute path. The repository checkout must remain clean.
+`npx skills add <absolute-candidate-worktree-path>` there using the CLI's
+non-interactive project-local options, require discovery of exactly one Skill
+named `clin-nav`, verify its `SKILL.md` frontmatter and `agents/openai.yaml`,
+then remove only the temporary project after resolving and checking its absolute
+path. The repository checkout must remain clean. Do not run the GitHub-source
+command before push because remote `main` still contains the previous Skill;
+`npx skills add mtchuang1981/clin-data-nav` becomes a separate post-push check
+only after explicit push authorization.
 
 - [ ] **Step 6: Final review and handoff**
 

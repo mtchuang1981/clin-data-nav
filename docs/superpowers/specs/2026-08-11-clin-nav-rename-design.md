@@ -164,8 +164,10 @@ python scripts/package_skill.py --check-reproducible
 It must also run the bilingual render checks, `git diff --check`, review the
 complete diff, build the new artifacts from a clean output directory, validate
 the manifest and every ZIP member independently, and perform an isolated
-`npx skills add mtchuang1981/clin-data-nav` smoke test without modifying the
-repository checkout.
+local-source `npx skills add` smoke test against the candidate worktree without
+modifying the repository checkout. The GitHub-source command
+`npx skills add mtchuang1981/clin-data-nav` is verified only after an authorized
+push makes the candidate commit reachable from remote `main`.
 
 ## 10. Failure handling
 
