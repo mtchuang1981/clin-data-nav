@@ -595,14 +595,19 @@ git commit -m "docs: add effectiveness recovery guidance"
 
 ---
 
-### Task 7: Complete Dual-Runtime Verification and Report the Real Remaining Gate
+#### Phase 2: Complete Dual-Runtime Verification and Report the Real Remaining Gate
+
+This phase belongs to Task 6 and is included in the same task brief, report, and
+review package. It produces verification evidence rather than a separate code
+commit.
 
 **Files:**
 - No tracked production changes expected
 - Ignored evidence: `.superpowers/sdd/2026-08-11-effectiveness-incident-recovery/`
 
 **Interfaces:**
-- Consumes: Tasks 1–6 and the completed `clin-nav` plan.
+- Consumes: Tasks 1–5, the Task 6 documentation and boundary implementation,
+  and the completed `clin-nav` plan.
 - Produces: verified green-capable software and an explicit status that real `evaluation-green` remains blocked until valid external replacement-pilot evidence exists.
 
 - [ ] **Step 1: Run the synthetic end-to-end recovery path**

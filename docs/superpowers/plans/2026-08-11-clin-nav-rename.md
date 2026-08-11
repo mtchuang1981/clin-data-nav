@@ -35,7 +35,15 @@
 
 ---
 
-### Task 1: Establish the Rename Contract and RED Evidence
+### Task 1: Complete the Atomic ClinNav Identity Cutover
+
+This is one SDD review unit. Phases 1–5 below may create multiple intentional
+commits, but no phase is dispatched or reviewed independently because moving
+the Skill directory temporarily invalidates every old path, package constant,
+and active link. The task is complete only after Phase 5 restores the full suite
+and every required gate to green.
+
+#### Phase 1: Establish the Rename Contract and RED Evidence
 
 **Files:**
 - Create: `tests/test_skill_rename.py`
@@ -145,11 +153,11 @@ test passes.
 - [ ] **Step 4: Confirm no production file changed**
 
 Run `git status --short` and confirm only `tests/test_skill_rename.py` is new.
-Do not commit RED alone; Task 2 provides the atomic identity cutover.
+Do not commit RED alone; continue directly to Phase 2 in this same task.
 
 ---
 
-### Task 2: Perform the Atomic Skill Identity Cutover
+#### Phase 2: Perform the Atomic Skill Identity Cutover
 
 **Files:**
 - Move: `skills/clinical-data-research-navigator/` → `skills/clin-nav/`
@@ -273,7 +281,7 @@ git commit -m "refactor: rename public skill to clin-nav"
 
 ---
 
-### Task 3: Synchronize Versioned Packaging and Local Installation
+#### Phase 3: Synchronize Versioned Packaging and Local Installation
 
 **Files:**
 - Modify: `pyproject.toml`
@@ -286,7 +294,7 @@ git commit -m "refactor: rename public skill to clin-nav"
 - Modify: `tests/test_project_metadata.py`
 
 **Interfaces:**
-- Consumes: canonical `skills/clin-nav/` from Task 2.
+- Consumes: canonical `skills/clin-nav/` from Phase 2.
 - Produces: `SKILL_NAME = "clin-nav"`, `PACKAGE_VERSION = "0.5.0"`, safe install target `clin-nav`, and deterministic 0.5.0 artifact names.
 
 - [ ] **Step 1: Add failing package synchronization assertions**
@@ -361,7 +369,7 @@ git commit -m "build: package clin-nav 0.5.0"
 
 ---
 
-### Task 4: Add Migration Guidance and Prepare the 0.5.0 Release Contract
+#### Phase 4: Add Migration Guidance and Prepare the 0.5.0 Release Contract
 
 **Files:**
 - Modify: `README.md`
@@ -378,7 +386,7 @@ git commit -m "build: package clin-nav 0.5.0"
 - Test: `tests/test_skill_rename.py`
 
 **Interfaces:**
-- Consumes: the 0.5.0 package identity from Task 3.
+- Consumes: the 0.5.0 package identity from Phase 3.
 - Produces: aligned bilingual migration instructions, static 0.5.0 candidate notes, and a release workflow that builds only `clin-nav-0.5.0` when a future annotated v0.5.0 tag is authorized.
 
 - [ ] **Step 1: Add failing migration and workflow contracts**
@@ -473,7 +481,7 @@ git commit -m "docs: add clin-nav migration guidance"
 
 ---
 
-### Task 5: Verify Skill Behavior, Artifacts, and Isolated Local Installation
+#### Phase 5: Verify Skill Behavior, Artifacts, and Isolated Local Installation
 
 **Files:**
 - No tracked production changes expected
@@ -481,7 +489,7 @@ git commit -m "docs: add clin-nav migration guidance"
 - Generated and untracked: `dist/clin-nav-0.5.0.zip`, `dist/clin-nav-0.5.0.manifest.json`
 
 **Interfaces:**
-- Consumes: Tasks 1–4 candidate tree.
+- Consumes: the candidate tree produced by Phases 1–4.
 - Produces: final behavioral, package, cross-runtime, and isolated-install evidence; no publication.
 
 - [ ] **Step 1: Run the renamed Skill application scenario**
