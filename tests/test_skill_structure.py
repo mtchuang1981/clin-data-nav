@@ -8,7 +8,7 @@ from scripts.package_skill import build_package
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SKILL_DIR = ROOT / "skills/clinical-data-research-navigator"
+SKILL_DIR = ROOT / "skills/clin-nav"
 
 
 def write_valid_skill(skill: Path) -> None:
@@ -27,7 +27,7 @@ def write_valid_skill(skill: Path) -> None:
         "interface:\n"
         '  display_name: "Clinical Data Research Navigator"\n'
         '  short_description: "A valid test description"\n'
-        '  default_prompt: "Use $clinical-data-research-navigator for a clinical-data question."\n',
+        f'  default_prompt: "Use ${skill.name} for a clinical-data question."\n',
         encoding="utf-8",
     )
 
@@ -186,7 +186,7 @@ def test_validator_rejects_mismatched_display_name(tmp_path):
         "interface:\n"
         '  display_name: "Incorrect Name"\n'
         '  short_description: "A valid test description"\n'
-        '  default_prompt: "Use $clinical-data-research-navigator for a clinical-data question."\n',
+        '  default_prompt: "Use $bad-skill for a clinical-data question."\n',
         encoding="utf-8",
     )
     assert "display name mismatch" in validate_skill(skill)
@@ -202,7 +202,7 @@ def test_validator_requires_skill_invocation_in_default_prompt(tmp_path):
         '  default_prompt: "Use this skill for a clinical-data question."\n',
         encoding="utf-8",
     )
-    assert "default prompt must mention $clinical-data-research-navigator" in validate_skill(skill)
+    assert "default prompt must mention $bad-skill" in validate_skill(skill)
 
 
 def test_validator_accepts_a_single_short_default_prompt(tmp_path):
@@ -219,7 +219,7 @@ def test_validator_rejects_a_multi_sentence_default_prompt(tmp_path):
         "interface:\n"
         '  display_name: "Clinical Data Research Navigator"\n'
         '  short_description: "A valid test description"\n'
-        '  default_prompt: "Use $clinical-data-research-navigator for a clinical-data question. Then continue."\n',
+        '  default_prompt: "Use $bad-skill for a clinical-data question. Then continue."\n',
         encoding="utf-8",
     )
 
@@ -232,7 +232,7 @@ def test_validator_rejects_a_multi_sentence_default_prompt(tmp_path):
 def test_validator_rejects_an_overlong_default_prompt(tmp_path):
     skill = tmp_path / "bad-skill"
     write_valid_skill(skill)
-    prefix = "Use $clinical-data-research-navigator for a clinical-data question "
+    prefix = "Use $bad-skill for a clinical-data question "
     default_prompt = prefix + "x" * (201 - len(prefix) - 1) + "."
     (skill / "agents/openai.yaml").write_text(
         "interface:\n"
@@ -250,7 +250,7 @@ def test_validator_rejects_an_overlong_default_prompt(tmp_path):
 def test_validator_accepts_an_exactly_200_code_point_default_prompt(tmp_path):
     skill = tmp_path / "valid-skill"
     write_valid_skill(skill)
-    prefix = "Use $clinical-data-research-navigator for a clinical-data question "
+    prefix = "Use $valid-skill for a clinical-data question "
     default_prompt = prefix + "x" * (200 - len(prefix) - 1) + "."
     assert len(default_prompt) == 200
     (skill / "agents/openai.yaml").write_text(

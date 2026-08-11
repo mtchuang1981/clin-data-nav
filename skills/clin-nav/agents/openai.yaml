@@ -1,0 +1,4 @@
+interface:
+  display_name: "ClinNav"
+  short_description: "Navigate clinical-data standards, evidence, and implementation contracts"
+  default_prompt: "Use $clin-nav for a clinical-data question and choose the appropriate output depth."

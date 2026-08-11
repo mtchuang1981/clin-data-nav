@@ -27,7 +27,7 @@
 **接著閱讀：** 查看[詞彙表中的 CDISC、SDTM 與
 ADaM](./glossary.zh-TW.md#cdisc)、[安裝指南](./installation.zh-TW.md)、合成資料
 的 [TEAE-to-SAS 範例](../examples/teae-to-sas-spec.md)，以及 Skill 的[輸出深度
-指南](../skills/clinical-data-research-navigator/references/output-depths-and-learning-paths.md)。
+指南](../skills/clin-nav/references/output-depths-and-learning-paths.md)。
 
 **停止或升級條件：** 名詞與限制已足以回答問題時即可停止。要選擇版本或提交
 規則前，應升級為證據導覽；只有需要對應或衍生規格時，才升級為實作規格。
@@ -57,7 +57,7 @@ ADaM](./glossary.zh-TW.md#cdisc)、[安裝指南](./installation.zh-TW.md)、合
 與 phenotype](./glossary.zh-TW.md#rwd)、[安裝指南](./installation.zh-TW.md)、
 合成資料的 [OMOP phenotype 範例](../examples/omop-phenotype-to-sql-spec.md)，
 以及 Skill 的 [RWE 問題路由
-參考](../skills/clinical-data-research-navigator/references/rwe-question-routing.md)。
+參考](../skills/clin-nav/references/rwe-question-routing.md)。
 
 **停止或升級條件：** 如果任務只需尋找或比較來源，完成證據導覽即可停止；
 需要明確界定研究問題時，再升級為研究設計。混雜、測量、資料來源或驗證缺口尚未
@@ -85,8 +85,8 @@ ADaM](./glossary.zh-TW.md#cdisc)、[安裝指南](./installation.zh-TW.md)、合
 **接著閱讀：** 查看[詞彙表中的資料契約、governing artifact、SAS 與驗證
 缺口](./glossary.zh-TW.md#data-contract)、[安裝指南](./installation.zh-TW.md)、
 合成資料的[機構對應範例](../examples/synthetic-institutional-mapping.md)、Skill 的
-[Adapter 契約](../skills/clinical-data-research-navigator/references/institutional-adapter-contract.md)，
-以及[實作輸出範本](../skills/clinical-data-research-navigator/references/evidence-output-template.md#implementation-specification)。
+[Adapter 契約](../skills/clin-nav/references/institutional-adapter-contract.md)，
+以及[實作輸出範本](../skills/clin-nav/references/evidence-output-template.md#implementation-specification)。
 
 **停止或升級條件：** 執行閘門未完備時，應停在邏輯規格。只有在取得授權，
 且確實需要現行詮釋資料或 fixture 時，才透過核准的私有流程升級處理；不得把

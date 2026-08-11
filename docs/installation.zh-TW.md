@@ -35,13 +35,13 @@ npx skills add mtchuang1981/clin-data-nav
 這個指令會把 Skill 安裝到目前專案的 `.agents/skills`。第三方 Skill 會使用
 代理程式的權限執行，使用前請先審閱內容。
 
-`/skills` 與 `$clinical-data-research-navigator` 要輸入在 Codex 對話中，
+`/skills` 與 `$clin-nav` 要輸入在 Codex 對話中，
 不是終端機指令。先用 `/skills` 確認已找到 Skill，再明確叫用。若實作輸入
 不完整，回覆應先做問題釐清並提供缺少資訊清單，不得臆造 schema 或上線
 程式碼。
 
 在 Codex CLI 或 IDE 擴充功能中，請用 `/skills` 確認是否已找到 Skill，再用
-`$clinical-data-research-navigator` 明確叫用。ChatGPT 桌面版採用另一套安裝
+`$clin-nav` 明確叫用。ChatGPT 桌面版採用另一套安裝
 介面：請依 **Plugins → Skills → Create → Upload from computer** 開啟 `Skills`
 並從電腦上傳。介面可能不同，且會受方案、工作區權限或分批推出影響；只有在
 方案與工作區允許上傳時才繼續。請
@@ -161,7 +161,7 @@ registry 與 GitHub 存取問題。處理：修正已辨識的原因後，回到
 ### 安裝後找不到 Skill 或無法啟用
 
 診斷：確認目前位於相同的專案根目錄，並檢查
-`.agents/skills/clinical-data-research-navigator/SKILL.md` 是否存在，再查看
+`.agents/skills/clin-nav/SKILL.md` 是否存在，再查看
 `/skills`。處理：開啟預定專案，重新啟動 Codex 一次後再查 `/skills`；尚未
 查清實際安裝位置前，不要移動目錄。
 

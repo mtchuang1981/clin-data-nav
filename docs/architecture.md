@@ -3,7 +3,7 @@
 ## Source repository and installed Skill
 
 The source repository is the governance and development surface. It contains
-the installable source at `skills/clinical-data-research-navigator/`, validation
+the installable source at `skills/clin-nav/`, validation
 scripts, tests, documentation, and packaging tools. Packaging produces a
 minimal ZIP; installation expands that ZIP into a user-selected destination as
 the installed Skill. Repository tests can run against the source Skill without

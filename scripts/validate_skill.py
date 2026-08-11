@@ -93,7 +93,14 @@ def validate_skill(skill_dir: Path) -> list[str]:
     )
     if not isinstance(interface, dict):
         interface = {}
-    if interface.get("display_name") != "Clinical Data Research Navigator":
+    expected_name = skill_dir.name
+    expected_display_name = (
+        "ClinNav"
+        if expected_name == "clin-nav"
+        else "Clinical Data Research Navigator"
+    )
+    expected_invocation = f"${expected_name}"
+    if interface.get("display_name") != expected_display_name:
         errors.append("display name mismatch")
     if not isinstance(interface.get("short_description"), str) or not interface[
         "short_description"
@@ -102,12 +109,8 @@ def validate_skill(skill_dir: Path) -> list[str]:
     default_prompt = interface.get("default_prompt")
     if not isinstance(default_prompt, str) or "clinical-data" not in default_prompt:
         errors.append("default prompt must contain clinical-data")
-    if not isinstance(default_prompt, str) or (
-        "$clinical-data-research-navigator" not in default_prompt
-    ):
-        errors.append(
-            "default prompt must mention $clinical-data-research-navigator"
-        )
+    if not isinstance(default_prompt, str) or expected_invocation not in default_prompt:
+        errors.append(f"default prompt must mention {expected_invocation}")
     if isinstance(default_prompt, str) and len(default_prompt) > 200:
         errors.append("default prompt must not exceed 200 Unicode code points")
     if (
@@ -124,6 +127,6 @@ def validate_skill(skill_dir: Path) -> list[str]:
 
 if __name__ == "__main__":
     root = Path(__file__).resolve().parents[1]
-    failures = validate_skill(root / "skills/clinical-data-research-navigator")
+    failures = validate_skill(root / "skills/clin-nav")
     if failures:
         raise SystemExit("\n".join(failures))

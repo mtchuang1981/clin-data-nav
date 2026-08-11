@@ -116,7 +116,7 @@ definition](https://ohdsi.github.io/TheBookOfOhdsi/Cohorts.html)描述要辨識�
 <a id="data-contract"></a>
 ## 資料契約（data contract）
 
-在本專案中，[資料契約](../skills/clinical-data-research-navigator/references/evidence-output-template.md#implementation-specification)
+在本專案中，[資料契約](../skills/clin-nav/references/evidence-output-template.md#implementation-specification)
 是實作必須符合的邏輯約定，包括資料粒度、鍵值、連結、涵蓋範圍、型別、時間
 錨點、術語、遺漏值、優先順序、資料沿襲及驗收 fixture。它說明需要哪些條件，
 但不會臆造機構的實體資料表或欄位名稱。
@@ -153,7 +153,7 @@ Adapter 是經核准且具版本控管的私有契約，用來把邏輯角色對
 ## 主導依據（governing artifact）
 
 [Governing
-artifact](../skills/clinical-data-research-navigator/references/retrieval-playbook.md)
+artifact](../skills/clin-nav/references/retrieval-playbook.md)
 是在特定情境下主導一項決策，且目前有效的最高權威來源，例如適用標準、主管
 機關指引、試驗計畫書、SAP 或經核准的機構詮釋資料。搜尋結果、教學文章或
 舊版實作論文可作為找資料的線索，但不能逕自推翻主導依據。引用時要記錄文件
@@ -203,7 +203,7 @@ Time zero 是讓納入資格、治療或暴露分派與追蹤起點對齊的明�
 <a id="validation-gap"></a>
 ## 驗證缺口（validation gap）
 
-[驗證缺口](../skills/clinical-data-research-navigator/references/evidence-output-template.md#implementation-specification)
+[驗證缺口](../skills/clin-nav/references/evidence-output-template.md#implementation-specification)
 是尚缺的來源、決策、詮釋資料、檢查或驗收結果；在補齊之前，不能提高主張
 強度或程式成熟度。列出缺口不等於證明工作無效，而是明確交代哪些事項尚未
 驗證，以及需要什麼證據才能補上。

@@ -38,14 +38,14 @@ Review third-party Skills before use because they run with your agent's
 permissions.
 
 `/skills` and
-`$clinical-data-research-navigator` are entered in
+`$clin-nav` are entered in
 Codex; they are not terminal commands. Use `/skills` to confirm discovery,
 then invoke the Skill explicitly. A request with incomplete implementation
 inputs should receive question clarification and a missing-information list,
 not invented schema or production code.
 
 In Codex CLI or the IDE extension, use `/skills` for discovery and
-`$clinical-data-research-navigator` for explicit invocation. The ChatGPT
+`$clin-nav` for explicit invocation. The ChatGPT
 desktop app has a separate installation surface: open `Skills` through
 **Plugins → Skills → Create → Upload from computer**. This interface may vary
 by plan, workspace permissions, or rollout; continue only when your plan and
@@ -170,7 +170,7 @@ command from the intended project root; do not switch to an unverified ZIP.
 ### The installed Skill is not discovered or activation fails
 
 Diagnosis: confirm you are in the same project root, verify
-`.agents/skills/clinical-data-research-navigator/SKILL.md` exists, and check
+`.agents/skills/clin-nav/SKILL.md` exists, and check
 `/skills`. Recovery: open the intended project, restart Codex once, and check
 `/skills` again. Do not move the directory until its actual install location
 is understood.

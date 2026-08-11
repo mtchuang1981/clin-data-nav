@@ -1,5 +1,5 @@
 ---
-name: clinical-data-research-navigator
+name: clin-nav
 description: Use when a clinical-data, CDISC, ADaM, SDTM, PICO, RWD, RWE, causal, target-trial, SAS, SQL, R, EHR, claims, registry, OMOP, or TMUCRD question requires source navigation, terminology mapping, evidence ranking, a data contract, study-design routing, or an implementation specification.
 ---
 

@@ -63,7 +63,7 @@ SKIP_DIRECTORIES = {
 SDD_SCRATCH_DIRECTORY = Path(".superpowers/sdd")
 UNRELATED_LOCAL_TOOL_DIRECTORY = ".baoyu-skills"
 LARGE_TEXT_ALLOWLIST = {
-    "skills/clinical-data-research-navigator/references/tmucrd-public-profile.md"
+    "skills/clin-nav/references/tmucrd-public-profile.md"
 }
 SYNTHETIC_EVAL_FIXTURES = {
     "tests/fixtures/baseline/stale-codingbook.md",

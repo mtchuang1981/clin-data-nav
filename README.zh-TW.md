@@ -19,7 +19,7 @@ Node.js 必要條件、更新、驗證 ZIP 安裝與疑難排解，請見[安裝
 請在 Codex 輸入：
 
 ```text
-$clinical-data-research-navigator ADaM 是什麼、為什麼重要，又不能證明哪些來源資料品質？
+$clin-nav ADaM 是什麼、為什麼重要，又不能證明哪些來源資料品質？
 ```
 
 預期第一行：`Output depth: quick explanation`
@@ -60,7 +60,7 @@ OpenAI 官方文件說明，Skill 會封裝操作指引、資源與選用指令�
 | 查詢名詞 | [初學者詞彙表](docs/glossary.zh-TW.md) |
 | 依序學習 | [學習路徑](docs/learning-paths.zh-TW.md) |
 | 合成資料實作範例 | [TEAE 到 SAS](examples/teae-to-sas-spec.md)、[OMOP phenotype 到 SQL 規格](examples/omop-phenotype-to-sql-spec.md)及[機構對應](examples/synthetic-institutional-mapping.md) |
-| 證據輸出與限制 | [證據輸出範本](skills/clinical-data-research-navigator/references/evidence-output-template.md)與[架構說明](docs/architecture.md) |
+| 證據輸出與限制 | [證據輸出範本](skills/clin-nav/references/evidence-output-template.md)與[架構說明](docs/architecture.md) |
 | 產品效果評估框架 | [效果評估](evals/effectiveness/README.md) |
 | 參與貢獻與驗證 | [貢獻指南](CONTRIBUTING.md) |
 | 回報安全性問題 | [安全性說明](SECURITY.md) |

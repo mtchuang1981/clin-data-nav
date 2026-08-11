@@ -8,7 +8,7 @@ from scripts.check_public_boundary import scan_repository
 
 
 ROOT = Path(__file__).resolve().parents[1]
-PROFILE = ROOT / "skills/clinical-data-research-navigator/references/tmucrd-public-profile.md"
+PROFILE = ROOT / "skills/clin-nav/references/tmucrd-public-profile.md"
 
 
 def _initialize_git_repository(root: Path) -> None:
@@ -109,7 +109,7 @@ def test_scanner_rejects_non_allowlisted_data_artifacts(
 def test_scanner_allows_fixed_large_public_profile_path(tmp_path):
     path = (
         tmp_path
-        / "skills/clinical-data-research-navigator/references/tmucrd-public-profile.md"
+        / "skills/clin-nav/references/tmucrd-public-profile.md"
     )
     path.parent.mkdir(parents=True)
     path.write_text("0123456789", encoding="utf-8")

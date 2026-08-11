@@ -31,7 +31,7 @@ mapping, submission readiness, or implementation validity.
 glossary](./glossary.md#cdisc), the [installation guide](./installation.md),
 the synthetic [TEAE-to-SAS example](../examples/teae-to-sas-spec.md), and the
 Skill's [output-depth
-guide](../skills/clinical-data-research-navigator/references/output-depths-and-learning-paths.md).
+guide](../skills/clin-nav/references/output-depths-and-learning-paths.md).
 
 **Stop or escalate when:** Stop when the definitions and limits answer your
 question. Escalate to evidence navigation before choosing a version or
@@ -65,7 +65,7 @@ measurement validity, or a completed analysis.
 phenotype](./glossary.md#rwd), the [installation guide](./installation.md), the
 synthetic [OMOP phenotype example](../examples/omop-phenotype-to-sql-spec.md),
 and the Skill's [RWE question-routing
-reference](../skills/clinical-data-research-navigator/references/rwe-question-routing.md).
+reference](../skills/clin-nav/references/rwe-question-routing.md).
 
 **Stop or escalate when:** Stop after evidence navigation if the task is only
 to find or compare sources. Escalate to research design when a study question
@@ -98,9 +98,9 @@ current, fixtures pass, code is executable, or results are validated.
 validation gap](./glossary.md#data-contract), the [installation
 guide](./installation.md), the synthetic [institutional mapping
 example](../examples/synthetic-institutional-mapping.md), the Skill's
-[Adapter contract](../skills/clinical-data-research-navigator/references/institutional-adapter-contract.md),
+[Adapter contract](../skills/clin-nav/references/institutional-adapter-contract.md),
 and [implementation output
-template](../skills/clinical-data-research-navigator/references/evidence-output-template.md#implementation-specification).
+template](../skills/clin-nav/references/evidence-output-template.md#implementation-specification).
 
 **Stop or escalate when:** Stop at a logical specification whenever the
 execution gate is incomplete. Escalate only through an approved private

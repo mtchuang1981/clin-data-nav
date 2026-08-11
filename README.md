@@ -19,7 +19,7 @@ See the [installation guide](docs/installation.md) for Node.js prerequisites, up
 Enter this prompt in Codex:
 
 ```text
-$clinical-data-research-navigator What is ADaM, why does it matter, and what does it not prove about source-data quality?
+$clin-nav What is ADaM, why does it matter, and what does it not prove about source-data quality?
 ```
 
 Expected first line: `Output depth: quick explanation`
@@ -63,7 +63,7 @@ publish a Plugin.
 | Definitions | [Beginner glossary](docs/glossary.md) |
 | Guided progression | [Learning paths](docs/learning-paths.md) |
 | Synthetic worked examples | [TEAE to SAS](examples/teae-to-sas-spec.md), [OMOP phenotype to SQL specification](examples/omop-phenotype-to-sql-spec.md), and [institutional mapping](examples/synthetic-institutional-mapping.md) |
-| Evidence shape and limitations | [Evidence output template](skills/clinical-data-research-navigator/references/evidence-output-template.md) and [architecture](docs/architecture.md) |
+| Evidence shape and limitations | [Evidence output template](skills/clin-nav/references/evidence-output-template.md) and [architecture](docs/architecture.md) |
 | Product-effectiveness evaluation framework | [Effectiveness evaluation](evals/effectiveness/README.md) |
 | Contribute and validate | [Contributing](CONTRIBUTING.md) |
 | Report a security concern | [Security](SECURITY.md) |

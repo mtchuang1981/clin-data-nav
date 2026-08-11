@@ -9,7 +9,7 @@ from scripts.validate_skill import validate_skill
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SKILL = ROOT / "skills/clinical-data-research-navigator"
+SKILL = ROOT / "skills/clin-nav"
 
 
 def initialize_repository(path: Path, branch: str = "main") -> None:

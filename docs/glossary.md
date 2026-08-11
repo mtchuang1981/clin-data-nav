@@ -137,7 +137,7 @@ label, not a guarantee that every statement in a source is correct or current.
 ## Data contract
 
 In this project, a [data
-contract](../skills/clinical-data-research-navigator/references/evidence-output-template.md#implementation-specification)
+contract](../skills/clin-nav/references/evidence-output-template.md#implementation-specification)
 is the logical agreement an implementation must satisfy: grain, keys, joins,
 coverage, types, time anchors, terminology, missingness, precedence, lineage,
 and acceptance fixtures. It describes what is required without inventing an
@@ -179,7 +179,7 @@ guess an institution's Adapter.
 ## Governing artifact
 
 A [governing
-artifact](../skills/clinical-data-research-navigator/references/retrieval-playbook.md)
+artifact](../skills/clin-nav/references/retrieval-playbook.md)
 is the highest-authority current source that controls a decision in context,
 such as an applicable standard, regulator guidance, protocol, SAP, or approved
 institutional metadata. A search result, tutorial, or older implementation
@@ -239,7 +239,7 @@ execution gate.
 ## Validation gap
 
 A [validation
-gap](../skills/clinical-data-research-navigator/references/evidence-output-template.md#implementation-specification)
+gap](../skills/clin-nav/references/evidence-output-template.md#implementation-specification)
 is a missing source, decision, metadata item, check, or acceptance result that
 blocks a stronger claim or code-maturity level. Naming the gap does not prove
 the work is invalid; it states exactly what remains unverified and what

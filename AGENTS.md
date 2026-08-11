@@ -13,7 +13,7 @@ study assignment files, consent records, or repository-external human task packs
 ## Development
 Add or update a failing test before changing behavior. Use only synthetic
 institutional examples. Keep the installable skill under
-skills/clinical-data-research-navigator/.
+skills/clin-nav/.
 When modifying SKILL.md, also review agents/openai.yaml, Evals, and references.
 Before completion, review git diff.
 

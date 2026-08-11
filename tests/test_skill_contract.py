@@ -2,7 +2,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SKILL = ROOT / "skills/clinical-data-research-navigator"
+SKILL = ROOT / "skills/clin-nav"
 OUTPUT_DEPTHS = {
     "quick explanation",
     "evidence navigation",
