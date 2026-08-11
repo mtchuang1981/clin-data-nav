@@ -853,7 +853,6 @@ def assert_cli_status(
         "status",
         "passed_gate_ids",
         "blocked_gate_ids",
-        "synthetic_example",
     }
     assert payload["status"] == status
     return payload
@@ -1055,7 +1054,7 @@ def test_cli_green_check_requires_the_literal_unlock_flag(tmp_path):
     assert result.stderr == CLI_ERROR
 
 
-def test_cli_rejects_hardlink_aliases_between_aggregate_and_raw_inputs(tmp_path):
+def test_cli_rejects_hardlink_aliases_between_two_inputs(tmp_path):
     paths, _ = write_green_cli_inputs(tmp_path)
     aggregate_alias = tmp_path / "aggregate-alias.json"
     aggregate_alias.hardlink_to(paths["scores"])
@@ -1080,6 +1079,69 @@ def test_cli_rejects_hardlink_aliases_between_aggregate_and_raw_inputs(tmp_path)
     assert result.returncode == 2
     assert result.stdout == ""
     assert result.stderr == CLI_ERROR
+
+
+@pytest.mark.parametrize(
+    ("late_input_name", "late_input_state"),
+    (
+        ("condition_key", "malformed"),
+        ("condition_key", "missing"),
+        ("aggregate_summary", "malformed"),
+        ("aggregate_summary", "missing"),
+    ),
+)
+def test_cli_green_check_does_not_open_late_inputs_before_rating_is_eligible(
+    tmp_path, late_input_name, late_input_state
+):
+    paths, inputs = write_green_cli_inputs(tmp_path)
+    scores = inputs[2]
+    add_disagreements(scores, [("R2", {"success": False})] * 13)
+    lock, raw_scores = refresh_lock(scores)
+    paths["scores"].write_bytes(raw_scores)
+    write_json(paths["ratings_lock"], lock)
+
+    marker = "SENSITIVE-LATE-STAGE-MARKER"
+    if late_input_state == "malformed":
+        paths[late_input_name].write_text(
+            f'{{"marker":"{marker}"', encoding="utf-8"
+        )
+    else:
+        paths[late_input_name] = tmp_path / f"missing-{late_input_name}.json"
+
+    result = run_recovery_cli(
+        "green-check",
+        "--recovery-record",
+        paths["recovery_record"],
+        "--study-manifest",
+        paths["study_manifest"],
+        "--scores",
+        paths["scores"],
+        "--ratings-lock",
+        paths["ratings_lock"],
+        "--condition-key",
+        paths["condition_key"],
+        "--aggregate-summary",
+        paths["aggregate_summary"],
+        "--unlock-after-ratings-lock",
+    )
+
+    payload = assert_cli_status(result, 3, "ready-for-blinded-rating")
+    assert payload["blocked_gate_ids"][-1] == "blinded-agreement"
+    assert marker not in result.stdout + result.stderr
+
+
+def test_cli_never_projects_source_synthetic_example_to_stdout(tmp_path):
+    paths, inputs = write_green_cli_inputs(tmp_path)
+    record = inputs[0]
+    record["synthetic_example"] = True
+    write_json(paths["recovery_record"], record)
+
+    result = run_recovery_cli(
+        "restart-check", "--recovery-record", paths["recovery_record"]
+    )
+
+    payload = assert_cli_status(result, 0, "authorized-for-fresh-batch")
+    assert "synthetic_example" not in payload
 
 
 def test_cli_rating_check_treats_an_incomplete_lock_as_valid_but_blocked(tmp_path):

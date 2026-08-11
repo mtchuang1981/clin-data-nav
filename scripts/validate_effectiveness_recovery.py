@@ -33,6 +33,12 @@ _EXPECTED_STATUS = {
     "rating-check": "eligible-for-locked-unlock",
     "green-check": "evaluation-green",
 }
+_OUTPUT_KEYS = (
+    "schema_version",
+    "status",
+    "passed_gate_ids",
+    "blocked_gate_ids",
+)
 _CROSS_FILE_GATES = frozenset(
     {
         "replacement-study-manifest",
@@ -159,6 +165,10 @@ def _dispatch(args: argparse.Namespace) -> dict:
     if args.command == "rating-check":
         return rating_status(record, manifest, scores, lock, scores_bytes)
 
+    rating = rating_status(record, manifest, scores, lock, scores_bytes)
+    if rating["status"] != "eligible-for-locked-unlock":
+        return rating
+
     key = _require_mapping(_read_json(paths["condition_key"]))
     aggregate = _require_mapping(_read_json(paths["aggregate_summary"]))
     return green_status(
@@ -178,6 +188,10 @@ def _has_cross_file_failure(summary: dict) -> bool:
     return isinstance(blocked, list) and bool(_CROSS_FILE_GATES.intersection(blocked))
 
 
+def _project_summary(summary: dict) -> dict:
+    return {key: summary[key] for key in _OUTPUT_KEYS}
+
+
 def main() -> None:
     parser = _argument_parser()
     try:
@@ -185,11 +199,12 @@ def main() -> None:
         summary = _dispatch(args)
         if _has_cross_file_failure(summary):
             raise ValueError("invalid cross-file recovery bindings")
+        output = _project_summary(summary)
     except Exception:
         parser.exit(2, CLI_ERROR)
 
     sys.stdout.write(
-        json.dumps(summary, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
+        json.dumps(output, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
     )
     if summary["status"] != _EXPECTED_STATUS[args.command]:
         parser.exit(3)
