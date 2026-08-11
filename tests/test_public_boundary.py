@@ -291,6 +291,52 @@ def test_scanner_does_not_read_or_print_governance_payload(tmp_path):
     assert marker not in finding.detail
 
 
+@pytest.mark.parametrize(
+    "relative_path",
+    (
+        "evals/effectiveness/recovery/real/recovery-record.json",
+        "evals/effectiveness/recovery/incident-record.json",
+        "evals/effectiveness/recovery/condition-key.json",
+        "evals/effectiveness/recovery/human-task-pack.yaml",
+    ),
+)
+def test_scanner_rejects_private_recovery_artifact_paths_without_content(
+    tmp_path, relative_path
+):
+    marker = "PRIVATE-RECOVERY-CONTENT-MUST-NOT-APPEAR"
+    path = tmp_path / relative_path
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(marker, encoding="utf-8")
+
+    findings = scan_repository(tmp_path)
+
+    assert [(item.path, item.rule) for item in findings] == [
+        (relative_path, "private-recovery-artifact")
+    ]
+    assert all(marker not in item.detail for item in findings)
+
+
+def test_scanner_does_not_read_private_recovery_artifact(tmp_path, monkeypatch):
+    relative_path = "evals/effectiveness/recovery/real/opaque-record.json"
+    path = tmp_path / relative_path
+    path.parent.mkdir(parents=True)
+    path.write_text("synthetic sentinel", encoding="utf-8")
+    original_read_text = Path.read_text
+
+    def fail_on_private_recovery_read(self, *args, **kwargs):
+        if self == path:
+            raise AssertionError("private recovery artifact was read")
+        return original_read_text(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "read_text", fail_on_private_recovery_read)
+
+    findings = scan_repository(tmp_path)
+
+    assert [(item.path, item.rule) for item in findings] == [
+        (relative_path, "private-recovery-artifact")
+    ]
+
+
 def test_gitignore_keeps_study_governance_out_of_the_checkout():
     lines = (ROOT / ".gitignore").read_text(encoding="utf-8").splitlines()
     assert "study-governance/" in lines

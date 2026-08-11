@@ -1319,12 +1319,21 @@ def test_v050_static_notes_and_changelogs_state_candidate_limitations():
         assert heading in notes
     assert "The rename does not establish human effectiveness." in notes
     assert "更名不能建立真人有效性證據。" in notes
-    assert "effectiveness-recovery implementation remains pending" in notes
-    assert "no replacement human pilot has reached green" in notes
-    assert "effectiveness-recovery implementation remains pending" in changelog
-    assert "no replacement human pilot has reached green" in changelog
-    assert "有效性復原實作仍待完成" in changelog_zh_tw
-    assert "尚無替代真人試行達到綠燈" in changelog_zh_tw
+    for text in (notes, changelog):
+        assert "green-capable effectiveness-recovery contract" in text
+        assert "No real replacement pilot was performed" in text
+        assert "observed `evaluation-green` remains pending" in text
+        assert "power analysis remains deferred" in text
+        assert "no tag or GitHub Release is created by this recovery plan" in text
+    for claim in (
+        "具備達成綠燈能力的有效性復原契約",
+        "未執行任何真實替代先導研究",
+        "實際觀察到的 `evaluation-green` 仍待完成",
+        "檢定力分析仍延後",
+        "本復原計畫不建立 tag 或 GitHub Release",
+    ):
+        assert claim in notes
+        assert claim in changelog_zh_tw
 
 
 def test_v022_release_notes_are_static_uploadable_notes_without_candidate_state():
@@ -2941,8 +2950,12 @@ EFFECTIVENESS_PROTOCOL_SECTION_CONTRACTS = (
         "## 15. 原始資料、事件與發布邊界",
     ),
     (
-        "## 16. Method references",
-        "## 16. 方法參考資料",
+        "## 16. Incident recovery and replacement batches",
+        "## 16. 事件復原與替代批次",
+    ),
+    (
+        "## 17. Method references",
+        "## 17. 方法參考資料",
     ),
 )
 
@@ -3024,6 +3037,11 @@ EFFECTIVENESS_CANONICAL_FACTS = (
         "人類研究原始資料須留在儲存庫外，並受最小權限存取、保留與事件處理規範管控；不得發布參與者資料列，只能發布彙總輸出，且封裝不代表執行人類研究。",
     ),
     (
+        "incident-recovery",
+        "The affected batch remains excluded-from-effectiveness-analysis; an incident in a replacement batch recursively stops that batch, and evaluation-green requires an entirely new clean batch without granting institutional authority.",
+        "受影響批次維持 excluded-from-effectiveness-analysis；替代批次若再發生事件，該批次也必須遞迴停止，且 evaluation-green 必須來自全新且乾淨的批次，不能取代機構授權。",
+    ),
+    (
         "method-references",
         "The protocol uses the five fixed method references listed in this section.",
         "本規格使用本節列出的五項固定方法參考資料。",
@@ -3045,6 +3063,7 @@ EFFECTIVENESS_REDUNDANT_FACT_MARKERS = (
     ("absolute 20 percentage points", "絕對 20 個百分點"),
     ("At least 14 of 16", "至少 14/16"),
     ("stay outside the repository", "都留在招募前核准的儲存庫外位置"),
+    (None, None),
     (None, None),
 )
 ENGLISH_CANONICAL_FACT_PATTERN = re.compile(
@@ -3122,7 +3141,7 @@ def _assert_effectiveness_canonical_facts(
     expected_fact_ids = [fact[0] for fact in EFFECTIVENESS_CANONICAL_FACTS]
     assert list(english_facts) == expected_fact_ids
     assert list(chinese_facts) == expected_fact_ids
-    assert len(english_facts) == len(chinese_facts) == 16
+    assert len(english_facts) == len(chinese_facts) == 17
 
 
 def _assert_effectiveness_protocol_contract(
@@ -3309,6 +3328,10 @@ def test_effectiveness_protocol_contract_rejects_reordered_sections():
 
 EFFECTIVENESS_COMMAND_BLOCKS = (
     "python scripts/validate_governance_readiness.py --input <external-dir>/governance-readiness.json",
+    "python scripts/validate_effectiveness_recovery.py restart-check --recovery-record <external-path>",
+    "python scripts/validate_effectiveness_recovery.py collection-check --recovery-record <external-path> --study-manifest <external-path>",
+    "python scripts/validate_effectiveness_recovery.py rating-check --recovery-record <external-path> --study-manifest <external-path> --scores <external-path> --ratings-lock <external-path>",
+    "python scripts/validate_effectiveness_recovery.py green-check --recovery-record <external-path> --study-manifest <external-path> --scores <external-path> --ratings-lock <external-path> --condition-key <external-path> --aggregate-summary <external-path> --unlock-after-ratings-lock",
     "python -m pytest tests/test_effectiveness_contract.py -q",
     "python scripts/generate_study_assignments.py --study-id pilot-v1 --seed 20260809 --output <external-dir>/assignments.json",
     "python scripts/commit_human_task_pack.py create --task-pack <external-dir>/human-tasks.yaml --nonce-output <external-dir>/human-tasks.nonce --commitment-output <external-dir>/human-task-commitment.json",
@@ -3327,9 +3350,9 @@ def _assert_effectiveness_command_map_contract(text: str) -> None:
     assert command_blocks == EFFECTIVENESS_COMMAND_BLOCKS
 
     assignment, agreement, analyze = (
-        command_blocks[2],
-        command_blocks[5],
         command_blocks[6],
+        command_blocks[9],
+        command_blocks[10],
     )
     assert "validate_assignments(rows, catalog, study_id, seed)" in text
     assert text.index(assignment) < text.index(agreement) < text.index(analyze)

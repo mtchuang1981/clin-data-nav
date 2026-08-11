@@ -7,6 +7,10 @@
 - Rename the single public Skill ID and explicit invocation from the previous
   identity to `clin-nav` and `$clin-nav`, while preserving the existing
   clinical routing, authority, output-depth, and safety behavior.
+- Add a green-capable effectiveness-recovery contract with six deterministic
+  states, four content-free CLI checks, aligned guidance, and fail-closed
+  public-boundary enforcement. The affected batch remains
+  `excluded-from-effectiveness-analysis`.
 
 ### Packaging
 
@@ -16,9 +20,7 @@
 
 ### Limitations
 
-- The separate effectiveness-recovery implementation remains pending, and no replacement human pilot has reached green.
-  This rename does not establish
-  human effectiveness.
+- The rename does not establish human effectiveness. No real replacement pilot was performed; observed `evaluation-green` remains pending; power analysis remains deferred; and no tag or GitHub Release is created by this recovery plan.
 
 ## 0.4.0 - 2026-08-10
 

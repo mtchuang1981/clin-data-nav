@@ -34,6 +34,25 @@ TEMPLATE = ROOT / "evals/effectiveness/recovery/recovery-template.json"
 SYNTHETIC = ROOT / "evals/effectiveness/recovery/examples/synthetic-recovery.json"
 CLI = ROOT / "scripts/validate_effectiveness_recovery.py"
 CLI_ERROR = "effectiveness recovery validation failed\n"
+RECOVERY_README = ROOT / "evals/effectiveness/recovery/README.md"
+RECOVERY_CHECKLIST = ROOT / "evals/effectiveness/recovery/checklist.md"
+RECOVERY_CHECKLIST_ZH_TW = (
+    ROOT / "evals/effectiveness/recovery/checklist.zh-TW.md"
+)
+RECOVERY_STATES = (
+    "blocked-incident-open",
+    "ready-for-restart-review",
+    "authorized-for-fresh-batch",
+    "ready-for-blinded-rating",
+    "eligible-for-locked-unlock",
+    "evaluation-green",
+)
+RECOVERY_COMMANDS = (
+    "python scripts/validate_effectiveness_recovery.py restart-check --recovery-record <external-path>",
+    "python scripts/validate_effectiveness_recovery.py collection-check --recovery-record <external-path> --study-manifest <external-path>",
+    "python scripts/validate_effectiveness_recovery.py rating-check --recovery-record <external-path> --study-manifest <external-path> --scores <external-path> --ratings-lock <external-path>",
+    "python scripts/validate_effectiveness_recovery.py green-check --recovery-record <external-path> --study-manifest <external-path> --scores <external-path> --ratings-lock <external-path> --condition-key <external-path> --aggregate-summary <external-path> --unlock-after-ratings-lock",
+)
 
 
 def load_json(path: Path) -> dict:
@@ -59,6 +78,63 @@ def run_recovery_cli(*args: object) -> subprocess.CompletedProcess[str]:
 
 def canonical_stdout(payload: dict) -> str:
     return json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
+
+
+def documented_recovery_states(text: str) -> tuple[str, ...]:
+    return tuple(
+        line.split("`", 2)[1]
+        for line in text.splitlines()
+        if line.startswith("| `")
+    )
+
+
+def test_bilingual_recovery_checklists_align_states_and_authority_boundaries():
+    english = RECOVERY_CHECKLIST.read_text(encoding="utf-8")
+    traditional_chinese = RECOVERY_CHECKLIST_ZH_TW.read_text(encoding="utf-8")
+
+    assert documented_recovery_states(english) == RECOVERY_STATES
+    assert documented_recovery_states(traditional_chinese) == RECOVERY_STATES
+    for text in (english, traditional_chinese):
+        assert "excluded-from-effectiveness-analysis" in text
+        assert "evaluation-green" in text
+        assert "not an ethics determination" in text
+        assert "not recruitment authorization" in text
+    assert "不是倫理判定" in traditional_chinese
+    assert "不是招募授權" in traditional_chinese
+    assert "20-point practical difference" in english
+    assert "20 個百分點的預先指定實務差異" in traditional_chinese
+
+
+def test_recovery_readme_has_fixed_section_order_commands_and_exit_codes():
+    text = RECOVERY_README.read_text(encoding="utf-8")
+    assert tuple(
+        line for line in text.splitlines() if line.startswith("## ")
+    ) == (
+        "## 1. Purpose and authority boundary",
+        "## 2. Why the affected batch remains excluded",
+        "## 3. External recovery record",
+        "## 4. Restart check",
+        "## 5. Collection check",
+        "## 6. Rating check",
+        "## 7. Terminal green check",
+        "## 8. Interpret states and exit codes",
+        "## 9. Replacement incident recursion",
+        "## 10. Reporting and power-analysis boundary",
+    )
+    for command in RECOVERY_COMMANDS:
+        assert command in text
+    for exit_code in ("`0`", "`2`", "`3`"):
+        assert exit_code in text
+    assert "not an ethics determination" in text
+    assert "not recruitment authorization" in text
+
+
+def test_effectiveness_readme_routes_every_recovery_stage():
+    text = (ROOT / "evals/effectiveness/README.md").read_text(encoding="utf-8")
+
+    assert "recovery/README.md" in text
+    for command in RECOVERY_COMMANDS:
+        assert command in text
 
 
 def write_green_cli_inputs(tmp_path: Path) -> tuple[dict[str, Path], tuple]:

@@ -40,6 +40,43 @@ documentation categories have an external reference. It remains
 nor records an institutional decision. A completed real instance and its
 evidence never enter Git.
 
+## Incident recovery for a replacement batch
+
+If an exploratory pilot is stopped by an environment change, task-pack
+leakage, or a reportable incident, follow the public
+[incident-recovery guide](recovery/README.md). The affected batch remains
+excluded; completed recovery records and all referenced evidence stay in an
+approved location outside this checkout.
+
+Check external incident closure, restart authorization, and new bindings:
+
+```bash
+python scripts/validate_effectiveness_recovery.py restart-check --recovery-record <external-path>
+```
+
+Bind the closed, clean replacement collection to its external manifest:
+
+```bash
+python scripts/validate_effectiveness_recovery.py collection-check --recovery-record <external-path> --study-manifest <external-path>
+```
+
+Check the exact locked blinded-score bytes and agreement gate:
+
+```bash
+python scripts/validate_effectiveness_recovery.py rating-check --recovery-record <external-path> --study-manifest <external-path> --scores <external-path> --ratings-lock <external-path>
+```
+
+Only after separate authorization for explicit unlock, recompute the terminal
+aggregate gate:
+
+```bash
+python scripts/validate_effectiveness_recovery.py green-check --recovery-record <external-path> --study-manifest <external-path> --scores <external-path> --ratings-lock <external-path> --condition-key <external-path> --aggregate-summary <external-path> --unlock-after-ratings-lock
+```
+
+These commands compute evidence states; they do not provide ethics,
+recruitment, collection, unlock, analysis, or publication authority. No real
+replacement pilot was performed by adding them.
+
 ## Public contract validation
 
 This safe dry run validates the eight public matched pairs and the rubric:

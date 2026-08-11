@@ -153,7 +153,20 @@ Public aggregate exclusions include answer IDs, answer text, identifying
 quotations, direct identifiers, condition keys, and subgroups smaller than
 five.
 
-## 16. Method references
+## 16. Incident recovery and replacement batches
+
+**Canonical fact `incident-recovery`:** The affected batch remains excluded-from-effectiveness-analysis; an incident in a replacement batch recursively stops that batch, and evaluation-green requires an entirely new clean batch without granting institutional authority.
+
+Incident closure cannot repair or relabel affected evidence. The external
+responsible process must close the incident and authorize any restart before a
+new study ID, task commitment, assignment, and fixed `clin-nav` environment are
+bound. Every real recovery record and referenced input stays outside Git.
+
+The staged recovery CLI distinguishes restart, collection, blinded-rating, and
+terminal aggregate gates. Its states do not determine ethics or authorize
+recruitment, collection, unlock, analysis, reporting, or publication.
+
+## 17. Method references
 
 **Canonical fact `method-references`:** The protocol uses the five fixed method references listed in this section.
 
