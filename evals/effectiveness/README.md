@@ -24,6 +24,22 @@ Never place an assignment file, participant row, human answer, blinded score
 file, ratings lock, condition key, nonce, or confidential task pack in this
 repository. Human-study inputs must remain in an approved external location.
 
+## Governance readiness before a human pilot
+
+Before any separately authorized human pilot, use the public
+[governance readiness pack](governance/README.md) to prepare a completed
+instance in an approved location outside this repository:
+
+```bash
+python scripts/validate_governance_readiness.py --input <external-dir>/governance-readiness.json
+```
+
+A `ready-for-institutional-review` result means only that all twelve required
+documentation categories have an external reference. It remains
+`not-authorized-to-recruit`: the validator neither selects an ethics pathway
+nor records an institutional decision. A completed real instance and its
+evidence never enter Git.
+
 ## Public contract validation
 
 This safe dry run validates the eight public matched pairs and the rubric:

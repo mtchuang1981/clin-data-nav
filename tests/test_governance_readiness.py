@@ -20,6 +20,10 @@ SYNTHETIC = (
 )
 CLI = ROOT / "scripts/validate_governance_readiness.py"
 CLI_ERROR = "governance readiness validation failed\n"
+ENGLISH_CHECKLIST = ROOT / "evals/effectiveness/governance/checklist.md"
+TRADITIONAL_CHINESE_CHECKLIST = (
+    ROOT / "evals/effectiveness/governance/checklist.zh-TW.md"
+)
 EXPECTED_CONTROL_IDS = (
     "study-owner-role",
     "institutional-path-request",
@@ -285,3 +289,28 @@ def test_cli_rejects_abbreviated_input_option_content_free(tmp_path):
     assert result.stdout == ""
     assert result.stderr == CLI_ERROR
     assert str(path) not in result.stderr
+
+
+def _checklist_control_ids(path: Path) -> list[str]:
+    return [
+        line.split("|")[1].strip().strip("`")
+        for line in path.read_text(encoding="utf-8").splitlines()
+        if line.startswith("| `")
+    ]
+
+
+@pytest.mark.parametrize(
+    "path", (ENGLISH_CHECKLIST, TRADITIONAL_CHINESE_CHECKLIST)
+)
+def test_bilingual_checklists_keep_all_controls_in_canonical_order(path):
+    assert _checklist_control_ids(path) == list(EXPECTED_CONTROL_IDS)
+
+
+@pytest.mark.parametrize(
+    "path", (ENGLISH_CHECKLIST, TRADITIONAL_CHINESE_CHECKLIST)
+)
+def test_bilingual_checklists_keep_review_and_authorization_distinct(path):
+    text = path.read_text(encoding="utf-8")
+
+    assert "ready-for-institutional-review" in text
+    assert "not-authorized-to-recruit" in text

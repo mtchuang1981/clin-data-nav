@@ -2624,6 +2624,37 @@ def test_effectiveness_docs_distinguish_contract_evals_from_human_evidence():
     assert "no telemetry" in effectiveness
 
 
+GOVERNANCE_READINESS_NAVIGATION_MARKERS = (
+    "governance/README.md",
+    "validate_governance_readiness.py",
+    "ready-for-institutional-review",
+    "not-authorized-to-recruit",
+)
+
+
+def _governance_readiness_navigation_errors(text: str) -> list[str]:
+    return [
+        marker
+        for marker in GOVERNANCE_READINESS_NAVIGATION_MARKERS
+        if marker not in text
+    ]
+
+
+def test_effectiveness_readme_routes_governance_readiness_without_authorizing_people():
+    text = (ROOT / "evals/effectiveness/README.md").read_text(encoding="utf-8")
+
+    assert _governance_readiness_navigation_errors(text) == []
+
+
+@pytest.mark.parametrize("marker", GOVERNANCE_READINESS_NAVIGATION_MARKERS)
+def test_effectiveness_readme_governance_navigation_detects_missing_marker(marker):
+    text = (ROOT / "evals/effectiveness/README.md").read_text(encoding="utf-8")
+    assert marker in text
+    mutated = text.replace(marker, "removed-governance-marker", 1)
+
+    assert _governance_readiness_navigation_errors(mutated) == [marker]
+
+
 EFFECTIVENESS_METHOD_URLS = (
     "https://nvlpubs.nist.gov/nistpubs/ai/NIST.AI.600-1.pdf",
     "https://airc.nist.gov/",
@@ -3060,6 +3091,7 @@ def test_effectiveness_protocol_contract_rejects_reordered_sections():
 
 
 EFFECTIVENESS_COMMAND_BLOCKS = (
+    "python scripts/validate_governance_readiness.py --input <external-dir>/governance-readiness.json",
     "python -m pytest tests/test_effectiveness_contract.py -q",
     "python scripts/generate_study_assignments.py --study-id pilot-v1 --seed 20260809 --output <external-dir>/assignments.json",
     "python scripts/commit_human_task_pack.py create --task-pack <external-dir>/human-tasks.yaml --nonce-output <external-dir>/human-tasks.nonce --commitment-output <external-dir>/human-task-commitment.json",
@@ -3078,9 +3110,9 @@ def _assert_effectiveness_command_map_contract(text: str) -> None:
     assert command_blocks == EFFECTIVENESS_COMMAND_BLOCKS
 
     assignment, agreement, analyze = (
-        command_blocks[1],
-        command_blocks[4],
+        command_blocks[2],
         command_blocks[5],
+        command_blocks[6],
     )
     assert "validate_assignments(rows, catalog, study_id, seed)" in text
     assert text.index(assignment) < text.index(agreement) < text.index(analyze)
@@ -3136,8 +3168,8 @@ def test_effectiveness_command_map_matches_current_cli_and_unlock_gate():
         ),
         lambda text: _swap_once(
             text,
-            EFFECTIVENESS_COMMAND_BLOCKS[4],
             EFFECTIVENESS_COMMAND_BLOCKS[5],
+            EFFECTIVENESS_COMMAND_BLOCKS[6],
         ),
     ],
 )
