@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from datetime import datetime
+import math
 import re
 
 from scripts.effectiveness_analysis import (
@@ -450,7 +451,7 @@ def green_status(
     passed.append("explicit-locked-unlock")
 
     try:
-        summaries_match = aggregate_summary == recomputed
+        summaries_match = _strict_json_equal(aggregate_summary, recomputed)
     except Exception:
         summaries_match = False
     if not summaries_match:
@@ -490,6 +491,29 @@ def green_status(
 
     status = "evaluation-green" if not blocked else state["status"]
     return _sanitized_state(record, status, passed, blocked)
+
+
+def _strict_json_equal(left: object, right: object) -> bool:
+    if type(left) is not type(right):
+        return False
+    if left is None:
+        return True
+    if type(left) in {bool, int, str}:
+        return left == right
+    if type(left) is float:
+        return math.isfinite(left) and math.isfinite(right) and left == right
+    if type(left) is list:
+        return len(left) == len(right) and all(
+            _strict_json_equal(left_item, right_item)
+            for left_item, right_item in zip(left, right, strict=True)
+        )
+    if type(left) is dict:
+        if any(type(key) is not str for key in (*left, *right)):
+            return False
+        return left.keys() == right.keys() and all(
+            _strict_json_equal(left[key], right[key]) for key in left
+        )
+    return False
 
 
 def _has_prohibited_integrity_findings(summary: Mapping[str, object]) -> bool:

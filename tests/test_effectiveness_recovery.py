@@ -1,4 +1,5 @@
 import copy
+from decimal import Decimal
 import json
 from pathlib import Path
 
@@ -592,6 +593,64 @@ def test_green_status_recomputes_the_exact_aggregate_after_explicit_unlock():
     assert result["status"] == "evaluation-green"
     assert result["blocked_gate_ids"] == []
     assert result["synthetic_example"] is False
+
+
+@pytest.mark.parametrize(
+    ("mutation_name", "mutation"),
+    (
+        (
+            "integer-zero-replaced-by-false",
+            lambda summary: summary["participant_flow"].update(
+                {"abandonments": False}
+            ),
+        ),
+        (
+            "integer-one-replaced-by-true",
+            lambda summary: summary["limitations"]["items"][0].update(
+                {"count": True}
+            ),
+        ),
+        (
+            "integer-zero-replaced-by-decimal",
+            lambda summary: summary["participant_flow"].update(
+                {"abandonments": Decimal(0)}
+            ),
+        ),
+        (
+            "finite-number-replaced-by-nan",
+            lambda summary: summary["primary"]["overall"].update(
+                {"paired_risk_difference": float("nan")}
+            ),
+        ),
+        (
+            "finite-number-replaced-by-infinity",
+            lambda summary: summary["primary"]["overall"].update(
+                {"paired_risk_difference": float("inf")}
+            ),
+        ),
+    ),
+)
+def test_green_status_requires_type_strict_json_safe_aggregate(
+    mutation_name, mutation
+):
+    record, manifest, scores, lock, key, raw_scores, expected_summary = (
+        green_gate_inputs()
+    )
+    mutation(expected_summary)
+
+    result = green_status(
+        record,
+        manifest,
+        scores,
+        lock,
+        key,
+        raw_scores,
+        expected_summary,
+        unlock_after_ratings_lock=True,
+    )
+
+    assert_not_green(result), mutation_name
+    assert "aggregate-recomputation" in result["blocked_gate_ids"]
 
 
 def test_green_status_requires_literal_explicit_unlock():
