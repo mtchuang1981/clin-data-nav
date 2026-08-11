@@ -59,14 +59,14 @@ def test_active_user_documents_use_only_the_new_invocation_and_paths():
             ROOT / "docs/installation.md",
             "## Migrate from the previous Skill ID",
             "## Update a project-local installation",
-            "## Verified ZIP installation from a GitHub Release",
+            "## Historical v0.4.0 Release artifact verification (reference only)",
             "## Install from a source checkout",
         ),
         (
             ROOT / "docs/installation.zh-TW.md",
             "## 從先前的 Skill ID 遷移",
             "## 更新專案內的安裝",
-            "## 從 GitHub Release 驗證 ZIP 後安裝",
+            "## 歷史 v0.4.0 Release 產物驗證（僅供參考）",
             "## 從原始碼簽出安裝",
         ),
     )

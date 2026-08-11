@@ -1132,7 +1132,7 @@ def test_candidate_package_version_is_synchronized_at_v050():
                 "Never delete a broad or unresolved path.",
                 "Confirm `.agents/skills/clin-nav/SKILL.md` exists.",
                 "restart the Skill host if required",
-                "inspect `/skills`",
+                "Use `/skills` to confirm",
                 "invoke `$clin-nav`",
             ),
         ),
@@ -1146,7 +1146,7 @@ def test_candidate_package_version_is_synchronized_at_v050():
                 "絕對不要刪除範圍過大或尚未解析的路徑。",
                 "確認 `.agents/skills/clin-nav/SKILL.md` 存在。",
                 "需要時重新啟動 Skill host",
-                "檢查 `/skills`",
+                "請用 `/skills` 確認",
                 "叫用 `$clin-nav`",
             ),
         ),
@@ -1173,6 +1173,129 @@ def test_installation_guides_define_a_bounded_skill_id_migration(
     for claim in required_claims:
         assert claim in migration
     assert "rm -rf" not in migration
+
+
+@pytest.mark.parametrize(
+    (
+        "relative_path",
+        "scope_start",
+        "migration_heading",
+        "next_heading",
+        "archive_claim",
+        "discovery_claim",
+    ),
+    (
+        (
+            "docs/installation.md",
+            None,
+            "## Migrate from the previous Skill ID",
+            "## Update a project-local installation",
+            "Move any archive outside `.agents/skills` and every other Skill discovery root.",
+            "Use `/skills` to confirm `clinical-data-research-navigator` is absent and "
+            "`clin-nav` is the only installed entry for this Skill.",
+        ),
+        (
+            "docs/installation.zh-TW.md",
+            None,
+            "## 從先前的 Skill ID 遷移",
+            "## 更新專案內的安裝",
+            "若要封存，請將封存目錄移到 `.agents/skills` 及其他所有 Skill "
+            "探索根目錄之外。",
+            "請用 `/skills` 確認 `clinical-data-research-navigator` 已不存在，且 "
+            "`clin-nav` 是這個 Skill 唯一的已安裝項目。",
+        ),
+        (
+            "docs/releases/0.5.0.md",
+            "## English",
+            "### Migration",
+            "### Limitations",
+            "Move any archive outside `.agents/skills` and every other Skill discovery root.",
+            "Use `/skills` to confirm `clinical-data-research-navigator` is absent and "
+            "`clin-nav` is the only installed entry for this Skill.",
+        ),
+        (
+            "docs/releases/0.5.0.md",
+            "## 繁體中文",
+            "### 遷移",
+            "### 限制",
+            "若要封存，請將封存目錄移到 `.agents/skills` 及其他所有 Skill "
+            "探索根目錄之外。",
+            "請用 `/skills` 確認 `clinical-data-research-navigator` 已不存在，且 "
+            "`clin-nav` 是這個 Skill 唯一的已安裝項目。",
+        ),
+    ),
+)
+def test_migration_archives_leave_all_discovery_roots_and_discovery_is_unambiguous(
+    relative_path,
+    scope_start,
+    migration_heading,
+    next_heading,
+    archive_claim,
+    discovery_claim,
+):
+    text = (ROOT / relative_path).read_text(encoding="utf-8")
+    if scope_start is not None:
+        text = text.split(scope_start, 1)[1]
+    migration = _markdown_section(text, migration_heading, next_heading)
+
+    assert archive_claim in " ".join(migration.split())
+    assert discovery_claim in " ".join(migration.split())
+
+
+@pytest.mark.parametrize(
+    ("relative_path", "section_heading", "next_heading", "required_claims"),
+    (
+        (
+            "docs/installation.md",
+            "## Historical v0.4.0 Release artifact verification (reference only)",
+            "## Install from a source checkout",
+            (
+                "historical verification reference only",
+                "not a current installation path",
+                "not compatible with `$clin-nav`",
+            ),
+        ),
+        (
+            "docs/installation.zh-TW.md",
+            "## 歷史 v0.4.0 Release 產物驗證（僅供參考）",
+            "## 從原始碼簽出安裝",
+            (
+                "僅供歷史驗證參考",
+                "不是目前的安裝方式",
+                "不相容於 `$clin-nav`",
+            ),
+        ),
+    ),
+)
+def test_v040_artifact_section_is_reference_only_and_cannot_install_the_old_skill(
+    relative_path,
+    section_heading,
+    next_heading,
+    required_claims,
+):
+    text = (ROOT / relative_path).read_text(encoding="utf-8")
+    section = _markdown_section(text, section_heading, next_heading)
+    normalized = " ".join(section.split())
+
+    for claim in required_claims:
+        assert claim in normalized
+    for fact in (
+        "v0.4.0",
+        "clinical-data-research-navigator-$releaseVersion",
+        "clinical-data-research-navigator-$release_version",
+        "archive_sha256",
+        "SHA-256",
+    ):
+        assert fact in section
+    for install_step in (
+        "Expand-Archive",
+        "New-Item -ItemType Directory",
+        "mkdir -p",
+        "unzip ",
+        "$skillDirectory",
+        "skill_directory=",
+    ):
+        assert install_step not in section
 
 
 def test_v050_static_notes_and_changelogs_state_candidate_limitations():

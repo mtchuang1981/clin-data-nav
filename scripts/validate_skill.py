@@ -100,6 +100,9 @@ def validate_skill(skill_dir: Path) -> list[str]:
         else "Clinical Data Research Navigator"
     )
     expected_invocation = f"${expected_name}"
+    invocation_pattern = re.compile(
+        rf"(?<![\w$-]){re.escape(expected_invocation)}(?![\w-])"
+    )
     if interface.get("display_name") != expected_display_name:
         errors.append("display name mismatch")
     if not isinstance(interface.get("short_description"), str) or not interface[
@@ -109,7 +112,10 @@ def validate_skill(skill_dir: Path) -> list[str]:
     default_prompt = interface.get("default_prompt")
     if not isinstance(default_prompt, str) or "clinical-data" not in default_prompt:
         errors.append("default prompt must contain clinical-data")
-    if not isinstance(default_prompt, str) or expected_invocation not in default_prompt:
+    if (
+        not isinstance(default_prompt, str)
+        or invocation_pattern.search(default_prompt) is None
+    ):
         errors.append(f"default prompt must mention {expected_invocation}")
     if isinstance(default_prompt, str) and len(default_prompt) > 200:
         errors.append("default prompt must not exceed 200 Unicode code points")

@@ -3,8 +3,9 @@
 [繁體中文](installation.zh-TW.md)
 
 The recommended path is a project-local installation with `npx skills add`.
-Use the verified ZIP path only when you need a pinned Release artifact, and
-use the source-checkout path only when developing or auditing this repository.
+The v0.4.0 ZIP material below is a historical verification reference, not an
+installation path. Use the source-checkout path only when developing or
+auditing this repository.
 
 ## Runtime boundary
 
@@ -64,8 +65,9 @@ and confirm that it is the previous Skill installation in
 the intended project.
 
 Remove or archive only that verified directory with a safe file operation for
-your platform. Never delete a broad or unresolved path. Do not use a recursive
-deletion command from this guide.
+your platform. Move any archive outside `.agents/skills` and every other Skill
+discovery root. Never delete a broad or unresolved path. Do not use a
+recursive deletion command from this guide.
 
 Rerun the project-local installation:
 
@@ -73,8 +75,11 @@ Rerun the project-local installation:
 npx skills add mtchuang1981/clin-data-nav
 ```
 
-Confirm `.agents/skills/clin-nav/SKILL.md` exists. Then restart the Skill host if required,
-inspect `/skills`, and invoke `$clin-nav`.
+Confirm `.agents/skills/clin-nav/SKILL.md` exists.
+Then, restart the Skill host if required. Use `/skills` to confirm
+`clinical-data-research-navigator` is
+absent and `clin-nav` is the only installed entry for this Skill.
+Then invoke `$clin-nav`.
 
 ## Update a project-local installation
 
@@ -87,14 +92,14 @@ npx skills update clin-nav --project --yes
 Confirm discovery again with `/skills`. If the displayed behavior is stale,
 follow the stage-specific recovery below instead of reinstalling blindly.
 
-## Verified ZIP installation from a GitHub Release
+## Historical v0.4.0 Release artifact verification (reference only)
 
-The current verified Release is `v0.4.0`. It is the current published release;
-this section preserves its historical artifact names until a later v0.5.0 publication is authorized.
-Download both the ZIP and manifest
-from that same Release, verify the ZIP's SHA-256 against `archive_sha256`, and
-only then extract it. These examples refuse to overwrite an existing
-destination.
+The current verified Release is `v0.4.0`. This section is a historical
+verification reference only, not a current installation path. Its archive
+contains the previous Skill ID and is not compatible with `$clin-nav`.
+The commands preserve the published asset facts by downloading the ZIP and
+manifest from the same Release and verifying the ZIP's SHA-256 against
+`archive_sha256`; they do not extract or install the archived Skill.
 
 PowerShell:
 
@@ -107,11 +112,6 @@ Invoke-WebRequest "$releaseBase/$assetName.manifest.json" -OutFile "$assetName.m
 $manifest = Get-Content "$assetName.manifest.json" -Raw | ConvertFrom-Json
 $actualHash = (Get-FileHash "$assetName.zip" -Algorithm SHA256).Hash.ToLowerInvariant()
 if ($actualHash -ne $manifest.archive_sha256) { throw "SHA-256 mismatch" }
-$skillDirectory = Join-Path $HOME ".agents\skills\clinical-data-research-navigator"
-if (Test-Path $skillDirectory) { throw "Skill already exists: $skillDirectory" }
-New-Item -ItemType Directory -Path $skillDirectory -Force | Out-Null
-Expand-Archive "$assetName.zip" -DestinationPath $skillDirectory
-Test-Path (Join-Path $skillDirectory "SKILL.md")
 ```
 
 POSIX shell:
@@ -133,11 +133,6 @@ else
 fi
 test "$actual_hash" = "$expected_hash" || { echo "SHA-256 mismatch" >&2; exit 1; }
 echo "SHA-256 OK"
-skill_directory="$HOME/.agents/skills/clinical-data-research-navigator"
-test ! -e "$skill_directory" || { echo "Skill already exists: $skill_directory"; exit 1; }
-mkdir -p "$skill_directory"
-unzip "$asset_name.zip" -d "$skill_directory"
-test -f "$skill_directory/SKILL.md"
 ```
 
 ## Install from a source checkout

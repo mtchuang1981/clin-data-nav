@@ -2,8 +2,8 @@
 
 [English](installation.md)
 
-建議使用 `npx skills add`，把 Skill 安裝在要使用它的專案中。只有需要固定
-Release 產物版本時，才使用驗證 ZIP 安裝；開發或稽核本儲存庫時，才使用
+建議使用 `npx skills add`，把 Skill 安裝在要使用它的專案中。下方 v0.4.0
+ZIP 內容僅供歷史驗證參考，不是安裝方式；開發或稽核本儲存庫時，才使用
 原始碼簽出安裝。
 
 ## 執行環境界線
@@ -59,6 +59,7 @@ Plugin 目錄。
 先前的 Skill 安裝。
 
 請使用平台提供的安全檔案操作，只移除或封存已確認的確切目錄。
+若要封存，請將封存目錄移到 `.agents/skills` 及其他所有 Skill 探索根目錄之外。
 絕對不要刪除範圍過大或尚未解析的路徑。本文不提供遞迴刪除指令。
 
 重新執行專案區域安裝：
@@ -67,8 +68,9 @@ Plugin 目錄。
 npx skills add mtchuang1981/clin-data-nav
 ```
 
-確認 `.agents/skills/clin-nav/SKILL.md` 存在。需要時重新啟動 Skill host，
-檢查 `/skills`，再叫用 `$clin-nav`。
+確認 `.agents/skills/clin-nav/SKILL.md` 存在。需要時重新啟動 Skill host。
+請用 `/skills` 確認 `clinical-data-research-navigator` 已不存在，且 `clin-nav`
+是這個 Skill 唯一的已安裝項目。再叫用 `$clin-nav`。
 
 ## 更新專案內的安裝
 
@@ -81,12 +83,13 @@ npx skills update clin-nav --project --yes
 接著再用 `/skills` 確認。若顯示的行為仍是舊版，請依下方對應階段排解，
 不要直接重複安裝。
 
-## 從 GitHub Release 驗證 ZIP 後安裝
+## 歷史 v0.4.0 Release 產物驗證（僅供參考）
 
-目前已驗證的 Release 是 `v0.4.0`。這是目前已發布的 Release；在日後另行授權
-發布 v0.5.0 前，本節保留其歷史產物名稱。請從同一個 Release 下載 ZIP 與 manifest，
-先用 `archive_sha256` 核對 ZIP 的 SHA-256，再進行解壓縮。下列範例遇到既有
-目的目錄時會拒絕覆寫。
+目前已驗證的 Release 是 `v0.4.0`。本節僅供歷史驗證參考，
+不是目前的安裝方式；其壓縮檔包含先前的 Skill ID，不相容於 `$clin-nav`。
+下列指令保留已發布
+產物的驗證事實：從同一個 Release 下載 ZIP 與 manifest，再用 `archive_sha256`
+核對 ZIP 的 SHA-256；指令不會解壓縮或安裝該 Skill。
 
 PowerShell：
 
@@ -99,11 +102,6 @@ Invoke-WebRequest "$releaseBase/$assetName.manifest.json" -OutFile "$assetName.m
 $manifest = Get-Content "$assetName.manifest.json" -Raw | ConvertFrom-Json
 $actualHash = (Get-FileHash "$assetName.zip" -Algorithm SHA256).Hash.ToLowerInvariant()
 if ($actualHash -ne $manifest.archive_sha256) { throw "SHA-256 mismatch" }
-$skillDirectory = Join-Path $HOME ".agents\skills\clinical-data-research-navigator"
-if (Test-Path $skillDirectory) { throw "Skill already exists: $skillDirectory" }
-New-Item -ItemType Directory -Path $skillDirectory -Force | Out-Null
-Expand-Archive "$assetName.zip" -DestinationPath $skillDirectory
-Test-Path (Join-Path $skillDirectory "SKILL.md")
 ```
 
 POSIX shell：
@@ -125,11 +123,6 @@ else
 fi
 test "$actual_hash" = "$expected_hash" || { echo "SHA-256 mismatch" >&2; exit 1; }
 echo "SHA-256 OK"
-skill_directory="$HOME/.agents/skills/clinical-data-research-navigator"
-test ! -e "$skill_directory" || { echo "Skill already exists: $skill_directory"; exit 1; }
-mkdir -p "$skill_directory"
-unzip "$asset_name.zip" -d "$skill_directory"
-test -f "$skill_directory/SKILL.md"
 ```
 
 ## 從原始碼簽出安裝

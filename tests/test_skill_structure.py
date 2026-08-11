@@ -205,6 +205,20 @@ def test_validator_requires_skill_invocation_in_default_prompt(tmp_path):
     assert "default prompt must mention $bad-skill" in validate_skill(skill)
 
 
+def test_validator_rejects_longer_skill_name_as_the_invocation_token(tmp_path):
+    skill = tmp_path / "bad-skill"
+    write_valid_skill(skill)
+    (skill / "agents/openai.yaml").write_text(
+        "interface:\n"
+        '  display_name: "Clinical Data Research Navigator"\n'
+        '  short_description: "A valid test description"\n'
+        '  default_prompt: "Use $bad-skill-old for a clinical-data question."\n',
+        encoding="utf-8",
+    )
+
+    assert "default prompt must mention $bad-skill" in validate_skill(skill)
+
+
 def test_validator_accepts_a_single_short_default_prompt(tmp_path):
     skill = tmp_path / "valid-skill"
     write_valid_skill(skill)
