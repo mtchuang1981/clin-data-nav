@@ -1650,6 +1650,68 @@ def _assert_v040_publication_evidence_contract(report: str) -> None:
         ),
     )
 
+    inspection = _evidence_subsection(
+        report,
+        "## Manifest and ZIP inspection",
+        "## Mutation and evidence boundaries",
+    )
+    inspection_rows = _evidence_table_rows(inspection)
+    assert inspection_rows[0] == (
+        "ZIP member",
+        "Size (bytes)",
+        "Independently calculated SHA-256",
+    )
+    member_rows = []
+    for row in inspection_rows[1:]:
+        assert len(row) == 3
+        path, size, sha256 = row
+        assert re.fullmatch(r"`[^`]+`", path)
+        assert re.fullmatch(r"`[0-9]+`", size)
+        assert re.fullmatch(r"`[0-9a-f]{64}`", sha256)
+        member_rows.append((path[1:-1], int(size[1:-1]), sha256[1:-1]))
+    assert tuple(member_rows) == (
+        (
+            "SKILL.md",
+            11519,
+            "feb006a65eb8971641f9a8f1fccf547929dde81550ffc3760484596c2cd9061c",
+        ),
+        (
+            "agents/openai.yaml",
+            286,
+            "fcf1af72749d16bd0de63fa5008635f232fcb338ac8824d9bbc37cd92a9c8471",
+        ),
+        (
+            "references/evidence-output-template.md",
+            3496,
+            "492a8550c33f5983397905b214ddebcafabbcc24c41e1552c5333835db717274",
+        ),
+        (
+            "references/institutional-adapter-contract.md",
+            3770,
+            "3338101cba63b3c42dac3342671b6ab6fff288b44c799e6531e8a6a88c37f164",
+        ),
+        (
+            "references/output-depths-and-learning-paths.md",
+            5769,
+            "ade86d6017b8968bf637f7a68970c68f88b9ae872a7830ab6721c8c80542b61a",
+        ),
+        (
+            "references/retrieval-playbook.md",
+            5253,
+            "eade0851031d4411aed96cf285b681306c3500d004e6dc1906025d6d5ef357a7",
+        ),
+        (
+            "references/rwe-question-routing.md",
+            7460,
+            "9301a0077f2647a669c47f476d33f0b60644b87a6b50628c680ba875b0656fe7",
+        ),
+        (
+            "references/tmucrd-public-profile.md",
+            2855,
+            "fd0d531dded2679b6d4d1b6a3654339c82c9dbc7b29d75221df0074b888e78e1",
+        ),
+    )
+
     for exact_fact in (
         "Manifest `archive_sha256`: `ce6a67a268e4266d094db31406a9c5dda3f005c3b6a5355ec851ea87abf3aded`.",
         "The manifest root keys were exactly `archive,archive_sha256,files,name,version`.",
@@ -1794,6 +1856,49 @@ def test_v040_publication_command_lock_normalizes_lf_and_crlf():
     ),
 )
 def test_v040_publication_evidence_binds_independent_verification_commands(
+    original,
+    replacement,
+):
+    report = (
+        ROOT / "docs/verification/2026-08-10-v0.4.0-publication.md"
+    ).read_text(encoding="utf-8")
+    assert original in report
+    mutated = report.replace(original, replacement, 1)
+
+    with pytest.raises(AssertionError):
+        _assert_v040_publication_evidence_contract(mutated)
+
+
+@pytest.mark.parametrize(
+    ("original", "replacement"),
+    (
+        (
+            "| `SKILL.md` | `11519` | "
+            "`feb006a65eb8971641f9a8f1fccf547929dde81550ffc3760484596c2cd9061c` |\n",
+            "",
+        ),
+        (
+            "| `SKILL.md` | `11519` | "
+            "`feb006a65eb8971641f9a8f1fccf547929dde81550ffc3760484596c2cd9061c` |",
+            "| `SKILL.txt` | `11519` | "
+            "`feb006a65eb8971641f9a8f1fccf547929dde81550ffc3760484596c2cd9061c` |",
+        ),
+        (
+            "| `SKILL.md` | `11519` | "
+            "`feb006a65eb8971641f9a8f1fccf547929dde81550ffc3760484596c2cd9061c` |",
+            "| `SKILL.md` | `11518` | "
+            "`feb006a65eb8971641f9a8f1fccf547929dde81550ffc3760484596c2cd9061c` |",
+        ),
+        (
+            "| `SKILL.md` | `11519` | "
+            "`feb006a65eb8971641f9a8f1fccf547929dde81550ffc3760484596c2cd9061c` |",
+            "| `SKILL.md` | `11519` | "
+            "`0eb006a65eb8971641f9a8f1fccf547929dde81550ffc3760484596c2cd9061c` |",
+        ),
+    ),
+    ids=("row-deletion", "path", "size", "sha256"),
+)
+def test_v040_publication_evidence_binds_exact_member_rows(
     original,
     replacement,
 ):
