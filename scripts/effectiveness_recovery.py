@@ -4,6 +4,11 @@ from collections.abc import Mapping
 from datetime import datetime
 import re
 
+from scripts.effectiveness_analysis import (
+    compute_environment_fingerprint,
+    validate_study_manifest,
+)
+
 
 RECOVERY_KEYS = frozenset(
     {
@@ -279,6 +284,91 @@ def compute_record_state(record: dict) -> dict:
         if not blocked:
             status = "authorized-for-fresh-batch"
 
+    return {
+        "schema_version": "1",
+        "status": status,
+        "passed_gate_ids": passed,
+        "blocked_gate_ids": blocked,
+        "synthetic_example": record["synthetic_example"],
+    }
+
+
+def restart_status(record: dict) -> dict:
+    """Return the highest permitted sanitized pre-collection state."""
+    return compute_record_state(record)
+
+
+def collection_status(record: dict, manifest: dict) -> dict:
+    """Bind a closed, clean replacement collection to its validated manifest."""
+    state = restart_status(record)
+    if state["status"] != "authorized-for-fresh-batch":
+        return state
+
+    passed = list(state["passed_gate_ids"])
+    blocked = list(state["blocked_gate_ids"])
+    if validate_study_manifest(manifest):
+        blocked.append("replacement-study-manifest")
+        return _sanitized_state(record, state["status"], passed, blocked)
+
+    bindings = (
+        ("replacement-study-id", "replacement_study_id", "study_id"),
+        ("replacement-protocol-commit", "replacement_protocol_commit", "protocol_commit"),
+        ("replacement-skill-version", "replacement_skill_version", "skill_version"),
+        ("replacement-skill-commit", "replacement_skill_commit", "skill_commit"),
+        (
+            "replacement-task-commitment",
+            "replacement_task_commitment_sha256",
+            "task_commitment_sha256",
+        ),
+    )
+    for gate_id, record_field, manifest_field in bindings:
+        if record[record_field] == manifest[manifest_field]:
+            passed.append(gate_id)
+        else:
+            blocked.append(gate_id)
+
+    if record["replacement_environment_fingerprint"] == compute_environment_fingerprint(
+        manifest
+    ):
+        passed.append("replacement-environment-fingerprint")
+    else:
+        blocked.append("replacement-environment-fingerprint")
+
+    assignment_versions = {
+        session["assignment_version"] for session in manifest["sessions"]
+    }
+    if (
+        len(assignment_versions) == 1
+        and record["replacement_assignment_version"] in assignment_versions
+    ):
+        passed.append("replacement-assignment-version")
+    else:
+        blocked.append("replacement-assignment-version")
+
+    if _group_state(record, _COLLECTION_FIELDS) == "complete" and record[
+        "collection_status"
+    ] == "closed":
+        passed.append("replacement-collection-closed")
+    else:
+        blocked.append("replacement-collection-closed")
+
+    if _group_state(record, _INTEGRITY_FIELDS) != "complete":
+        blocked.append("replacement-integrity-attestation")
+    elif all(record[field] is False for field in _INTEGRITY_FIELDS[2:]):
+        passed.append("replacement-integrity-clean")
+    else:
+        blocked.append("replacement-integrity-clean")
+
+    status = "ready-for-blinded-rating" if not blocked else state["status"]
+    return _sanitized_state(record, status, passed, blocked)
+
+
+def _sanitized_state(
+    record: Mapping[str, object],
+    status: str,
+    passed: list[str],
+    blocked: list[str],
+) -> dict:
     return {
         "schema_version": "1",
         "status": status,

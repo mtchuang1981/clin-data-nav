@@ -6,9 +6,13 @@ import pytest
 
 from scripts.effectiveness_recovery import (
     RECOVERY_KEYS,
+    collection_status,
     compute_record_state,
+    restart_status,
     validate_recovery_record,
 )
+from scripts.effectiveness_analysis import compute_environment_fingerprint
+from tests.effectiveness_fixtures import valid_manifest
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -252,3 +256,137 @@ def test_state_rejects_invalid_record_without_echoing_input_values():
 
     with pytest.raises(ValueError, match="^invalid recovery record$"):
         compute_record_state(payload)
+
+
+def bound_manifest_and_record():
+    manifest = valid_manifest()
+    manifest["skill_version"] = "0.5.0"
+    fingerprint = compute_environment_fingerprint(manifest)
+    for session in manifest["sessions"]:
+        session["environment_fingerprint"] = fingerprint
+
+    record = copy.deepcopy(load_json(SYNTHETIC))
+    record.update(
+        {
+            "replacement_study_id": manifest["study_id"],
+            "replacement_protocol_commit": manifest["protocol_commit"],
+            "replacement_skill_version": manifest["skill_version"],
+            "replacement_skill_commit": manifest["skill_commit"],
+            "replacement_task_commitment_sha256": manifest[
+                "task_commitment_sha256"
+            ],
+            "replacement_assignment_version": "pilot-v1-assignments",
+            "replacement_environment_fingerprint": fingerprint,
+        }
+    )
+    return manifest, record
+
+
+def refresh_manifest_fingerprint(manifest):
+    fingerprint = compute_environment_fingerprint(manifest)
+    for session in manifest["sessions"]:
+        session["environment_fingerprint"] = fingerprint
+
+
+def test_restart_status_transitions_are_limited_to_record_prerequisites():
+    _, open_record = bound_manifest_and_record()
+    open_record["incident_status"] = "open"
+    open_record["incident_closed_at"] = None
+    open_record["incident_record_sha256"] = None
+    for field in (
+        "restart_decision",
+        "restart_decided_at",
+        "restart_record_sha256",
+        "replacement_study_id",
+        "replacement_protocol_commit",
+        "replacement_skill_name",
+        "replacement_skill_version",
+        "replacement_skill_commit",
+        "replacement_task_commitment_sha256",
+        "replacement_assignment_version",
+        "replacement_environment_fingerprint",
+        "collection_status",
+        "collection_closed_at",
+        "collection_record_sha256",
+        "integrity_attested_at",
+        "integrity_record_sha256",
+        "environment_change_detected",
+        "task_pack_leakage_detected",
+        "reportable_incident_detected",
+    ):
+        open_record[field] = None
+
+    closed_without_decision = copy.deepcopy(open_record)
+    closed_without_decision.update(
+        {
+            "incident_status": "closed",
+            "incident_closed_at": "2026-08-11T09:00:00+08:00",
+            "incident_record_sha256": "b" * 64,
+        }
+    )
+    _, authorized_record = bound_manifest_and_record()
+
+    assert restart_status(open_record)["status"] == "blocked-incident-open"
+    assert restart_status(closed_without_decision)["status"] == "ready-for-restart-review"
+    assert restart_status(authorized_record)["status"] == "authorized-for-fresh-batch"
+
+
+def test_collection_status_accepts_only_a_closed_clean_manifest_bound_batch():
+    manifest, record = bound_manifest_and_record()
+
+    assert collection_status(record, manifest)["status"] == "ready-for-blinded-rating"
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    (
+        lambda record, manifest: record.update({"replacement_study_id": "other-study"}),
+        lambda record, manifest: record.update({"replacement_protocol_commit": "d" * 40}),
+        lambda record, manifest: (
+            manifest.update({"skill_version": "0.4.0"}),
+            refresh_manifest_fingerprint(manifest),
+        ),
+        lambda record, manifest: record.update({"replacement_skill_commit": "e" * 40}),
+        lambda record, manifest: record.update(
+            {"replacement_task_commitment_sha256": "f" * 64}
+        ),
+        lambda record, manifest: record.update(
+            {"replacement_assignment_version": "different-assignment"}
+        ),
+        lambda record, manifest: record.update(
+            {"replacement_environment_fingerprint": "0" * 64}
+        ),
+        lambda record, manifest: record.update(
+            {
+                "collection_status": None,
+                "collection_closed_at": None,
+                "collection_record_sha256": None,
+                "integrity_attested_at": None,
+                "integrity_record_sha256": None,
+                "environment_change_detected": None,
+                "task_pack_leakage_detected": None,
+                "reportable_incident_detected": None,
+            }
+        ),
+        lambda record, manifest: record.update({"environment_change_detected": True}),
+        lambda record, manifest: record.update({"task_pack_leakage_detected": True}),
+        lambda record, manifest: record.update({"reportable_incident_detected": True}),
+    ),
+)
+def test_collection_status_fails_closed_when_any_binding_or_integrity_gate_breaks(
+    mutation,
+):
+    manifest, record = bound_manifest_and_record()
+    mutation(record, manifest)
+
+    assert collection_status(record, manifest)["status"] != "ready-for-blinded-rating"
+
+
+def test_collection_status_rejects_integrity_attestation_before_collection_closure():
+    manifest, record = bound_manifest_and_record()
+    record["collection_status"] = None
+    record["collection_closed_at"] = None
+    record["collection_record_sha256"] = None
+
+    with pytest.raises(ValueError, match="^invalid recovery record$"):
+        collection_status(record, manifest)
