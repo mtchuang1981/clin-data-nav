@@ -1,0 +1,69 @@
+{
+  "controls": [
+    {
+      "control_id": "study-owner-role",
+      "documentation_status": "documented",
+      "evidence_reference": "SYNTH.STUDY-OWNER-ROLE.V1"
+    },
+    {
+      "control_id": "institutional-path-request",
+      "documentation_status": "documented",
+      "evidence_reference": "SYNTH.INSTITUTIONAL-PATH-REQUEST.V1"
+    },
+    {
+      "control_id": "scope-risk-benefit",
+      "documentation_status": "documented",
+      "evidence_reference": "SYNTH.SCOPE-RISK-BENEFIT.V1"
+    },
+    {
+      "control_id": "external-storage",
+      "documentation_status": "documented",
+      "evidence_reference": "SYNTH.EXTERNAL-STORAGE.V1"
+    },
+    {
+      "control_id": "access-minimization",
+      "documentation_status": "documented",
+      "evidence_reference": "SYNTH.ACCESS-MINIMIZATION.V1"
+    },
+    {
+      "control_id": "retention-deletion",
+      "documentation_status": "documented",
+      "evidence_reference": "SYNTH.RETENTION-DELETION.V1"
+    },
+    {
+      "control_id": "consent-material",
+      "documentation_status": "documented",
+      "evidence_reference": "SYNTH.CONSENT-MATERIAL.V1"
+    },
+    {
+      "control_id": "recruitment-plan",
+      "documentation_status": "documented",
+      "evidence_reference": "SYNTH.RECRUITMENT-PLAN.V1"
+    },
+    {
+      "control_id": "incident-response",
+      "documentation_status": "documented",
+      "evidence_reference": "SYNTH.INCIDENT-RESPONSE.V1"
+    },
+    {
+      "control_id": "environment-freeze",
+      "documentation_status": "documented",
+      "evidence_reference": "SYNTH.ENVIRONMENT-FREEZE.V1"
+    },
+    {
+      "control_id": "rater-readiness",
+      "documentation_status": "documented",
+      "evidence_reference": "SYNTH.RATER-READINESS.V1"
+    },
+    {
+      "control_id": "task-pack-commitment-plan",
+      "documentation_status": "documented",
+      "evidence_reference": "SYNTH.TASK-PACK-COMMITMENT-PLAN.V1"
+    }
+  ],
+  "pack_id": "synthetic-pilot-v1-governance",
+  "prepared_at": "2026-08-11T13:14:11+08:00",
+  "protocol_commit": "d1738927305e36605be2833adbd999afb68b33aa",
+  "schema_version": "1",
+  "synthetic_example": true
+}
