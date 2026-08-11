@@ -51,12 +51,31 @@ npx skills add mtchuang1981/clin-data-nav
 寫入 `.agents/skills`，不會把它安裝到 ChatGPT，也不能證明它已刊登於公開
 Plugin 目錄。
 
+## 從先前的 Skill ID 遷移
+
+已安裝的 Skill ID 已從 `clinical-data-research-navigator` 改為 `clin-nav`。
+移除或封存任何內容前，先檢查確切的
+`.agents/skills/clinical-data-research-navigator` 目錄，並確認它是目標專案中
+先前的 Skill 安裝。
+
+請使用平台提供的安全檔案操作，只移除或封存已確認的確切目錄。
+絕對不要刪除範圍過大或尚未解析的路徑。本文不提供遞迴刪除指令。
+
+重新執行專案區域安裝：
+
+```bash
+npx skills add mtchuang1981/clin-data-nav
+```
+
+確認 `.agents/skills/clin-nav/SKILL.md` 存在。需要時重新啟動 Skill host，
+檢查 `/skills`，再叫用 `$clin-nav`。
+
 ## 更新專案內的安裝
 
 請在同一個專案根目錄執行：
 
 ```bash
-npx skills update clinical-data-research-navigator --project --yes
+npx skills update clin-nav --project --yes
 ```
 
 接著再用 `/skills` 確認。若顯示的行為仍是舊版，請依下方對應階段排解，
@@ -64,7 +83,8 @@ npx skills update clinical-data-research-navigator --project --yes
 
 ## 從 GitHub Release 驗證 ZIP 後安裝
 
-目前已驗證的 Release 是 `v0.4.0`。請從同一個 Release 下載 ZIP 與 manifest，
+目前已驗證的 Release 是 `v0.4.0`。這是目前已發布的 Release；在日後另行授權
+發布 v0.5.0 前，本節保留其歷史產物名稱。請從同一個 Release 下載 ZIP 與 manifest，
 先用 `archive_sha256` 核對 ZIP 的 SHA-256，再進行解壓縮。下列範例遇到既有
 目的目錄時會拒絕覆寫。
 
@@ -132,7 +152,7 @@ python scripts/install_local.py \
 
 本機封裝器會先驗證 Skill，再依序輸出實際 archive 與 manifest 路徑；將它
 回報的 archive 交給安裝器，就不會綁死未來的版本常數。目的目錄為
-`$HOME/.agents/skills/clinical-data-research-navigator`。只有先檢查並確認要取代
+`$HOME/.agents/skills/clin-nav`。只有先檢查並確認要取代
 這個安裝時，才使用 `--overwrite`；上方指令未使用 `--overwrite`，所以遇到
 既有目的目錄時會拒絕安裝。封裝與安裝程式屬於貢獻者／發布工具，因此這條
 路徑需要 Python 3.11 及

@@ -47,8 +47,7 @@ After approval:
    object and peeled commit, refuses an existing Release, and only then creates
    the Release.
 5. Confirm the public Release points to the intended tag and contains exactly
-   `clinical-data-research-navigator-X.Y.Z.zip` and
-   `clinical-data-research-navigator-X.Y.Z.manifest.json`.
+   `clin-nav-X.Y.Z.zip` and `clin-nav-X.Y.Z.manifest.json`.
 6. Download both assets and independently confirm the ZIP SHA-256 equals
    `archive_sha256` in the manifest.
 7. Record the verified main commit, annotated tag object and peeled commit,

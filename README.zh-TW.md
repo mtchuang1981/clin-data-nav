@@ -13,6 +13,7 @@ npx skills add mtchuang1981/clin-data-nav
 ```
 
 Node.js 必要條件、更新、驗證 ZIP 安裝與疑難排解，請見[安裝指南](docs/installation.zh-TW.md)。
+既有使用者重新安裝前，請先依照其中的 [Skill ID 遷移程序](docs/installation.zh-TW.md#從先前的-skill-id-遷移)操作。
 
 ## 第一次成功使用
 

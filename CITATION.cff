@@ -3,8 +3,7 @@ message: "If you use this project, cite it using this metadata."
 title: "Clinical Data Research Navigator"
 url: "https://github.com/mtchuang1981/clin-data-nav"
 repository-code: "https://github.com/mtchuang1981/clin-data-nav"
-version: "0.4.0"
-date-released: "2026-08-10"
+version: "0.5.0"
 license: Apache-2.0
 type: software
 authors:

@@ -53,7 +53,39 @@ def test_active_user_documents_use_only_the_new_invocation_and_paths():
     assert "$clin-nav" in combined
     assert "skills/clin-nav/" in combined
     assert "$clinical-data-research-navigator" not in combined
-    assert "skills/clinical-data-research-navigator/" not in combined
+
+    installation_sections = (
+        (
+            ROOT / "docs/installation.md",
+            "## Migrate from the previous Skill ID",
+            "## Update a project-local installation",
+            "## Verified ZIP installation from a GitHub Release",
+            "## Install from a source checkout",
+        ),
+        (
+            ROOT / "docs/installation.zh-TW.md",
+            "## 從先前的 Skill ID 遷移",
+            "## 更新專案內的安裝",
+            "## 從 GitHub Release 驗證 ZIP 後安裝",
+            "## 從原始碼簽出安裝",
+        ),
+    )
+    old_id = "clinical-data-research-navigator"
+    installation_paths = {item[0] for item in installation_sections}
+    for path in ACTIVE_TEXT_FILES:
+        if path not in installation_paths:
+            assert old_id not in path.read_text(encoding="utf-8")
+
+    for path, migration_start, migration_end, release_start, release_end in (
+        installation_sections
+    ):
+        text = path.read_text(encoding="utf-8")
+        migration = text.split(migration_start, 1)[1].split(migration_end, 1)[0]
+        released_v040 = text.split(release_start, 1)[1].split(release_end, 1)[0]
+        active_remainder = text.replace(migration, "").replace(released_v040, "")
+        assert old_id in migration
+        assert old_id in released_v040
+        assert old_id not in active_remainder
 
 
 def test_released_history_still_contains_the_original_skill_identity():

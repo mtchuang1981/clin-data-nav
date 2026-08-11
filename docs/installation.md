@@ -55,12 +55,33 @@ documentation](https://learn.chatgpt.com/docs/build-skills) for the current
 surface. The project-local `npx` command writes to `.agents/skills`; it does
 not install it into ChatGPT or establish a public Plugin-directory listing.
 
+## Migrate from the previous Skill ID
+
+The installed Skill ID changed from `clinical-data-research-navigator` to
+`clin-nav`. Inspect the exact existing
+`.agents/skills/clinical-data-research-navigator` directory before removing or archiving anything,
+and confirm that it is the previous Skill installation in
+the intended project.
+
+Remove or archive only that verified directory with a safe file operation for
+your platform. Never delete a broad or unresolved path. Do not use a recursive
+deletion command from this guide.
+
+Rerun the project-local installation:
+
+```bash
+npx skills add mtchuang1981/clin-data-nav
+```
+
+Confirm `.agents/skills/clin-nav/SKILL.md` exists. Then restart the Skill host if required,
+inspect `/skills`, and invoke `$clin-nav`.
+
 ## Update a project-local installation
 
 Run this command from the same project root:
 
 ```bash
-npx skills update clinical-data-research-navigator --project --yes
+npx skills update clin-nav --project --yes
 ```
 
 Confirm discovery again with `/skills`. If the displayed behavior is stale,
@@ -68,7 +89,9 @@ follow the stage-specific recovery below instead of reinstalling blindly.
 
 ## Verified ZIP installation from a GitHub Release
 
-The current verified Release is `v0.4.0`. Download both the ZIP and manifest
+The current verified Release is `v0.4.0`. It is the current published release;
+this section preserves its historical artifact names until a later v0.5.0 publication is authorized.
+Download both the ZIP and manifest
 from that same Release, verify the ZIP's SHA-256 against `archive_sha256`, and
 only then extract it. These examples refuse to overwrite an existing
 destination.
@@ -138,7 +161,7 @@ python scripts/install_local.py \
 The local packager validates the Skill and prints the exact archive path,
 followed by its manifest path. Passing that reported archive avoids coupling
 the instructions to a future version constant. The destination is
-`$HOME/.agents/skills/clinical-data-research-navigator`. Use `--overwrite`
+`$HOME/.agents/skills/clin-nav`. Use `--overwrite`
 only after you have inspected that exact installation and intentionally chosen
 to replace it; the command above omits `--overwrite`, so an existing target is
 refused. The packager and installer are contributor/release tooling, so this

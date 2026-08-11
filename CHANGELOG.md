@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.5.0 - Candidate
+
+### Changed
+
+- Rename the single public Skill ID and explicit invocation from the previous
+  identity to `clin-nav` and `$clin-nav`, while preserving the existing
+  clinical routing, authority, output-depth, and safety behavior.
+
+### Packaging
+
+- Prepare reproducible `clin-nav-0.5.0.zip` and
+  `clin-nav-0.5.0.manifest.json` candidate artifacts and install to the
+  `clin-nav` directory.
+
+### Limitations
+
+- The separate effectiveness-recovery implementation remains pending, and no replacement human pilot has reached green.
+  This rename does not establish
+  human effectiveness.
+
 ## 0.4.0 - 2026-08-10
 
 ### Features

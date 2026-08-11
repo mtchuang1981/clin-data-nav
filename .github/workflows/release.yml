@@ -124,10 +124,10 @@ jobs:
           VERSION: ${{ needs.preflight.outputs.version }}
         run: |
           set -euo pipefail
-          test "$VERSION" = "0.4.0"
-          archive="clinical-data-research-navigator-$VERSION.zip"
-          manifest="clinical-data-research-navigator-$VERSION.manifest.json"
-          notes="docs/releases/0.4.0.md"
+          test "$VERSION" = "0.5.0"
+          archive="clin-nav-$VERSION.zip"
+          manifest="clin-nav-$VERSION.manifest.json"
+          notes="docs/releases/0.5.0.md"
           test -f "$notes"
           python scripts/verify_release.py artifacts \
             --archive "candidate-packages/Linux/$archive" \
@@ -185,8 +185,8 @@ jobs:
           VERIFIED_TAG_OBJECT: ${{ needs.preflight.outputs.tag_object }}
         run: |
           set -euo pipefail
-          archive="release-bundle/clinical-data-research-navigator-$VERSION.zip"
-          manifest="release-bundle/clinical-data-research-navigator-$VERSION.manifest.json"
+          archive="release-bundle/clin-nav-$VERSION.zip"
+          manifest="release-bundle/clin-nav-$VERSION.manifest.json"
           notes="release-bundle/release-notes.md"
           test -f "$archive"
           test -f "$manifest"

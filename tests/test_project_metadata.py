@@ -38,7 +38,7 @@ TERMINAL_ONBOARDING_COMMANDS = (
     "npm --version",
     "npx --version",
     "npx skills add mtchuang1981/clin-data-nav",
-    "npx skills update clinical-data-research-navigator --project --yes",
+    "npx skills update clin-nav --project --yes",
 )
 CODEX_ONBOARDING_INPUTS = (
     "/skills",
@@ -952,8 +952,10 @@ def test_release_workflow_is_manual_fail_closed_and_least_privilege():
     assert 'candidate-packages/Linux/$manifest' in build_runs[verify_index]
     assert 'cp "candidate-packages/Linux/$archive"' in build_runs[verify_index]
     assert 'cp "candidate-packages/Linux/$manifest"' in build_runs[verify_index]
-    assert 'test "$VERSION" = "0.4.0"' in build_runs[verify_index]
-    assert 'notes="docs/releases/0.4.0.md"' in build_runs[verify_index]
+    assert 'test "$VERSION" = "0.5.0"' in build_runs[verify_index]
+    assert 'archive="clin-nav-$VERSION.zip"' in build_runs[verify_index]
+    assert 'manifest="clin-nav-$VERSION.manifest.json"' in build_runs[verify_index]
+    assert 'notes="docs/releases/0.5.0.md"' in build_runs[verify_index]
     assert "python scripts/package_skill.py" not in build_rendered
     assert all("pip " not in command for command in build_runs)
     assert "dist/" not in build_rendered
@@ -1017,6 +1019,14 @@ def test_release_workflow_is_manual_fail_closed_and_least_privilege():
     assert "CHECKSUM_SHA256" in verify_step["env"]
     assert "gh release create" not in verify_step["run"]
     assert release_step["env"]["GH_TOKEN"] == "${{ github.token }}"
+    assert (
+        'archive="release-bundle/clin-nav-$VERSION.zip"'
+        in release_step["run"]
+    )
+    assert (
+        'manifest="release-bundle/clin-nav-$VERSION.manifest.json"'
+        in release_step["run"]
+    )
     assert "python scripts/" not in release_step["run"]
     assert "git ls-remote" in release_step["run"]
     assert "refs/tags/$TAG^{}" in release_step["run"]
@@ -1060,27 +1070,25 @@ def test_citation_and_license_metadata():
         (ROOT / "CITATION.cff").read_text(encoding="utf-8")
     )
     assert citation["title"] == "Clinical Data Research Navigator"
-    assert citation["version"] == "0.4.0"
+    assert citation["version"] == "0.5.0"
+    assert "date-released" not in citation
     assert citation["license"] == "Apache-2.0"
     assert "Apache License" in (ROOT / "LICENSE").read_text(encoding="utf-8")
 
 
-def test_published_release_version_is_synchronized():
+def test_release_candidate_version_is_synchronized():
+    project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
     citation = yaml.safe_load((ROOT / "CITATION.cff").read_text(encoding="utf-8"))
     changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
     changelog_zh_tw = (ROOT / "CHANGELOG.zh-TW.md").read_text(encoding="utf-8")
-    release_notes = (ROOT / "docs/releases/0.4.0.md").read_text(encoding="utf-8")
-    security = (ROOT / "SECURITY.md").read_text(encoding="utf-8")
+    release_notes = (ROOT / "docs/releases/0.5.0.md").read_text(encoding="utf-8")
 
-    published_version = "0.4.0"
-    supported_release = re.search(
-        r"^\| `(\d+\.\d+)\.x` \| Yes \|$",
-        security,
-        flags=re.MULTILINE,
-    )
-    assert supported_release is not None
-    published_surfaces = {
+    candidate_version = "0.5.0"
+    candidate_surfaces = {
+        "pyproject": project["project"]["version"],
         "citation": citation["version"],
+        "packager": PACKAGER_VERSION,
+        "installer": INSTALLER_VERSION,
         "changelog": changelog.splitlines()[2]
         .removeprefix("## ")
         .split(" - ", 1)[0],
@@ -1089,19 +1097,13 @@ def test_published_release_version_is_synchronized():
         .split(" - ", 1)[0],
         "release-notes": release_notes.splitlines()[0].rsplit("v", 1)[1],
     }
-    published_release_lines = {
-        "security-supported-release": supported_release.group(1),
-    }
-
-    assert len(published_surfaces) == 4
-    assert set(published_surfaces.values()) == {published_version}
-    assert len(published_release_lines) == 1
-    assert set(published_release_lines.values()) == {
-        published_version.rsplit(".", 1)[0]
-    }
+    assert len(candidate_surfaces) == 7
+    assert set(candidate_surfaces.values()) == {candidate_version}
+    assert changelog.splitlines()[2] == "## 0.5.0 - Candidate"
+    assert changelog_zh_tw.splitlines()[2] == "## 0.5.0 - 候選版"
+    assert "date-released" not in citation
     assert "## 0.4.0 - 2026-08-10" in changelog
     assert "## 0.4.0 - 2026-08-10" in changelog_zh_tw
-    assert citation["date-released"] == "2026-08-10"
 
     # Published history remains immutable while current surfaces advance.
     assert "## 0.2.2 - 2026-07-29" in changelog
@@ -1114,6 +1116,92 @@ def test_candidate_package_version_is_synchronized_at_v050():
     assert project["project"]["version"] == "0.5.0"
     assert PACKAGER_VERSION == "0.5.0"
     assert INSTALLER_VERSION == "0.5.0"
+
+
+@pytest.mark.parametrize(
+    ("relative_path", "migration_heading", "next_heading", "required_claims"),
+    (
+        (
+            "docs/installation.md",
+            "## Migrate from the previous Skill ID",
+            "## Update a project-local installation",
+            (
+                "Inspect the exact existing",
+                "before removing or archiving anything",
+                "Remove or archive only that verified directory",
+                "Never delete a broad or unresolved path.",
+                "Confirm `.agents/skills/clin-nav/SKILL.md` exists.",
+                "restart the Skill host if required",
+                "inspect `/skills`",
+                "invoke `$clin-nav`",
+            ),
+        ),
+        (
+            "docs/installation.zh-TW.md",
+            "## 從先前的 Skill ID 遷移",
+            "## 更新專案內的安裝",
+            (
+                "移除或封存任何內容前，先檢查確切的",
+                "只移除或封存已確認的確切目錄",
+                "絕對不要刪除範圍過大或尚未解析的路徑。",
+                "確認 `.agents/skills/clin-nav/SKILL.md` 存在。",
+                "需要時重新啟動 Skill host",
+                "檢查 `/skills`",
+                "叫用 `$clin-nav`",
+            ),
+        ),
+    ),
+)
+def test_installation_guides_define_a_bounded_skill_id_migration(
+    relative_path,
+    migration_heading,
+    next_heading,
+    required_claims,
+):
+    text = (ROOT / relative_path).read_text(encoding="utf-8")
+    migration = _markdown_section(text, migration_heading, next_heading)
+    ordered_values = (
+        "clinical-data-research-navigator",
+        "clin-nav",
+        "npx skills add mtchuang1981/clin-data-nav",
+        "$clin-nav",
+    )
+
+    positions = [migration.index(value) for value in ordered_values]
+    assert positions == sorted(positions)
+    assert ".agents/skills/clinical-data-research-navigator" in migration
+    for claim in required_claims:
+        assert claim in migration
+    assert "rm -rf" not in migration
+
+
+def test_v050_static_notes_and_changelogs_state_candidate_limitations():
+    notes = (ROOT / "docs/releases/0.5.0.md").read_text(encoding="utf-8")
+    changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
+    changelog_zh_tw = (ROOT / "CHANGELOG.zh-TW.md").read_text(encoding="utf-8")
+
+    assert notes.startswith("# Clinical Data Research Navigator v0.5.0\n")
+    for heading in (
+        "## English",
+        "### Installation",
+        "### Migration",
+        "### Limitations",
+        "### Verification",
+        "## 繁體中文",
+        "### 安裝",
+        "### 遷移",
+        "### 限制",
+        "### 驗證",
+    ):
+        assert heading in notes
+    assert "The rename does not establish human effectiveness." in notes
+    assert "更名不能建立真人有效性證據。" in notes
+    assert "effectiveness-recovery implementation remains pending" in notes
+    assert "no replacement human pilot has reached green" in notes
+    assert "effectiveness-recovery implementation remains pending" in changelog
+    assert "no replacement human pilot has reached green" in changelog
+    assert "有效性復原實作仍待完成" in changelog_zh_tw
+    assert "尚無替代真人試行達到綠燈" in changelog_zh_tw
 
 
 def test_v022_release_notes_are_static_uploadable_notes_without_candidate_state():
@@ -2451,7 +2539,7 @@ def test_citation_has_required_cff_1_2_schema_shape_and_author():
         )
 
 
-def test_citation_points_to_the_public_repository_with_the_verified_release_date():
+def test_citation_points_to_the_public_repository_without_an_unpublished_date():
     citation = yaml.safe_load(
         (ROOT / "CITATION.cff").read_text(encoding="utf-8")
     )
@@ -2459,7 +2547,7 @@ def test_citation_points_to_the_public_repository_with_the_verified_release_date
     repository_url = "https://github.com/mtchuang1981/clin-data-nav"
     assert citation["url"] == repository_url
     assert citation["repository-code"] == repository_url
-    assert citation["date-released"] == "2026-08-10"
+    assert "date-released" not in citation
 
 
 def test_security_policy_has_supported_versions_and_safe_confidential_reporting():

@@ -13,6 +13,7 @@ npx skills add mtchuang1981/clin-data-nav
 ```
 
 See the [installation guide](docs/installation.md) for Node.js prerequisites, updates, verified ZIP installation, and troubleshooting.
+Existing users should follow its [Skill ID migration procedure](docs/installation.md#migrate-from-the-previous-skill-id) before reinstalling.
 
 ## First success
 
