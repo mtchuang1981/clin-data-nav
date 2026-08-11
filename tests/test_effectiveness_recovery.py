@@ -139,6 +139,26 @@ def test_schema_rejects_reused_affected_bindings():
     assert invalid_errors(payload) == ["affected and replacement task commitments must differ"]
 
 
+def test_schema_requires_affected_identity_before_restart_authorization():
+    payload = load_json(SYNTHETIC)
+    payload["affected_study_id"] = None
+    payload["affected_task_commitment_sha256"] = None
+
+    assert invalid_errors(payload) == [
+        "affected identity is required for authorized restart"
+    ]
+    with pytest.raises(ValueError, match="^invalid recovery record$"):
+        compute_record_state(payload)
+
+
+def test_schema_rejects_mixed_type_unknown_keys_without_sorting_error():
+    payload = load_json(SYNTHETIC)
+    payload[1] = True
+    payload["unexpected"] = True
+
+    assert invalid_errors(payload) == ["unexpected key"]
+
+
 @pytest.mark.parametrize(
     "field,value",
     (

@@ -118,7 +118,7 @@ def validate_recovery_record(payload: object) -> list[str]:
     keys = set(payload)
     for key in sorted(RECOVERY_KEYS - keys):
         return [f"missing key: {key}"]
-    for key in sorted(keys - RECOVERY_KEYS):
+    if keys - RECOVERY_KEYS:
         return ["unexpected key"]
 
     record = payload
@@ -178,6 +178,11 @@ def validate_recovery_record(payload: object) -> list[str]:
             return ["invalid restart_decided_at"]
         if not _valid_hex(record["restart_record_sha256"], LOWER_HEX_64):
             return ["invalid restart_record_sha256"]
+
+    if record["restart_decision"] == "authorized-for-replacement-batch" and _group_state(
+        record, affected_fields
+    ) != "complete":
+        return ["affected identity is required for authorized restart"]
 
     if _group_state(record, _BINDING_FIELDS) == "complete":
         if record["restart_decision"] != "authorized-for-replacement-batch":
