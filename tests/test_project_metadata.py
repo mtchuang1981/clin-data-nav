@@ -1497,6 +1497,33 @@ def test_v040_local_release_evidence_binds_artifact_properties_to_values(
 def _assert_v040_publication_evidence_contract(report: str) -> None:
     normalized = " ".join(report.split())
 
+    for metadata_fact in (
+        "- Evidence recorded: `2026-08-10` (`Asia/Taipei`)",
+        "- Published version: `v0.4.0`",
+        "- Release published: `2026-08-10T01:30:15Z`",
+    ):
+        assert normalized.count(metadata_fact) == 1
+    immutable_boundary = (
+        "This is a post-publication record of public, independently downloaded "
+        "bytes. It does not claim that this later evidence commit is contained "
+        "in the immutable v0.4.0 source tree."
+    )
+    assert normalized.count(immutable_boundary) == 1
+
+    sentences = {
+        sentence.strip()
+        for sentence in re.split(r"(?<=[.!?])(?:\s+|$)", normalized)
+        if sentence.strip()
+    }
+    for contradictory_claim in (
+        "A human pilot proved the Skill effective.",
+        "A human pilot was conducted.",
+        "The Skill is effective.",
+        "The Skill is clinically valid.",
+        "The Skill is ready for real-world deployment.",
+    ):
+        assert contradictory_claim not in sentences
+
     identity = _evidence_subsection(
         report,
         "## Immutable publication identity",
@@ -1550,11 +1577,18 @@ def _assert_v040_publication_evidence_contract(report: str) -> None:
     assert fresh_directory_match is not None
     fresh_directory = fresh_directory_match.group("path")
     assert normalized.count(fresh_directory) == 1
+    complete_download_command = (
+        "gh release download v0.4.0 --repo mtchuang1981/clin-data-nav "
+        '--pattern "clinical-data-research-navigator-0.4.0.zip" '
+        '--pattern "clinical-data-research-navigator-0.4.0.manifest.json" '
+        "--dir $freshDir"
+    )
+    assert normalized.count(complete_download_command) == 1
     for command in (
-        "gh release download v0.4.0 --repo mtchuang1981/clin-data-nav",
         "python scripts/verify_release.py artifacts --archive $archive --manifest $manifest",
         "Get-FileHash -LiteralPath $archive -Algorithm SHA256",
         "Get-FileHash -LiteralPath $manifest -Algorithm SHA256",
+        "python - $archive $manifest",
         "python scripts/check_public_boundary.py $extractDir",
     ):
         assert command in normalized
@@ -1562,6 +1596,33 @@ def _assert_v040_publication_evidence_contract(report: str) -> None:
     assert "The new directory was empty before download." in normalized
     assert "The completed download contained exactly two files." in normalized
     assert "Every recorded verification command exited `0`." in normalized
+
+    command_record = _evidence_subsection(
+        report.replace("\r\n", "\n").replace("\r", "\n"),
+        "## Fresh public download",
+        "## Release asset metadata and independently measured bytes",
+    )
+    powershell_blocks = re.findall(
+        r"```powershell\n(?P<body>.*?)\n```",
+        command_record,
+        flags=re.DOTALL,
+    )
+    python_blocks = re.findall(
+        r"```python\n(?P<body>.*?)\n```",
+        command_record,
+        flags=re.DOTALL,
+    )
+    assert tuple(
+        hashlib.sha256(block.encode("utf-8")).hexdigest()
+        for block in powershell_blocks
+    ) == (
+        "9758c11941c0e7e0f6faed0bb5f671319031071b69a2475af24a3f9ab1eeeb9e",
+        "744d3f98b044b99a72996ce07d2143493e3b18370f090c572e8e59ab7a70440c",
+    )
+    assert tuple(
+        hashlib.sha256(block.encode("utf-8")).hexdigest()
+        for block in python_blocks
+    ) == ("0dd88ee4aa57dc52e8387c79e765dfa2be8cfcbb3d98186fc51779d963d6bc0e",)
 
     assets = _evidence_subsection(
         report,
@@ -1614,6 +1675,136 @@ def test_v040_publication_report_records_exact_public_evidence():
         ROOT / "docs/verification/2026-08-10-v0.4.0-publication.md"
     ).read_text(encoding="utf-8")
     _assert_v040_publication_evidence_contract(report)
+
+
+@pytest.mark.parametrize(
+    "contradictory_claim",
+    (
+        "A human pilot proved the Skill effective.",
+        "A human pilot was conducted.",
+        "The Skill is effective.",
+        "The Skill is clinically valid.",
+        "The Skill is ready for real-world deployment.",
+    ),
+)
+def test_v040_publication_evidence_rejects_contradictory_positive_claims(
+    contradictory_claim,
+):
+    report = (
+        ROOT / "docs/verification/2026-08-10-v0.4.0-publication.md"
+    ).read_text(encoding="utf-8")
+    mutated = f"{report.rstrip()}\n\n{contradictory_claim}\n"
+
+    with pytest.raises(AssertionError):
+        _assert_v040_publication_evidence_contract(mutated)
+
+
+@pytest.mark.parametrize(
+    "removed_fact",
+    (
+        "- Evidence recorded: `2026-08-10` (`Asia/Taipei`)\n",
+        "- Published version: `v0.4.0`\n",
+        "- Release published: `2026-08-10T01:30:15Z`\n",
+        (
+            "This is a post-publication record of public, independently "
+            "downloaded bytes.\nIt does not claim that this later evidence "
+            "commit is contained in the immutable\nv0.4.0 source tree.\n"
+        ),
+    ),
+)
+def test_v040_publication_evidence_locks_metadata_and_immutable_tag_boundary(
+    removed_fact,
+):
+    report = (
+        ROOT / "docs/verification/2026-08-10-v0.4.0-publication.md"
+    ).read_text(encoding="utf-8")
+    assert removed_fact in report
+    mutated = report.replace(removed_fact, "", 1)
+
+    with pytest.raises(AssertionError):
+        _assert_v040_publication_evidence_contract(mutated)
+
+
+@pytest.mark.parametrize(
+    ("original", "replacement"),
+    (
+        (
+            ' --pattern "clinical-data-research-navigator-0.4.0.zip"',
+            "",
+        ),
+        (
+            ' --pattern "clinical-data-research-navigator-0.4.0.manifest.json"',
+            "",
+        ),
+        (" --dir $freshDir", " --dir $extractDir"),
+        (
+            (
+                '--pattern "clinical-data-research-navigator-0.4.0.zip" '
+                '--pattern "clinical-data-research-navigator-0.4.0.manifest.json"'
+            ),
+            (
+                '--pattern "clinical-data-research-navigator-0.4.0.manifest.json" '
+                '--pattern "clinical-data-research-navigator-0.4.0.zip"'
+            ),
+        ),
+    ),
+)
+def test_v040_publication_evidence_binds_complete_download_command(
+    original,
+    replacement,
+):
+    report = (
+        ROOT / "docs/verification/2026-08-10-v0.4.0-publication.md"
+    ).read_text(encoding="utf-8")
+    assert original in report
+    mutated = report.replace(original, replacement, 1)
+
+    with pytest.raises(AssertionError):
+        _assert_v040_publication_evidence_contract(mutated)
+
+
+def test_v040_publication_command_lock_normalizes_lf_and_crlf():
+    report = (
+        ROOT / "docs/verification/2026-08-10-v0.4.0-publication.md"
+    ).read_text(encoding="utf-8")
+    lf_report = report.replace("\r\n", "\n").replace("\r", "\n")
+    crlf_report = lf_report.replace("\n", "\r\n")
+
+    _assert_v040_publication_evidence_contract(lf_report)
+    _assert_v040_publication_evidence_contract(crlf_report)
+
+
+@pytest.mark.parametrize(
+    ("original", "replacement"),
+    (
+        (
+            "gh api repos/mtchuang1981/clin-data-nav/releases/tags/v0.4.0",
+            "gh api repos/mtchuang1981/clin-data-nav/releases/latest",
+        ),
+        (
+            "$localSize = (Get-Item -LiteralPath $local).Length",
+            "$localSize = $asset.size",
+        ),
+        (
+            "Get-FileHash -LiteralPath $local -Algorithm SHA256",
+            "Get-FileHash -LiteralPath $local -Algorithm SHA512",
+        ),
+        ("`python - $archive $manifest`", "`python - $manifest $archive`"),
+        ("with ZipFile(archive) as zip_file:", "with ZipFile(manifest) as zip_file:"),
+    ),
+)
+def test_v040_publication_evidence_binds_independent_verification_commands(
+    original,
+    replacement,
+):
+    report = (
+        ROOT / "docs/verification/2026-08-10-v0.4.0-publication.md"
+    ).read_text(encoding="utf-8")
+    assert original in report
+    mutated = report.replace(original, replacement, 1)
+
+    with pytest.raises(AssertionError):
+        _assert_v040_publication_evidence_contract(mutated)
 
 
 def test_release_process_requires_a_committed_post_release_evidence_report():
