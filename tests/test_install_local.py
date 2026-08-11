@@ -16,7 +16,7 @@ def _write_minimal_skill(skill: Path) -> None:
     skill.mkdir()
     (skill / "SKILL.md").write_text(
         "---\n"
-        "name: clinical-data-research-navigator\n"
+        "name: clin-nav\n"
         "description: Use when testing local installation.\n"
         "---\n"
         "# Skill\n",
@@ -26,15 +26,15 @@ def _write_minimal_skill(skill: Path) -> None:
     agents.mkdir()
     (agents / "openai.yaml").write_text(
         "interface:\n"
-        "  display_name: Clinical Data Research Navigator\n"
+        "  display_name: ClinNav\n"
         "  short_description: Test navigation.\n"
-        "  default_prompt: Use $clinical-data-research-navigator for clinical-data research.\n",
+        "  default_prompt: Use $clin-nav for clinical-data research.\n",
         encoding="utf-8",
     )
 
 
 def _build_test_package(tmp_path: Path):
-    skill = tmp_path / "source" / "clinical-data-research-navigator"
+    skill = tmp_path / "source" / "clin-nav"
     skill.parent.mkdir()
     _write_minimal_skill(skill)
     return build_package(skill, tmp_path / "package")
@@ -137,7 +137,7 @@ def test_valid_package_installs_under_requested_destination(tmp_path):
     installed = install_package(package.archive, destination)
 
     assert installed == (
-        destination.resolve() / "clinical-data-research-navigator"
+        destination.resolve() / "clin-nav"
     )
     assert (installed / "SKILL.md").read_text(encoding="utf-8").endswith(
         "# Skill\n"
@@ -147,7 +147,7 @@ def test_valid_package_installs_under_requested_destination(tmp_path):
 def test_existing_installation_is_refused_without_overwrite(tmp_path):
     package = _build_test_package(tmp_path)
     destination = tmp_path / "selected-skills"
-    installed = destination / "clinical-data-research-navigator"
+    installed = destination / "clin-nav"
     installed.mkdir(parents=True)
     marker = installed / "keep.txt"
     marker.write_text("existing", encoding="utf-8")
@@ -170,7 +170,7 @@ def test_no_overwrite_race_never_replaces_a_competing_target(
 ):
     package = _build_test_package(tmp_path)
     destination = tmp_path / "selected-skills"
-    installed = destination / "clinical-data-research-navigator"
+    installed = destination / "clin-nav"
     victim = installed / "victim.txt"
     victim_bytes = b"competitor-owned bytes"
     real_temporary_directory = install_local_module.tempfile.TemporaryDirectory
@@ -203,7 +203,7 @@ def test_identity_check_path_swap_never_mutates_competing_directory(
 ):
     package = _build_test_package(tmp_path)
     destination = tmp_path / "selected-skills"
-    installed = destination / "clinical-data-research-navigator"
+    installed = destination / "clin-nav"
     displaced = tmp_path / "displaced-installer-reservation"
     victim = installed / "victim.txt"
     victim_bytes = b"competitor-owned bytes"
@@ -241,7 +241,7 @@ def test_competitor_winning_at_atomic_publish_is_preserved(
 ):
     package = _build_test_package(tmp_path)
     destination = tmp_path / "selected-skills"
-    installed = destination / "clinical-data-research-navigator"
+    installed = destination / "clin-nav"
     real_rename_no_replace = install_local_module._rename_no_replace
     competing_identity = None
 
@@ -366,7 +366,7 @@ def test_unsupported_platform_fails_closed(tmp_path, monkeypatch):
 def test_overwrite_replaces_only_exact_skill_and_preserves_siblings(tmp_path):
     package = _build_test_package(tmp_path)
     destination = tmp_path / "selected-skills"
-    installed = destination / "clinical-data-research-navigator"
+    installed = destination / "clin-nav"
     installed.mkdir(parents=True)
     stale = installed / "stale.txt"
     stale.write_text("remove me", encoding="utf-8")
@@ -381,7 +381,7 @@ def test_overwrite_replaces_only_exact_skill_and_preserves_siblings(tmp_path):
     assert not stale.exists()
     assert sibling_marker.read_text(encoding="utf-8") == "keep me"
     assert not list(
-        tmp_path.glob(".clinical-data-research-navigator-backup-*")
+        tmp_path.glob(".clin-nav-backup-*")
     )
 
 
@@ -415,7 +415,7 @@ def test_parent_or_absolute_zip_member_is_rejected_before_extraction(
 
     assert not outside.exists()
     assert not (
-        destination / "clinical-data-research-navigator"
+        destination / "clin-nav"
     ).exists()
 
 
@@ -472,7 +472,7 @@ def test_noncanonical_or_nonregular_member_is_rejected_before_write(
 
     assert not outside.exists()
     assert not (
-        destination / "clinical-data-research-navigator"
+        destination / "clin-nav"
     ).exists()
 
 
@@ -485,7 +485,7 @@ def test_dos_directory_attribute_is_rejected_before_write(tmp_path):
         install_package(package.archive, destination)
 
     assert not (
-        destination / "clinical-data-research-navigator"
+        destination / "clin-nav"
     ).exists()
 
 
@@ -498,7 +498,7 @@ def test_casefolded_member_collision_is_rejected_before_write(tmp_path):
         install_package(package.archive, destination)
 
     assert not (
-        destination / "clinical-data-research-navigator"
+        destination / "clin-nav"
     ).exists()
 
 
@@ -518,7 +518,7 @@ def test_unicode_normalized_member_collision_is_rejected_before_write(
         install_package(package.archive, destination)
 
     assert not (
-        destination / "clinical-data-research-navigator"
+        destination / "clin-nav"
     ).exists()
 
 
@@ -571,10 +571,10 @@ def test_portable_file_ancestor_conflict_is_rejected_before_staging(
 
     assert not staging_started
     assert not (
-        destination / "clinical-data-research-navigator"
+        destination / "clin-nav"
     ).exists()
     assert not list(
-        tmp_path.glob(".clinical-data-research-navigator-*")
+        tmp_path.glob(".clin-nav-*")
     )
 
 
@@ -611,7 +611,7 @@ def test_platform_ambiguous_component_is_rejected_before_write(
         install_package(package.archive, destination)
 
     assert not (
-        destination / "clinical-data-research-navigator"
+        destination / "clin-nav"
     ).exists()
 
 
@@ -634,7 +634,7 @@ def test_manifest_hash_mismatch_is_rejected_before_extraction(tmp_path):
         install_package(package.archive, destination)
 
     assert not (
-        destination / "clinical-data-research-navigator"
+        destination / "clin-nav"
     ).exists()
 
 
@@ -648,7 +648,7 @@ def test_archive_checksum_mismatch_is_rejected_before_extraction(tmp_path):
         install_package(package.archive, destination)
 
     assert not (
-        destination / "clinical-data-research-navigator"
+        destination / "clin-nav"
     ).exists()
 
 
@@ -673,7 +673,7 @@ def test_manifest_for_different_archive_is_rejected_before_extraction(
         install_package(package.archive, destination)
 
     assert not (
-        destination / "clinical-data-research-navigator"
+        destination / "clin-nav"
     ).exists()
 
 
@@ -707,7 +707,7 @@ def test_manifest_identity_mismatch_is_rejected_before_extraction(
         install_package(package.archive, destination)
 
     assert not (
-        destination / "clinical-data-research-navigator"
+        destination / "clin-nav"
     ).exists()
 
 
@@ -725,7 +725,7 @@ def test_undeclared_archive_member_is_rejected_before_extraction(tmp_path):
         install_package(package.archive, destination)
 
     assert not (
-        destination / "clinical-data-research-navigator"
+        destination / "clin-nav"
     ).exists()
 
 
@@ -746,7 +746,7 @@ def test_duplicate_archive_member_is_rejected_before_extraction(tmp_path):
         install_package(package.archive, destination)
 
     assert not (
-        destination / "clinical-data-research-navigator"
+        destination / "clin-nav"
     ).exists()
 
 
@@ -780,7 +780,7 @@ def test_manifest_member_missing_from_archive_is_rejected_before_extraction(
         install_package(package.archive, destination)
 
     assert not (
-        destination / "clinical-data-research-navigator"
+        destination / "clin-nav"
     ).exists()
 
 
@@ -803,7 +803,7 @@ def test_manifest_size_mismatch_is_rejected_before_extraction(tmp_path):
         install_package(package.archive, destination)
 
     assert not (
-        destination / "clinical-data-research-navigator"
+        destination / "clin-nav"
     ).exists()
 
 
@@ -948,7 +948,7 @@ def test_invalid_extracted_skill_leaves_no_partial_replacement(
         b"missing frontmatter\n",
     )
     destination = tmp_path / "selected-skills"
-    installed = destination / "clinical-data-research-navigator"
+    installed = destination / "clin-nav"
     marker = installed / "existing.txt"
     if existing_target:
         installed.mkdir(parents=True)
@@ -973,7 +973,7 @@ def test_failed_replacement_rolls_original_installation_back(
 ):
     package = _build_test_package(tmp_path)
     destination = tmp_path / "selected-skills"
-    installed = destination / "clinical-data-research-navigator"
+    installed = destination / "clin-nav"
     installed.mkdir(parents=True)
     marker = installed / "existing.txt"
     marker.write_bytes(b"original bytes")
@@ -994,7 +994,7 @@ def test_failed_replacement_rolls_original_installation_back(
 
     assert marker.read_bytes() == b"original bytes"
     assert not list(
-        tmp_path.glob(".clinical-data-research-navigator-backup-*")
+        tmp_path.glob(".clin-nav-backup-*")
     )
 
 
@@ -1004,7 +1004,7 @@ def test_failed_replacement_and_rollback_preserve_reported_backup(
 ):
     package = _build_test_package(tmp_path)
     destination = tmp_path / "selected-skills"
-    installed = destination / "clinical-data-research-navigator"
+    installed = destination / "clin-nav"
     installed.mkdir(parents=True)
     marker = installed / "existing.txt"
     marker.write_bytes(b"recoverable original")
@@ -1053,7 +1053,7 @@ def test_install_cli_requires_and_uses_selected_destination(
     )
 
     installed = (
-        destination.resolve() / "clinical-data-research-navigator"
+        destination.resolve() / "clin-nav"
     )
     assert exit_code == 0
     assert capsys.readouterr().out.strip() == str(installed)

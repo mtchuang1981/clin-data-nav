@@ -19,7 +19,7 @@ from zipfile import BadZipFile, ZipFile
 TAG_PATTERN = re.compile(
     r"^v(?P<version>(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*))$"
 )
-SKILL_NAME = "clinical-data-research-navigator"
+SKILL_NAME = "clin-nav"
 GIT_REPOSITORY_OVERRIDES = frozenset(
     {
         "GIT_DIR",

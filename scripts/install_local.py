@@ -22,8 +22,8 @@ except ModuleNotFoundError:  # Direct execution from the scripts directory.
     from validate_skill import validate_skill
 
 
-SKILL_NAME = "clinical-data-research-navigator"
-PACKAGE_VERSION = "0.4.0"
+SKILL_NAME = "clin-nav"
+PACKAGE_VERSION = "0.5.0"
 READ_CHUNK_BYTES = 64 * 1024
 MAX_MANIFEST_BYTES = 1 * 1024 * 1024
 MAX_ARCHIVE_BYTES = 20 * 1024 * 1024
@@ -390,7 +390,7 @@ def install_package(
 
             destination.parent.mkdir(parents=True, exist_ok=True)
             with tempfile.TemporaryDirectory(
-                prefix=".clinical-data-research-navigator-",
+                prefix=".clin-nav-",
                 dir=destination.parent,
             ) as temporary_name:
                 temporary_root = Path(temporary_name)
@@ -418,7 +418,7 @@ def install_package(
 
                 backup_root = Path(
                     tempfile.mkdtemp(
-                        prefix=".clinical-data-research-navigator-backup-",
+                        prefix=".clin-nav-backup-",
                         dir=destination.parent,
                     )
                 )

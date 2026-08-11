@@ -16,8 +16,8 @@ except ModuleNotFoundError:  # Direct execution from the scripts directory.
     from validate_skill import validate_skill
 
 
-SKILL_NAME = "clinical-data-research-navigator"
-PACKAGE_VERSION = "0.4.0"
+SKILL_NAME = "clin-nav"
+PACKAGE_VERSION = "0.5.0"
 ARCHIVE_NAME = f"{SKILL_NAME}-{PACKAGE_VERSION}.zip"
 MANIFEST_NAME = f"{SKILL_NAME}-{PACKAGE_VERSION}.manifest.json"
 INCLUDED_DIRECTORIES = ("agents", "references", "scripts", "assets")

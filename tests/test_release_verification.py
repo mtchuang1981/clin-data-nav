@@ -239,7 +239,7 @@ def test_git_environment_filter_keeps_safe_directory_config_and_removes_redirect
 
 def test_packager_output_passes_release_artifact_verification(tmp_path):
     package = build_package(
-        Path("skills/clinical-data-research-navigator"),
+        Path("skills/clin-nav"),
         tmp_path / "dist",
     )
 
@@ -248,7 +248,7 @@ def test_packager_output_passes_release_artifact_verification(tmp_path):
 
 def test_archive_sha_mismatch_is_rejected(tmp_path):
     package = build_package(
-        Path("skills/clinical-data-research-navigator"),
+        Path("skills/clin-nav"),
         tmp_path / "dist",
     )
     package.archive.write_bytes(package.archive.read_bytes() + b"tamper")
@@ -259,7 +259,7 @@ def test_archive_sha_mismatch_is_rejected(tmp_path):
 
 def test_unreadable_archive_is_rejected_safely(tmp_path):
     package = build_package(
-        Path("skills/clinical-data-research-navigator"),
+        Path("skills/clin-nav"),
         tmp_path / "dist",
     )
     package.archive.unlink()
@@ -270,7 +270,7 @@ def test_unreadable_archive_is_rejected_safely(tmp_path):
 
 def test_unicode_digit_in_manifest_version_is_rejected(tmp_path):
     package = build_package(
-        Path("skills/clinical-data-research-navigator"),
+        Path("skills/clin-nav"),
         tmp_path / "dist",
     )
     manifest = json.loads(package.manifest.read_text(encoding="utf-8"))
@@ -286,7 +286,7 @@ def test_unicode_digit_in_manifest_version_is_rejected(tmp_path):
 
 def test_member_hash_mismatch_is_rejected(tmp_path):
     package = build_package(
-        Path("skills/clinical-data-research-navigator"),
+        Path("skills/clin-nav"),
         tmp_path / "dist",
     )
     manifest = json.loads(package.manifest.read_text(encoding="utf-8"))
@@ -302,7 +302,7 @@ def test_member_hash_mismatch_is_rejected(tmp_path):
 
 def test_boolean_manifest_member_size_is_rejected_as_invalid(tmp_path):
     package = build_package(
-        Path("skills/clinical-data-research-navigator"),
+        Path("skills/clin-nav"),
         tmp_path / "dist",
     )
     manifest = json.loads(package.manifest.read_text(encoding="utf-8"))
@@ -318,7 +318,7 @@ def test_boolean_manifest_member_size_is_rejected_as_invalid(tmp_path):
 
 def test_undeclared_archive_member_is_rejected(tmp_path):
     package = build_package(
-        Path("skills/clinical-data-research-navigator"),
+        Path("skills/clin-nav"),
         tmp_path / "dist",
     )
     with ZipFile(package.archive, "a") as archive:
@@ -349,7 +349,7 @@ def test_undeclared_archive_member_is_rejected(tmp_path):
 )
 def test_unsafe_manifest_member_is_rejected(tmp_path, unsafe_path):
     package = build_package(
-        Path("skills/clinical-data-research-navigator"),
+        Path("skills/clin-nav"),
         tmp_path / "dist",
     )
     manifest = json.loads(package.manifest.read_text(encoding="utf-8"))
@@ -365,7 +365,7 @@ def test_unsafe_manifest_member_is_rejected(tmp_path, unsafe_path):
 
 def test_artifact_resolve_failure_is_rejected_safely(tmp_path, monkeypatch):
     package = build_package(
-        Path("skills/clinical-data-research-navigator"),
+        Path("skills/clin-nav"),
         tmp_path / "dist",
     )
 
@@ -405,7 +405,7 @@ def _rewrite_zip_header_field(
 
 def test_unsupported_zip_compression_is_rejected_safely(tmp_path):
     package = build_package(
-        Path("skills/clinical-data-research-navigator"),
+        Path("skills/clin-nav"),
         tmp_path / "dist",
     )
     _rewrite_zip_header_field(package.archive, b"PK\x01\x02", 10, 99)
@@ -417,7 +417,7 @@ def test_unsupported_zip_compression_is_rejected_safely(tmp_path):
 
 def test_encrypted_zip_member_is_rejected_safely(tmp_path):
     package = build_package(
-        Path("skills/clinical-data-research-navigator"),
+        Path("skills/clin-nav"),
         tmp_path / "dist",
     )
     _rewrite_zip_header_field(package.archive, b"PK\x01\x02", 8, 1)

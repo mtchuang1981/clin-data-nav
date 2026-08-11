@@ -42,7 +42,7 @@ TERMINAL_ONBOARDING_COMMANDS = (
 )
 CODEX_ONBOARDING_INPUTS = (
     "/skills",
-    "$clinical-data-research-navigator",
+    "$clin-nav",
 )
 TERMINAL_FENCE_LANGUAGES = {"bash", "sh", "shell", "powershell", "pwsh"}
 FENCED_BLOCK_PATTERN = re.compile(
@@ -78,7 +78,7 @@ README_NAVIGATION_TARGETS = {
         "examples/omop-phenotype-to-sql-spec.md",
         "examples/synthetic-institutional-mapping.md",
         (
-            "skills/clinical-data-research-navigator/references/"
+            "skills/clin-nav/references/"
             "evidence-output-template.md"
         ),
         "CONTRIBUTING.md",
@@ -93,7 +93,7 @@ README_NAVIGATION_TARGETS = {
         "examples/omop-phenotype-to-sql-spec.md",
         "examples/synthetic-institutional-mapping.md",
         (
-            "skills/clinical-data-research-navigator/references/"
+            "skills/clin-nav/references/"
             "evidence-output-template.md"
         ),
         "CONTRIBUTING.md",
@@ -450,7 +450,7 @@ def test_beginner_learning_paths_are_aligned_and_do_not_require_code():
                     "./installation.md",
                     "../examples/teae-to-sas-spec.md",
                     (
-                        "../skills/clinical-data-research-navigator/"
+                        "../skills/clin-nav/"
                         "references/output-depths-and-learning-paths.md"
                     ),
                 ),
@@ -459,7 +459,7 @@ def test_beginner_learning_paths_are_aligned_and_do_not_require_code():
                     "./installation.md",
                     "../examples/omop-phenotype-to-sql-spec.md",
                     (
-                        "../skills/clinical-data-research-navigator/"
+                        "../skills/clin-nav/"
                         "references/rwe-question-routing.md"
                     ),
                 ),
@@ -468,11 +468,11 @@ def test_beginner_learning_paths_are_aligned_and_do_not_require_code():
                     "./installation.md",
                     "../examples/synthetic-institutional-mapping.md",
                     (
-                        "../skills/clinical-data-research-navigator/"
+                        "../skills/clin-nav/"
                         "references/institutional-adapter-contract.md"
                     ),
                     (
-                        "../skills/clinical-data-research-navigator/"
+                        "../skills/clin-nav/"
                         "references/evidence-output-template.md"
                         "#implementation-specification"
                     ),
@@ -498,7 +498,7 @@ def test_beginner_learning_paths_are_aligned_and_do_not_require_code():
                     "./installation.zh-TW.md",
                     "../examples/teae-to-sas-spec.md",
                     (
-                        "../skills/clinical-data-research-navigator/"
+                        "../skills/clin-nav/"
                         "references/output-depths-and-learning-paths.md"
                     ),
                 ),
@@ -507,7 +507,7 @@ def test_beginner_learning_paths_are_aligned_and_do_not_require_code():
                     "./installation.zh-TW.md",
                     "../examples/omop-phenotype-to-sql-spec.md",
                     (
-                        "../skills/clinical-data-research-navigator/"
+                        "../skills/clin-nav/"
                         "references/rwe-question-routing.md"
                     ),
                 ),
@@ -516,11 +516,11 @@ def test_beginner_learning_paths_are_aligned_and_do_not_require_code():
                     "./installation.zh-TW.md",
                     "../examples/synthetic-institutional-mapping.md",
                     (
-                        "../skills/clinical-data-research-navigator/"
+                        "../skills/clin-nav/"
                         "references/institutional-adapter-contract.md"
                     ),
                     (
-                        "../skills/clinical-data-research-navigator/"
+                        "../skills/clin-nav/"
                         "references/evidence-output-template.md"
                         "#implementation-specification"
                     ),
@@ -1065,26 +1065,22 @@ def test_citation_and_license_metadata():
     assert "Apache License" in (ROOT / "LICENSE").read_text(encoding="utf-8")
 
 
-def test_release_version_is_synchronized():
-    project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+def test_published_release_version_is_synchronized():
     citation = yaml.safe_load((ROOT / "CITATION.cff").read_text(encoding="utf-8"))
     changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
     changelog_zh_tw = (ROOT / "CHANGELOG.zh-TW.md").read_text(encoding="utf-8")
     release_notes = (ROOT / "docs/releases/0.4.0.md").read_text(encoding="utf-8")
     security = (ROOT / "SECURITY.md").read_text(encoding="utf-8")
 
-    current_version = "0.4.0"
+    published_version = "0.4.0"
     supported_release = re.search(
         r"^\| `(\d+\.\d+)\.x` \| Yes \|$",
         security,
         flags=re.MULTILINE,
     )
     assert supported_release is not None
-    active_surfaces = {
-        "pyproject": project["project"]["version"],
+    published_surfaces = {
         "citation": citation["version"],
-        "packager": PACKAGER_VERSION,
-        "installer": INSTALLER_VERSION,
         "changelog": changelog.splitlines()[2]
         .removeprefix("## ")
         .split(" - ", 1)[0],
@@ -1093,14 +1089,16 @@ def test_release_version_is_synchronized():
         .split(" - ", 1)[0],
         "release-notes": release_notes.splitlines()[0].rsplit("v", 1)[1],
     }
-    active_release_lines = {
+    published_release_lines = {
         "security-supported-release": supported_release.group(1),
     }
 
-    assert len(active_surfaces) == 7
-    assert set(active_surfaces.values()) == {current_version}
-    assert len(active_release_lines) == 1
-    assert set(active_release_lines.values()) == {current_version.rsplit(".", 1)[0]}
+    assert len(published_surfaces) == 4
+    assert set(published_surfaces.values()) == {published_version}
+    assert len(published_release_lines) == 1
+    assert set(published_release_lines.values()) == {
+        published_version.rsplit(".", 1)[0]
+    }
     assert "## 0.4.0 - 2026-08-10" in changelog
     assert "## 0.4.0 - 2026-08-10" in changelog_zh_tw
     assert citation["date-released"] == "2026-08-10"
@@ -1108,6 +1106,14 @@ def test_release_version_is_synchronized():
     # Published history remains immutable while current surfaces advance.
     assert "## 0.2.2 - 2026-07-29" in changelog
     assert "## 0.2.2 - 2026-07-29" in changelog_zh_tw
+
+
+def test_candidate_package_version_is_synchronized_at_v050():
+    project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+
+    assert project["project"]["version"] == "0.5.0"
+    assert PACKAGER_VERSION == "0.5.0"
+    assert INSTALLER_VERSION == "0.5.0"
 
 
 def test_v022_release_notes_are_static_uploadable_notes_without_candidate_state():
@@ -2040,7 +2046,7 @@ def test_readmes_put_a_real_first_success_path_in_the_first_30_nonblank_lines():
     documents = (
         (
             "README.md",
-            "$clinical-data-research-navigator What is ADaM",
+            "$clin-nav What is ADaM",
             "Expected first line: `Output depth: quick explanation`",
             (
                 "- A direct plain-language definition and why ADaM matters in context.",
@@ -2049,7 +2055,7 @@ def test_readmes_put_a_real_first_success_path_in_the_first_30_nonblank_lines():
         ),
         (
             "README.zh-TW.md",
-            "$clinical-data-research-navigator ADaM 是什麼",
+            "$clin-nav ADaM 是什麼",
             "預期第一行：`Output depth: quick explanation`",
             (
                 "- 直接用白話定義 ADaM，並說明它在此情境的重要性。",
@@ -2081,7 +2087,7 @@ def test_readme_first_success_guard_rejects_a_missing_expected_summary_line():
     with pytest.raises(AssertionError):
         _assert_first_success_order(
             mutated,
-            prompt="$clinical-data-research-navigator What is ADaM",
+            prompt="$clin-nav What is ADaM",
             marker="Expected first line: `Output depth: quick explanation`",
             summary_lines=summary_lines,
         )
@@ -2344,7 +2350,7 @@ def test_source_checkout_uses_packager_output_and_refuses_an_existing_target(
                     "node --version\n"
                     "npm --version\n"
                     "/skills\n"
-                    "$clinical-data-research-navigator"
+                    "$clin-nav"
                 ),
                 1,
             ),
@@ -2355,7 +2361,7 @@ def test_source_checkout_uses_packager_output_and_refuses_an_existing_target(
             lambda text: text.replace(
                 (
                     "`/skills` and\n"
-                    "`$clinical-data-research-navigator` are entered in\n"
+                    "`$clin-nav` are entered in\n"
                     "Codex; they are not terminal commands."
                 ),
                 (
