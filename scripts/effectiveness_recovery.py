@@ -5,9 +5,14 @@ from datetime import datetime
 import re
 
 from scripts.effectiveness_analysis import (
+    blinded_agreement_status,
     compute_environment_fingerprint,
+    summarize_effectiveness,
+    unlock_observations,
+    validate_blinded_agreement_inputs,
     validate_study_manifest,
 )
+from scripts.render_effectiveness_report import render_report
 
 
 RECOVERY_KEYS = frozenset(
@@ -48,6 +53,13 @@ LOWER_HEX_64 = re.compile(r"^[0-9a-f]{64}$")
 
 AFFECTED_DISPOSITION = "excluded-from-effectiveness-analysis"
 RESTART_DECISIONS = {None, "not-authorized", "authorized-for-replacement-batch"}
+
+_PROHIBITED_PROTOCOL_DEVIATIONS = frozenset(
+    {"environment-consistency", "task-pack-integrity"}
+)
+_PROHIBITED_LIMITATIONS = frozenset(
+    {"environment-batch-change", "task-pack-leakage"}
+)
 
 _INCIDENT_FIELDS = ("incident_status", "incident_closed_at", "incident_record_sha256")
 _RESTART_FIELDS = ("restart_decision", "restart_decided_at", "restart_record_sha256")
@@ -361,6 +373,161 @@ def collection_status(record: dict, manifest: dict) -> dict:
 
     status = "ready-for-blinded-rating" if not blocked else state["status"]
     return _sanitized_state(record, status, passed, blocked)
+
+
+def rating_status(
+    record: dict,
+    manifest: dict,
+    scores: dict,
+    lock: dict,
+    scores_bytes: bytes,
+) -> dict:
+    """Apply only the condition-blind validation and agreement gates."""
+    try:
+        state = collection_status(record, manifest)
+    except Exception:
+        return _invalid_sanitized_state(record, "ratings-lock-and-blinded-inputs")
+    if state["status"] != "ready-for-blinded-rating":
+        return state
+
+    passed = list(state["passed_gate_ids"])
+    blocked = list(state["blocked_gate_ids"])
+    try:
+        errors = validate_blinded_agreement_inputs(
+            manifest, scores, lock, scores_bytes
+        )
+    except Exception:
+        errors = ["invalid"]
+    if errors:
+        blocked.append("ratings-lock-and-blinded-inputs")
+        return _sanitized_state(record, state["status"], passed, blocked)
+    passed.append("ratings-lock-and-blinded-inputs")
+
+    try:
+        agreement = blinded_agreement_status(scores)
+    except Exception:
+        blocked.append("blinded-agreement")
+        return _sanitized_state(record, state["status"], passed, blocked)
+    if agreement.get("status") != "eligible-for-locked-unlock":
+        blocked.append("blinded-agreement")
+        return _sanitized_state(record, state["status"], passed, blocked)
+    passed.append("blinded-agreement")
+    return _sanitized_state(
+        record, "eligible-for-locked-unlock", passed, blocked
+    )
+
+
+def green_status(
+    record: dict,
+    manifest: dict,
+    scores: dict,
+    lock: dict,
+    key: dict,
+    scores_bytes: bytes,
+    aggregate_summary: dict,
+    *,
+    unlock_after_ratings_lock: bool,
+) -> dict:
+    """Recompute and validate the terminal aggregate-only green gate."""
+    state = rating_status(record, manifest, scores, lock, scores_bytes)
+    if state["status"] != "eligible-for-locked-unlock":
+        return state
+
+    passed = list(state["passed_gate_ids"])
+    blocked = list(state["blocked_gate_ids"])
+    if unlock_after_ratings_lock is not True:
+        blocked.append("explicit-locked-unlock")
+        return _sanitized_state(record, state["status"], passed, blocked)
+
+    try:
+        observations = unlock_observations(
+            manifest, scores, lock, key, scores_bytes
+        )
+        recomputed = summarize_effectiveness(manifest, scores, observations)
+    except Exception:
+        blocked.append("explicit-locked-unlock")
+        return _sanitized_state(record, state["status"], passed, blocked)
+    passed.append("explicit-locked-unlock")
+
+    try:
+        summaries_match = aggregate_summary == recomputed
+    except Exception:
+        summaries_match = False
+    if not summaries_match:
+        blocked.append("aggregate-recomputation")
+        return _sanitized_state(record, state["status"], passed, blocked)
+    passed.append("aggregate-recomputation")
+
+    try:
+        render_report(recomputed, "en")
+        render_report(recomputed, "zh-TW")
+    except Exception:
+        blocked.append("aggregate-report-schema")
+        return _sanitized_state(record, state["status"], passed, blocked)
+    passed.append("aggregate-report-schema")
+
+    if record["synthetic_example"] is not False or recomputed.get(
+        "synthetic_example"
+    ) is not False:
+        blocked.append("real-evidence-mode")
+    else:
+        passed.append("real-evidence-mode")
+
+    flow = recomputed["participant_flow"]
+    if (
+        flow.get("completed", 0) < 14
+        or flow.get("interpretation_status")
+        != "eligible-for-exploratory-interpretation"
+    ):
+        blocked.append("completion-and-interpretation")
+    else:
+        passed.append("completion-and-interpretation")
+
+    if _has_prohibited_integrity_findings(recomputed):
+        blocked.append("replacement-integrity-findings")
+    else:
+        passed.append("replacement-integrity-findings-clear")
+
+    status = "evaluation-green" if not blocked else state["status"]
+    return _sanitized_state(record, status, passed, blocked)
+
+
+def _has_prohibited_integrity_findings(summary: Mapping[str, object]) -> bool:
+    for field, prohibited in (
+        ("protocol_deviations", _PROHIBITED_PROTOCOL_DEVIATIONS),
+        ("limitations", _PROHIBITED_LIMITATIONS),
+    ):
+        review = summary[field]
+        if not isinstance(review, Mapping):
+            return True
+        items = review.get("items")
+        if not isinstance(items, list):
+            return True
+        for item in items:
+            if (
+                isinstance(item, Mapping)
+                and item.get("category_id") in prohibited
+                and type(item.get("count")) is int
+                and item["count"] > 0
+            ):
+                return True
+    return False
+
+
+def _invalid_sanitized_state(record: object, blocked_gate: str) -> dict:
+    synthetic_example = (
+        record.get("synthetic_example")
+        if isinstance(record, Mapping)
+        and type(record.get("synthetic_example")) is bool
+        else False
+    )
+    return {
+        "schema_version": "1",
+        "status": "authorized-for-fresh-batch",
+        "passed_gate_ids": [],
+        "blocked_gate_ids": [blocked_gate],
+        "synthetic_example": synthetic_example,
+    }
 
 
 def _sanitized_state(
