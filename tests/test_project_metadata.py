@@ -2142,6 +2142,152 @@ def test_v040_publication_evidence_binds_exact_member_rows(
         _assert_v040_publication_evidence_contract(mutated)
 
 
+def _assert_v050_publication_evidence_contract(report: str) -> None:
+    normalized = " ".join(report.split())
+
+    for fact in (
+        "- Evidence recorded: `2026-08-16` (`Asia/Taipei`)",
+        "- Published version: `v0.5.0`",
+        "- Release published: `2026-08-16T07:32:22Z`",
+        "This is a post-publication record; this evidence commit is not part "
+        "of the immutable v0.5.0 source tree.",
+        "The public download contained exactly the two expected assets.",
+        "The downloaded bytes matched the local reproducible build and the "
+        "GitHub server digests.",
+        "The extracted eight-file Skill passed the public-boundary scan.",
+        "The temporary download directory was deleted after verification.",
+        "The annotated tag was not moved or replaced.",
+        "The GitHub Release and its assets were not edited after publication.",
+        "No human pilot was conducted as part of this release.",
+        "This evidence does not claim that the Skill achieved human "
+        "evaluation-green status.",
+    ):
+        assert normalized.count(fact) == 1
+
+    identity = _evidence_subsection(
+        report,
+        "## Immutable publication identity",
+        "## Public workflows and Release",
+    )
+    assert _evidence_table_rows(identity) == (
+        (
+            "Main candidate commit",
+            "`3af75bec2c6c79e5617fb94f031eec60a7604143`",
+        ),
+        (
+            "Annotated tag object",
+            "`77c1e1ea140fab8343b178bae63d9c6fc740ccd7`",
+        ),
+        (
+            "Peeled tag commit",
+            "`3af75bec2c6c79e5617fb94f031eec60a7604143`",
+        ),
+        ("Release ID", "`371261525`"),
+    )
+
+    workflows = _evidence_subsection(
+        report,
+        "## Public workflows and Release",
+        "## Public assets",
+    )
+    assert _evidence_table_rows(workflows) == (
+        (
+            "Main validation",
+            "`https://github.com/mtchuang1981/clin-data-nav/actions/runs/31933792417`",
+        ),
+        (
+            "CodeQL",
+            "`https://github.com/mtchuang1981/clin-data-nav/actions/runs/31933792333`",
+        ),
+        (
+            "Guarded Release",
+            "`https://github.com/mtchuang1981/clin-data-nav/actions/runs/31933996620`",
+        ),
+        (
+            "Public Release",
+            "`https://github.com/mtchuang1981/clin-data-nav/releases/tag/v0.5.0`",
+        ),
+    )
+
+    assets = _evidence_subsection(
+        report,
+        "## Public assets",
+        "## Manifest and ZIP inspection",
+    )
+    assert _evidence_table_rows(assets) == (
+        (
+            "ZIP",
+            "`516570159`",
+            "`clin-nav-0.5.0.zip`",
+            "`18564`",
+            "`sha256:195967e3e3b1a6ee32de18a442a7c84badc6642ce6b4ddc0456c441b5f25686d`",
+        ),
+        (
+            "Manifest",
+            "`516570160`",
+            "`clin-nav-0.5.0.manifest.json`",
+            "`1217`",
+            "`sha256:03b736ec703ce3c8b78acc56a8e467d109612fbdd01b08240202d355228332c6`",
+        ),
+    )
+
+    inspection = _evidence_subsection(
+        report,
+        "## Manifest and ZIP inspection",
+        "## Boundaries and limitations",
+    )
+    assert _evidence_table_rows(inspection) == (
+        ("ZIP member", "Size (bytes)", "SHA-256"),
+        (
+            "`SKILL.md`",
+            "`11495`",
+            "`2a7b13e1e9066de2436460e3a271f9d025d3c39e649a2e752ea5ee3757731f9d`",
+        ),
+        (
+            "`agents/openai.yaml`",
+            "`237`",
+            "`0f17a6ca190a120c5f8edbe647d4aa14b020d60e6ebd896706cca55faef10fc2`",
+        ),
+        (
+            "`references/evidence-output-template.md`",
+            "`3496`",
+            "`492a8550c33f5983397905b214ddebcafabbcc24c41e1552c5333835db717274`",
+        ),
+        (
+            "`references/institutional-adapter-contract.md`",
+            "`3770`",
+            "`3338101cba63b3c42dac3342671b6ab6fff288b44c799e6531e8a6a88c37f164`",
+        ),
+        (
+            "`references/output-depths-and-learning-paths.md`",
+            "`5769`",
+            "`ade86d6017b8968bf637f7a68970c68f88b9ae872a7830ab6721c8c80542b61a`",
+        ),
+        (
+            "`references/retrieval-playbook.md`",
+            "`5253`",
+            "`eade0851031d4411aed96cf285b681306c3500d004e6dc1906025d6d5ef357a7`",
+        ),
+        (
+            "`references/rwe-question-routing.md`",
+            "`7460`",
+            "`9301a0077f2647a669c47f476d33f0b60644b87a6b50628c680ba875b0656fe7`",
+        ),
+        (
+            "`references/tmucrd-public-profile.md`",
+            "`2855`",
+            "`fd0d531dded2679b6d4d1b6a3654339c82c9dbc7b29d75221df0074b888e78e1`",
+        ),
+    )
+
+
+def test_v050_publication_report_records_exact_public_evidence():
+    report = (
+        ROOT / "docs/verification/2026-08-16-v0.5.0-publication.md"
+    ).read_text(encoding="utf-8")
+    _assert_v050_publication_evidence_contract(report)
+
+
 def test_release_process_requires_a_committed_post_release_evidence_report():
     process = " ".join(
         (ROOT / "docs/release.md").read_text(encoding="utf-8").split()
