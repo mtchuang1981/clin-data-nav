@@ -199,6 +199,15 @@ package digest. It performs no network call.
 
 The model runner is outside the repository and outside the benchmark CLI. It
 writes one UTF-8 Markdown response per planned cell and a closed response index.
+The response-index root contains schema version, plan SHA-256, a closed
+execution attestation, and records. The attestation repeats the actual
+provider/model/snapshot and runner identities and requires the controlled
+booleans `plan_followed`, `fresh_sessions`, `offline`, and
+`shared_configuration_unchanged` to be true, plus an aware completion time.
+Every repeated identity must exactly match the plan. These values are external
+assertions; they detect inconsistent declarations but do not prove what a
+provider actually executed.
+
 Each index record contains exactly:
 
 - case ID;
@@ -208,9 +217,11 @@ Each index record contains exactly:
 - response byte length; and
 - lowercase SHA-256.
 
-The index binds the plan SHA-256 and contains the exact 72 records in canonical
-plan order. It contains no status, score, favorable-result flag, path outside
-the response root, response text, model credential, or free-form note.
+The index binds the plan SHA-256. A complete result contains the exact 72
+records in canonical plan order. A proper prefix of that order may be parsed
+only to return the explicit incomplete state; it cannot be evaluated or
+rendered. The index contains no status, score, favorable-result flag, path
+outside the response root, response text, model credential, or free-form note.
 
 Every input path resolves outside the repository. The evaluator rejects path
 traversal, symlinks or reparse points that escape the response root, hardlink
@@ -240,6 +251,11 @@ The summary contains only safe benchmark metadata and evaluator-derived data:
 
 - schema version, benchmark ID, plan SHA-256, catalog/rubric/Skill bindings,
   model metadata, repeat count, and expected/observed cell counts;
+- the safe execution-attestation projection: runner identity, completion time,
+  and the four controlled booleans, all marked as externally asserted rather
+  than provider-verified;
+- a required `synthetic_example` boolean set to `false` by the real evaluator
+  CLI and `true` only in the checked-in contract example;
 - `benchmark-observed` status;
 - the directional classification;
 - control and intervention pass counts and rates;
