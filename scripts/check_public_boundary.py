@@ -38,6 +38,18 @@ PUBLIC_RECOVERY_FILES = {
     "evals/effectiveness/recovery/recovery-template.json",
     "evals/effectiveness/recovery/examples/synthetic-recovery.json",
 }
+PRIVATE_RECOVERY_ARTIFACT_NAME = re.compile(
+    r"(?i)^(?:"
+    r"recovery[-_]?records?|"
+    r"incident|"
+    r"condition[-_]?keys?|"
+    r"human[-_](?:inputs?|answers?|scores?|task[-_]?packs?)|"
+    r"participant[-_](?:inputs?|answers?|scores?)|"
+    r"study[-_]?manifest|"
+    r"nonces?|"
+    r"assignments?"
+    r")(?:[-_.].*)?$"
+)
 SECRET_PATTERNS = (
     re.compile(r"(?i)\b(api[_-]?key|token|password)\b\s*[:=]\s*['\"][^'\"]{12,}"),
     re.compile(r"\bsk-[A-Za-z0-9_-]{16,}\b"),
@@ -128,10 +140,11 @@ def _is_private_study_path(relative_path: Path) -> bool:
 
 
 def _is_private_recovery_path(relative_path: Path) -> bool:
+    if relative_path.as_posix() in PUBLIC_RECOVERY_FILES:
+        return False
     recovery = Path("evals/effectiveness/recovery")
-    return (
-        recovery in relative_path.parents
-        and relative_path.as_posix() not in PUBLIC_RECOVERY_FILES
+    return recovery in relative_path.parents or bool(
+        PRIVATE_RECOVERY_ARTIFACT_NAME.fullmatch(relative_path.name)
     )
 
 
@@ -182,21 +195,21 @@ def scan_repository(root: Path, max_text_bytes: int = 200_000) -> list[Finding]:
                 and relative_path not in tracked_paths
             ):
                 continue
-            if _is_private_recovery_path(relative):
-                findings.append(
-                    Finding(
-                        relative_path,
-                        "private-recovery-artifact",
-                        "only public recovery guidance and synthetic contracts are permitted",
-                    )
-                )
-                continue
             if _is_private_study_path(relative):
                 findings.append(
                     Finding(
                         relative_path,
                         "private-study-data",
                         "human-study raw data is not permitted in the public project",
+                    )
+                )
+                continue
+            if _is_private_recovery_path(relative):
+                findings.append(
+                    Finding(
+                        relative_path,
+                        "private-recovery-artifact",
+                        "only public recovery guidance and synthetic contracts are permitted",
                     )
                 )
                 continue

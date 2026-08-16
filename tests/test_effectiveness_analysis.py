@@ -779,6 +779,30 @@ def test_interpretation_stop_rule_uses_fourteen_of_sixteen_completed_participant
     assert summary["primary"]["overall"]["paired_risk_difference"] == 0.0
 
 
+@pytest.mark.parametrize(
+    ("timeout_scope", "expected_completed", "expected_timeouts", "expected_status"),
+    (
+        ("one-task", 15, 1, "eligible-for-exploratory-interpretation"),
+        ("all-tasks", 0, 64, "workflow-feasibility-only"),
+    ),
+)
+def test_timeout_tasks_do_not_count_as_genuine_participant_completion(
+    timeout_scope, expected_completed, expected_timeouts, expected_status
+):
+    manifest, scores, lock, key, raw_scores = full_pilot_payloads()
+    observations = unlock_observations(manifest, scores, lock, key, raw_scores)
+    timeout_rows = observations[:1] if timeout_scope == "one-task" else observations
+    for row in timeout_rows:
+        row["completion_status"] = "timeout"
+
+    summary = summarize_effectiveness(manifest, scores, observations)
+
+    assert summary["participant_flow"]["completed"] == expected_completed
+    assert summary["participant_flow"]["timeouts"] == expected_timeouts
+    assert summary["secondary"]["timeout_rate"]["events"] == expected_timeouts
+    assert summary["participant_flow"]["interpretation_status"] == expected_status
+
+
 def test_summary_contains_no_row_identifiers_assignments_or_participant_differences():
     manifest, scores, lock, key, raw_scores = full_pilot_payloads()
     observations = unlock_observations(manifest, scores, lock, key, raw_scores)

@@ -337,6 +337,69 @@ def test_scanner_does_not_read_private_recovery_artifact(tmp_path, monkeypatch):
     ]
 
 
+@pytest.mark.parametrize(
+    "relative_path",
+    (
+        "evals/effectiveness/recovery-record.json",
+        "evals/effectiveness/incident-record.json",
+        "evals/effectiveness/condition-key.json",
+        "evals/effectiveness/human-task-pack.yaml",
+        "evals/effectiveness/nonce.json",
+        "evals/effectiveness/assignments.json",
+    ),
+)
+def test_scanner_globally_rejects_private_study_artifacts_before_file_access(
+    tmp_path, monkeypatch, relative_path
+):
+    marker = "SYNTHETIC-PRIVATE-ARTIFACT-MARKER"
+    path = tmp_path / relative_path
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(marker, encoding="utf-8")
+    original_stat = Path.stat
+    original_read_text = Path.read_text
+    accesses = []
+
+    def observe_stat(self, *args, **kwargs):
+        if self == path:
+            accesses.append("stat")
+        return original_stat(self, *args, **kwargs)
+
+    def observe_read_text(self, *args, **kwargs):
+        if self == path:
+            accesses.append("read_text")
+        return original_read_text(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "stat", observe_stat)
+    monkeypatch.setattr(Path, "read_text", observe_read_text)
+
+    findings = scan_repository(tmp_path)
+
+    assert [(item.path, item.rule) for item in findings] == [
+        (relative_path, "private-recovery-artifact")
+    ]
+    assert findings[0].detail == (
+        "only public recovery guidance and synthetic contracts are permitted"
+    )
+    assert marker not in findings[0].detail
+    assert accesses == []
+
+
+def test_scanner_preserves_public_recovery_allowlist(tmp_path):
+    public_paths = (
+        "evals/effectiveness/recovery/README.md",
+        "evals/effectiveness/recovery/checklist.md",
+        "evals/effectiveness/recovery/checklist.zh-TW.md",
+        "evals/effectiveness/recovery/recovery-template.json",
+        "evals/effectiveness/recovery/examples/synthetic-recovery.json",
+    )
+    for relative_path in public_paths:
+        path = tmp_path / relative_path
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("synthetic public recovery fixture", encoding="utf-8")
+
+    assert scan_repository(tmp_path) == []
+
+
 def test_gitignore_keeps_study_governance_out_of_the_checkout():
     lines = (ROOT / ".gitignore").read_text(encoding="utf-8").splitlines()
     assert "study-governance/" in lines

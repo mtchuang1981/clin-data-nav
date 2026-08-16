@@ -641,7 +641,7 @@ def summarize_effectiveness(
     grouped = _group_participant_observations(observations)
     complete_participants = sum(
         all(
-            row.get("completion_status") in SCORED_STATUSES
+            row.get("completion_status") == "completed"
             for rows in rows_by_condition.values()
             for row in rows
         )

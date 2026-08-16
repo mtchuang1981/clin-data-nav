@@ -615,6 +615,16 @@ def mark_participants_abandoned(scores, participant_codes):
     ]
 
 
+def mark_one_task_timed_out(scores, participant_codes):
+    timed_out = set()
+    for row in scores["observations"]:
+        participant_code = row["participant_code"]
+        if participant_code in participant_codes and participant_code not in timed_out:
+            row["completion_status"] = "timeout"
+            timed_out.add(participant_code)
+    assert timed_out == set(participant_codes)
+
+
 def make_effect_favorable(scores, key):
     condition_by_answer = {
         row["answer_id"]: row["condition"] for row in key["mappings"]
@@ -874,6 +884,43 @@ def test_green_status_requires_at_least_fourteen_complete_participants():
 
     assert_not_green(result)
     assert "completion-and-interpretation" in result["blocked_gate_ids"]
+
+
+@pytest.mark.parametrize(
+    ("timeout_scope", "expected_completed", "expected_timeouts"),
+    (
+        ("one-task-for-three-participants", 13, 3),
+        ("all-tasks", 0, 64),
+    ),
+)
+def test_green_status_rejects_batches_below_genuine_completion_threshold(
+    timeout_scope, expected_completed, expected_timeouts
+):
+    record, manifest, scores, _, key, _, _ = green_gate_inputs()
+    if timeout_scope == "one-task-for-three-participants":
+        mark_one_task_timed_out(scores, {"B01", "B02", "B03"})
+    else:
+        for row in scores["observations"]:
+            row["completion_status"] = "timeout"
+    lock, raw_scores = refresh_lock(scores)
+    observations = unlock_observations(manifest, scores, lock, key, raw_scores)
+    expected_summary = summarize_effectiveness(manifest, scores, observations)
+
+    result = green_status(
+        record,
+        manifest,
+        scores,
+        lock,
+        key,
+        raw_scores,
+        expected_summary,
+        unlock_after_ratings_lock=True,
+    )
+
+    assert_not_green(result)
+    assert "completion-and-interpretation" in result["blocked_gate_ids"]
+    assert expected_summary["participant_flow"]["completed"] == expected_completed
+    assert expected_summary["participant_flow"]["timeouts"] == expected_timeouts
 
 
 @pytest.mark.parametrize(
