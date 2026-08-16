@@ -1071,20 +1071,20 @@ def test_citation_and_license_metadata():
     )
     assert citation["title"] == "Clinical Data Research Navigator"
     assert citation["version"] == "0.5.0"
-    assert "date-released" not in citation
+    assert citation["date-released"] == "2026-08-16"
     assert citation["license"] == "Apache-2.0"
     assert "Apache License" in (ROOT / "LICENSE").read_text(encoding="utf-8")
 
 
-def test_release_candidate_version_is_synchronized():
+def test_release_version_is_synchronized_at_v050():
     project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
     citation = yaml.safe_load((ROOT / "CITATION.cff").read_text(encoding="utf-8"))
     changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
     changelog_zh_tw = (ROOT / "CHANGELOG.zh-TW.md").read_text(encoding="utf-8")
     release_notes = (ROOT / "docs/releases/0.5.0.md").read_text(encoding="utf-8")
 
-    candidate_version = "0.5.0"
-    candidate_surfaces = {
+    release_version = "0.5.0"
+    release_surfaces = {
         "pyproject": project["project"]["version"],
         "citation": citation["version"],
         "packager": PACKAGER_VERSION,
@@ -1097,11 +1097,11 @@ def test_release_candidate_version_is_synchronized():
         .split(" - ", 1)[0],
         "release-notes": release_notes.splitlines()[0].rsplit("v", 1)[1],
     }
-    assert len(candidate_surfaces) == 7
-    assert set(candidate_surfaces.values()) == {candidate_version}
-    assert changelog.splitlines()[2] == "## 0.5.0 - Candidate"
-    assert changelog_zh_tw.splitlines()[2] == "## 0.5.0 - 候選版"
-    assert "date-released" not in citation
+    assert len(release_surfaces) == 7
+    assert set(release_surfaces.values()) == {release_version}
+    assert changelog.splitlines()[2] == "## 0.5.0 - 2026-08-16"
+    assert changelog_zh_tw.splitlines()[2] == "## 0.5.0 - 2026-08-16"
+    assert citation["date-released"] == "2026-08-16"
     assert "## 0.4.0 - 2026-08-10" in changelog
     assert "## 0.4.0 - 2026-08-10" in changelog_zh_tw
 
@@ -1110,7 +1110,7 @@ def test_release_candidate_version_is_synchronized():
     assert "## 0.2.2 - 2026-07-29" in changelog_zh_tw
 
 
-def test_candidate_package_version_is_synchronized_at_v050():
+def test_release_package_version_is_synchronized_at_v050():
     project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
 
     assert project["project"]["version"] == "0.5.0"
@@ -1298,12 +1298,13 @@ def test_v040_artifact_section_is_reference_only_and_cannot_install_the_old_skil
         assert install_step not in section
 
 
-def test_v050_static_notes_and_changelogs_state_candidate_limitations():
+def test_v050_static_notes_and_changelogs_state_release_limitations():
     notes = (ROOT / "docs/releases/0.5.0.md").read_text(encoding="utf-8")
     changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
     changelog_zh_tw = (ROOT / "CHANGELOG.zh-TW.md").read_text(encoding="utf-8")
 
     assert notes.startswith("# Clinical Data Research Navigator v0.5.0\n")
+    assert "Release notes for v0.5.0." in notes
     for heading in (
         "## English",
         "### Installation",
@@ -1324,16 +1325,19 @@ def test_v050_static_notes_and_changelogs_state_candidate_limitations():
         assert "No real replacement pilot was performed" in text
         assert "observed `evaluation-green` remains pending" in text
         assert "power analysis remains deferred" in text
-        assert "no tag or GitHub Release is created by this recovery plan" in text
+        assert "no tag or GitHub Release is created by this recovery plan" not in text
+    assert "release artifacts" in changelog
     for claim in (
         "具備達成綠燈能力的有效性復原契約",
         "未執行任何真實替代先導研究",
         "實際觀察到的 `evaluation-green` 仍待完成",
         "檢定力分析仍延後",
-        "本復原計畫不建立 tag 或 GitHub Release",
     ):
         assert claim in notes
         assert claim in changelog_zh_tw
+    assert "正式發布產物" in changelog_zh_tw
+    assert "本復原計畫不建立 tag 或 GitHub Release" not in notes
+    assert "本復原計畫不建立 tag 或 GitHub Release" not in changelog_zh_tw
 
 
 def test_v022_release_notes_are_static_uploadable_notes_without_candidate_state():
@@ -2671,7 +2675,7 @@ def test_citation_has_required_cff_1_2_schema_shape_and_author():
         )
 
 
-def test_citation_points_to_the_public_repository_without_an_unpublished_date():
+def test_citation_points_to_the_public_repository_with_the_release_date():
     citation = yaml.safe_load(
         (ROOT / "CITATION.cff").read_text(encoding="utf-8")
     )
@@ -2679,7 +2683,7 @@ def test_citation_points_to_the_public_repository_without_an_unpublished_date():
     repository_url = "https://github.com/mtchuang1981/clin-data-nav"
     assert citation["url"] == repository_url
     assert citation["repository-code"] == repository_url
-    assert "date-released" not in citation
+    assert citation["date-released"] == "2026-08-16"
 
 
 def test_security_policy_has_supported_versions_and_safe_confidential_reporting():
@@ -2687,8 +2691,9 @@ def test_security_policy_has_supported_versions_and_safe_confidential_reporting(
     normalized = " ".join(security.split())
 
     assert "| Version | Supported |" in security
-    assert "`0.4.x` | Yes" in normalized
-    assert "`< 0.4` | No" in normalized
+    assert "`0.5.x` | Yes" in normalized
+    assert "`< 0.5` | No" in normalized
+    assert "`0.4.x` | Yes" not in normalized
     assert "`0.3.x` | Yes" not in normalized
     assert "`0.2.x` | Yes" not in normalized
     for prohibited_public_material in (
@@ -2698,7 +2703,7 @@ def test_security_policy_has_supported_versions_and_safe_confidential_reporting(
     ):
         assert prohibited_public_material in normalized
     assert "public issue" in normalized
-    assert "As of 2026-08-10, that line is `0.4.x`." in normalized
+    assert "As of 2026-08-16, that line is `0.5.x`." in normalized
     assert "On 2026-08-09 (Asia/Taipei)" in normalized
     assert "private vulnerability reporting is enabled" in normalized
     assert "security/advisories/new" in normalized

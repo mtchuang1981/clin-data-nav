@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.5.0 - Candidate
+## 0.5.0 - 2026-08-16
 
 ### Changed
 
@@ -15,12 +15,12 @@
 ### Packaging
 
 - Prepare reproducible `clin-nav-0.5.0.zip` and
-  `clin-nav-0.5.0.manifest.json` candidate artifacts and install to the
+  `clin-nav-0.5.0.manifest.json` release artifacts and install to the
   `clin-nav` directory.
 
 ### Limitations
 
-- The rename does not establish human effectiveness. No real replacement pilot was performed; observed `evaluation-green` remains pending; power analysis remains deferred; and no tag or GitHub Release is created by this recovery plan.
+- The rename does not establish human effectiveness. No real replacement pilot was performed; observed `evaluation-green` remains pending; and power analysis remains deferred.
 
 ## 0.4.0 - 2026-08-10
 
