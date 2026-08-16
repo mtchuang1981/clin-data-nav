@@ -117,6 +117,7 @@ New public components live under `evals/benchmark/`, `scripts/`, and
 ```text
 evals/benchmark/
 |-- README.md
+|-- released-skill-bindings.json
 |-- benchmark-plan-template.json
 |-- response-index-template.json
 |-- summary-schema.md
@@ -176,6 +177,14 @@ The plan uses an exact-key schema and records only controlled metadata:
 - condition definitions whose only permitted difference is whether the bound
   Skill is available; and
 - creation time and plan-format version.
+
+`released-skill-bindings.json` is a closed public registry containing only the
+tag name, annotated tag object, peeled commit, archive and manifest names and
+SHA-256 values, and member-set digest already established by a committed public
+publication-evidence report. The initial registry has exactly the verified
+`v0.5.0` binding. Plan creation must reproduce the package from the local tag
+and match every registry value; a local tag alone is insufficient evidence that
+the bytes equal the published Release asset.
 
 Provider names and model metadata are external assertions bound for
 reproduction; the tool does not claim they are independently verified.
@@ -396,6 +405,8 @@ Required tests include:
 
 - exact 72-cell plan generation, seed-balanced order, uniqueness, and canonical
   JSON serialization;
+- exact public released-Skill registry schema, `v0.5.0` publication values,
+  local annotated-tag reproduction, and mutation rejection;
 - annotated tag, peeled commit, package, catalog, rubric, system-prompt, and
   tool-policy bindings;
 - rejection of credentials, unsafe free text, unknown fields, status injection,
@@ -473,6 +484,8 @@ own exact released Skill tag and package.
 - The two conditions differ only by exact `clin-nav` availability.
 - All catalogs, settings, Skill bytes, plans, responses, and summaries have
   deterministic identity bindings.
+- The first campaign's locally reproduced `v0.5.0` package exactly matches the
+  committed public Release binding without a network call.
 - Missing or unsafe evidence fails closed and cannot produce a report.
 - Complete evidence is evaluated by the existing deterministic evaluator and
   yields exact paired, depth, safety, and stability aggregates.
