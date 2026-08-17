@@ -151,6 +151,7 @@ def test_plan_binds_catalog_rubric_and_the_complete_release(tmp_path):
         (("schema_version",), "2"),
         (("plan_format_version",), "2"),
         (("benchmark_id",), "unsafe benchmark id"),
+        (("benchmark_id",), "public-simulation-v0-5-1"),
         (("catalog_sha256",), "0" * 64),
         (("rubric_sha256",), "not-a-digest"),
         (("case_ids",), ["wrong-order"]),
@@ -220,6 +221,31 @@ def test_plan_validator_rejects_cell_or_claim_injection(mutation, tmp_path):
     mutation(plan)
 
     assert validate_benchmark_plan(plan)
+
+
+@pytest.mark.parametrize(
+    "container,key",
+    [
+        ("model", "id"),
+        ("runner", "name"),
+        ("shared_configuration", "fresh_session"),
+    ],
+)
+@pytest.mark.parametrize("kind", ["missing", "extra"])
+def test_plan_validator_returns_errors_for_nested_key_schema_violations(
+    container, key, kind, tmp_path
+):
+    """A malformed nested mapping must fail closed without leaking a KeyError."""
+    plan = valid_plan(tmp_path)
+    if kind == "missing":
+        del plan[container][key]
+    else:
+        plan[container]["unexpected"] = True
+
+    errors = validate_benchmark_plan(plan)
+
+    assert errors
+    assert f"{container.replace('_', ' ')}: exact keys required" in errors
 
 
 def test_balanced_cells_requires_the_normative_repeat_count():

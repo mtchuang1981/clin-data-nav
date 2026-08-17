@@ -68,6 +68,7 @@ GIT_OBJECT = re.compile(r"^[0-9a-f]{40}$")
 SAFE_IDENTIFIER = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
 SAFE_BENCHMARK_ID = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 SAFE_TAG = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._/-]*$")
+BENCHMARK_ID = "public-simulation-v0-5-0"
 V050_BINDING = {
     "archive": "clin-nav-0.5.0.zip",
     "archive_sha256": "195967e3e3b1a6ee32de18a442a7c84badc6642ce6b4ddc0456c441b5f25686d",
@@ -291,7 +292,7 @@ def build_benchmark_plan(
     created_at = created_at or datetime.now(timezone.utc).isoformat()
     plan = {
         "assignment_seed": seed,
-        "benchmark_id": "public-simulation-v0-5-0",
+        "benchmark_id": BENCHMARK_ID,
         "case_ids": case_ids,
         "catalog_sha256": catalog_sha256,
         "cells": list(balanced_cells(tuple(case_ids), repeats, seed)),
@@ -351,7 +352,7 @@ def validate_benchmark_plan(payload: object) -> list[str]:
     assert isinstance(payload, dict)
     if payload["schema_version"] != "1" or payload["plan_format_version"] != "1":
         errors.append("plan: unsupported schema version")
-    if not isinstance(payload["benchmark_id"], str) or SAFE_BENCHMARK_ID.fullmatch(payload["benchmark_id"]) is None:
+    if payload["benchmark_id"] != BENCHMARK_ID:
         errors.append("plan: invalid benchmark ID")
     if not isinstance(payload["repeats"], int) or isinstance(payload["repeats"], bool) or payload["repeats"] != 3:
         errors.append("plan: repeats must be exactly 3")
@@ -386,7 +387,7 @@ def validate_benchmark_plan(payload: object) -> list[str]:
 
     model = payload["model"]
     _exact_keys(model, MODEL_KEYS, "model", errors)
-    if isinstance(model, dict):
+    if isinstance(model, dict) and set(model) == MODEL_KEYS:
         for key in ("provider", "id", "snapshot", "seed_policy"):
             if not _valid_identifier(model[key]):
                 errors.append(f"model: invalid {key}")
@@ -399,12 +400,14 @@ def validate_benchmark_plan(payload: object) -> list[str]:
 
     runner = payload["runner"]
     _exact_keys(runner, RUNNER_KEYS, "runner", errors)
-    if isinstance(runner, dict) and not all(_valid_identifier(runner[key]) for key in RUNNER_KEYS):
+    if isinstance(runner, dict) and set(runner) == RUNNER_KEYS and not all(
+        _valid_identifier(runner[key]) for key in RUNNER_KEYS
+    ):
         errors.append("runner: invalid identity")
 
     shared = payload["shared_configuration"]
     _exact_keys(shared, SHARED_CONFIGURATION_KEYS, "shared configuration", errors)
-    if isinstance(shared, dict):
+    if isinstance(shared, dict) and set(shared) == SHARED_CONFIGURATION_KEYS:
         if shared["fresh_session"] is not True:
             errors.append("shared configuration: fresh_session must be true")
         if shared["network_policy"] != "offline":
