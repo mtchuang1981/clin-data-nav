@@ -449,7 +449,7 @@ git commit -m "feat: validate external benchmark responses"
 
 **Interfaces:**
 - Consumes: Task 4 response cells and existing `load_catalog()` / `evaluate_response()`.
-- Produces: `classify_direction(overall_difference: Fraction, improved: int, worsened: int, control_forbidden: int, intervention_forbidden: int, depth_differences: tuple[Fraction, ...]) -> str`, `evaluate_benchmark(plan: dict, cells: tuple[dict, ...]) -> dict`, `validate_benchmark_summary(payload: object) -> list[str]`, and `canonical_summary_bytes(summary: dict) -> bytes`.
+- Produces: `classify_direction(overall_difference: Fraction, improved: int, worsened: int, control_forbidden: int, intervention_forbidden: int, depth_differences: tuple[Fraction, ...]) -> str`, `evaluate_benchmark(plan: dict, cells: tuple[dict, ...], execution_attestation: dict) -> dict`, `validate_benchmark_summary(payload: object) -> list[str]`, and `canonical_summary_bytes(summary: dict) -> bytes`.
 
 - [ ] **Step 1: Write failing aggregation tests**
 
@@ -458,7 +458,11 @@ fail states without mocking it. Cover:
 
 ```python
 def test_complete_pairs_compute_exact_aggregate_counts():
-    summary = evaluate_benchmark(plan, cells_for_pattern("positive"))
+    summary = evaluate_benchmark(
+        plan,
+        cells_for_pattern("positive"),
+        valid_execution_attestation(plan),
+    )
     assert summary["status"] == "benchmark-observed"
     assert summary["cell_counts"] == {"expected": 72, "observed": 72}
     assert summary["paired_counts"] == {
@@ -498,7 +502,8 @@ Build exact overall, output-depth, and per-case aggregates. Set
 Copy only the closed safe execution-attestation fields into the summary,
 require their identities to remain equal to the plan, and label them as
 externally asserted rather than provider-verified. Do not copy response-index
-records, paths, or response metadata.
+records, paths, or response metadata. The attestation is an explicit third
+argument; do not hide it in globals or expand response-cell mappings.
 Per-case stability
 is `stable-pass`, `stable-fail`, or `variable` separately for each condition.
 Never aggregate raw scores across cases.
@@ -582,6 +587,10 @@ For complete evidence, validate the summary twice: once after computation and
 once after canonical serialize/parse. Write a same-directory exclusive staged
 file, flush, close, and atomically replace the output. On incomplete evidence,
 write no file. Never modify inputs.
+
+Pass the already validated `response_index["execution_attestation"]` explicitly
+to `evaluate_benchmark(plan, cells, execution_attestation)`. Do not place the
+attestation in response cells or module-global state.
 
 - [ ] **Step 4: Verify GREEN and commit Task 6**
 

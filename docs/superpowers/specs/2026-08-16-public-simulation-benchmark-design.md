@@ -254,9 +254,11 @@ python scripts/evaluate_simulation_benchmark.py \
 
 It validates all immutable bindings before reading response text. It reads
 each response exactly once, verifies its byte length and SHA-256, decodes it as
-UTF-8, and calls the existing evaluator. It writes a staged canonical summary
-only after every response and aggregate check succeeds. Inputs are not
-modified.
+UTF-8, and calls the existing evaluator. The orchestration layer passes the
+already validated execution attestation as an explicit argument to aggregation;
+response cells remain limited to case, condition, repeat, sequence, and text.
+It writes a staged canonical summary only after every response and aggregate
+check succeeds. Inputs are not modified.
 
 The summary contains only safe benchmark metadata and evaluator-derived data:
 
