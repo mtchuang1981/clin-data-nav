@@ -1494,7 +1494,9 @@ def _aggregate_shape(
     return True
 
 
-def validate_benchmark_summary(payload: object) -> list[str]:
+def validate_benchmark_summary(
+    payload: object, *, allow_synthetic: bool = False
+) -> list[str]:
     """Validate a closed summary and recompute every aggregate and direction."""
     errors: list[str] = []
     if not _exact_keys(payload, SUMMARY_KEYS, "benchmark summary", errors):
@@ -1514,8 +1516,11 @@ def validate_benchmark_summary(payload: object) -> list[str]:
     ] == 3
     if not repeats_valid:
         errors.append("benchmark summary: repeats must be exactly 3")
-    if type(payload["synthetic_example"]) is not bool:
+    synthetic_example = payload["synthetic_example"]
+    if type(synthetic_example) is not bool:
         errors.append("benchmark summary: synthetic_example must be a boolean")
+    elif synthetic_example and not allow_synthetic:
+        errors.append("benchmark summary: synthetic examples require explicit opt-in")
     for key in ("plan_sha256", "catalog_sha256", "rubric_sha256"):
         if not _is_sha256(payload[key]):
             errors.append(f"benchmark summary: invalid {key}")

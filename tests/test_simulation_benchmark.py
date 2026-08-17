@@ -1846,6 +1846,49 @@ def test_summary_is_closed_recomputable_and_contains_no_response_material(
     assert b"evaluation-green" not in serialized
 
 
+def test_synthetic_summary_is_rejected_by_default_and_cannot_be_canonicalized(
+    benchmark_plan,
+):
+    summary = evaluate_benchmark(
+        benchmark_plan,
+        _cells_for_pattern(benchmark_plan, "mixed"),
+        _valid_execution_attestation(benchmark_plan),
+    )
+    summary["synthetic_example"] = True
+
+    assert validate_benchmark_summary(summary)
+    with pytest.raises(ValueError, match="invalid benchmark summary"):
+        canonical_summary_bytes(summary)
+
+
+def test_synthetic_summary_is_accepted_only_with_explicit_validation_opt_in(
+    benchmark_plan,
+):
+    summary = evaluate_benchmark(
+        benchmark_plan,
+        _cells_for_pattern(benchmark_plan, "mixed"),
+        _valid_execution_attestation(benchmark_plan),
+    )
+    summary["synthetic_example"] = True
+
+    assert validate_benchmark_summary(summary, allow_synthetic=True) == []
+
+
+@pytest.mark.parametrize("value", [0, 1, None, "false"])
+def test_summary_synthetic_marker_must_be_a_literal_boolean_in_both_modes(
+    benchmark_plan, value
+):
+    summary = evaluate_benchmark(
+        benchmark_plan,
+        _cells_for_pattern(benchmark_plan, "mixed"),
+        _valid_execution_attestation(benchmark_plan),
+    )
+    summary["synthetic_example"] = value
+
+    assert validate_benchmark_summary(summary)
+    assert validate_benchmark_summary(summary, allow_synthetic=True)
+
+
 @pytest.mark.parametrize(
     "mutation",
     [
@@ -1872,6 +1915,7 @@ def test_summary_validation_recomputes_derived_fields_and_rejects_unknown_keys(
     mutation(summary)
 
     assert validate_benchmark_summary(summary)
+    assert validate_benchmark_summary(summary, allow_synthetic=True)
 
 
 @pytest.mark.parametrize(
@@ -1902,6 +1946,7 @@ def test_summary_validation_fails_closed_for_malformed_value_types(
     mutation(summary)
 
     assert validate_benchmark_summary(summary)
+    assert validate_benchmark_summary(summary, allow_synthetic=True)
 
 
 @pytest.mark.parametrize(
