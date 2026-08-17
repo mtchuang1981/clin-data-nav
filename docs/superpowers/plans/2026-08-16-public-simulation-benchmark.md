@@ -384,7 +384,7 @@ unknown case, wrong condition, zero/out-of-range repeat, absolute path,
 `..` traversal, backslash path, duplicate normalized path, extra response file,
 missing file, directory in place of a file, symlink/reparse file, escaping
 symlink parent, hardlink alias, size mismatch, digest mismatch, invalid UTF-8,
-and repository-internal responses root. Require every attestation identity to
+repository-internal responses root, and an interior omitted record. Require every attestation identity to
 equal the plan, every attestation boolean to be literal `True`, and
 `completed_at` to be timezone-aware and no earlier than plan creation. State in
 tests and output contracts that the attestation is externally asserted, not
@@ -401,14 +401,14 @@ exist.
 
 Require exact keys, plan SHA-256 equality, exact attestation-to-plan identity
 matching, literal attestation booleans, valid timestamp ordering, and records forming a canonical
-subsequence of plan cell order, safe POSIX relative paths, lowercase digests, non-negative
+prefix of plan cell order, safe POSIX relative paths, lowercase digests, non-negative
 integer sizes excluding booleans, and complete cell identity. Unknown fields
 named `status`, `direction`, `score`, `human_effective`, or `credential` are
 ordinary unexpected-key errors.
 
 If schema and all existing records are valid but planned cells are absent,
 raise `IncompleteBenchmark(expected_count=72, observed_count=len(records))`. Extra,
-duplicate, or reordered records are invalid, not incomplete.
+duplicate, reordered, or interior-omission records are invalid, not incomplete.
 
 - [ ] **Step 4: Implement reject-before-read file loading**
 
@@ -425,7 +425,9 @@ path or raw bytes in the returned mapping.
 The template contains exact root keys, a null plan digest, a fully keyed
 attestation with null identities/timestamp and false booleans, and an empty records
 list. It is documentation-only, contains no response path or model output, and
-is rejected as incomplete against a real 72-cell plan.
+is rejected as an invalid unpopulated template against a real plan. Incomplete
+exit `3` is reserved for an otherwise valid index containing a proper prefix of
+the 72 canonical records.
 
 - [ ] **Step 6: Verify GREEN and commit Task 4**
 
@@ -651,7 +653,9 @@ it visibly.
 `render_report()` validates the summary and language (`en` or `zh-TW`) before
 constructing Markdown. Numbers use fixed six-decimal formatting, and all tables
 use canonical case/depth order. The CLI reads only an external summary for real
-runs; the checked-in synthetic path is permitted only with `--check`.
+runs. The checked-in synthetic summary is permitted only when generating or
+checking the exact checked-in English and Traditional Chinese example-report
+paths; it cannot be redirected to arbitrary outputs.
 
 Write both outputs via staged files and rollback the first replacement if the
 second replacement fails, following the existing effectiveness renderer

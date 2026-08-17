@@ -155,6 +155,15 @@ python scripts/prepare_simulation_benchmark.py \
   --skill-ref v0.5.0 \
   --model-provider <provider> \
   --model-id <model> \
+  --model-snapshot <snapshot> \
+  --runner-name <runner> \
+  --runner-version <runner-version> \
+  --temperature <temperature> \
+  --top-p <top-p> \
+  --max-output-tokens <count> \
+  --model-seed-policy <policy> \
+  --base-system-prompt-sha256 <sha256> \
+  --tool-policy-sha256 <sha256> \
   --repeats 3 \
   --seed 20260816 \
   --output <external-dir>/benchmark-plan.json
@@ -220,8 +229,10 @@ Each index record contains exactly:
 The index binds the plan SHA-256. A complete result contains the exact 72
 records in canonical plan order. A proper prefix of that order may be parsed
 only to return the explicit incomplete state; it cannot be evaluated or
-rendered. The index contains no status, score, favorable-result flag, path
-outside the response root, response text, model credential, or free-form note.
+rendered. An interior omission is invalid rather than incomplete, preventing
+selective exclusion of planned results. The index contains no status, score,
+favorable-result flag, path outside the response root, response text, model
+credential, or free-form note.
 
 Every input path resolves outside the repository. The evaluator rejects path
 traversal, symlinks or reparse points that escape the response root, hardlink
@@ -396,8 +407,9 @@ precedence.
 ## 14. Failure handling
 
 - Case selection, an altered repeat count, or any unplanned cell is invalid.
-- A missing planned cell is incomplete and returns exit `3`; it is never scored
-  as a failure or silently removed from the denominator.
+- A missing trailing suffix after a valid canonical prefix is incomplete and
+  returns exit `3`; it is never scored as a failure or silently removed from
+  the denominator. An interior omission is invalid and returns exit `2`.
 - Shared model or runner drift between conditions invalidates the bundle.
 - The condition-specific Skill availability is the only allowed treatment
   difference.
