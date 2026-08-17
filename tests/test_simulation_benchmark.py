@@ -1,9 +1,13 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from datetime import datetime, timezone
 import hashlib
 import json
+import os
 from pathlib import Path
+import subprocess
+import sys
 
 import pytest
 
@@ -267,3 +271,144 @@ def test_output_must_be_outside_the_repository(tmp_path):
     """An in-checkout plan would violate the public no-real-run-material boundary."""
     assert _output_is_inside_root(ROOT, ROOT / "benchmark-plan.json")
     assert not _output_is_inside_root(ROOT, tmp_path / "benchmark-plan.json")
+
+
+PREP_ERROR = b"simulation benchmark preparation failed\n"
+PREP_SUCCESS = b'{"cell_count":72,"schema_version":"1","status":"benchmark-plan-ready"}\n'
+
+
+def _prepare_command(output: Path, **overrides: str) -> list[str]:
+    """Return a complete public command using synthetic runner metadata."""
+    values = {
+        "--skill-ref": "v0.5.0",
+        "--model-provider": "synthetic-provider",
+        "--model-id": "synthetic-model",
+        "--model-snapshot": "synthetic-snapshot",
+        "--runner-name": "synthetic-runner",
+        "--runner-version": "1.0.0",
+        "--temperature": "0.2",
+        "--top-p": "0.9",
+        "--max-output-tokens": "600",
+        "--model-seed-policy": "externally-reported",
+        "--base-system-prompt-sha256": "a" * 64,
+        "--tool-policy-sha256": "b" * 64,
+        "--repeats": "3",
+        "--seed": "20260816",
+        "--output": str(output),
+    }
+    values.update(overrides)
+    command = [sys.executable, str(ROOT / "scripts" / "prepare_simulation_benchmark.py")]
+    return command + [part for option, value in values.items() for part in (option, value)]
+
+
+def _run_prepare(output: Path, **overrides: str) -> subprocess.CompletedProcess[bytes]:
+    return subprocess.run(
+        _prepare_command(output, **overrides),
+        cwd=ROOT,
+        capture_output=True,
+        check=False,
+    )
+
+
+def test_prepare_cli_writes_a_valid_complete_external_plan(tmp_path):
+    """Skipping a cell or writing inside checkout would make a real run untraceable."""
+    output = tmp_path / "benchmark-plan.json"
+
+    completed = _run_prepare(output)
+
+    assert completed.returncode == 0
+    assert completed.stdout == PREP_SUCCESS
+    assert completed.stderr == b""
+    payload = json.loads(output.read_bytes())
+    assert len(payload["cells"]) == 72
+    assert validate_benchmark_plan(payload) == []
+
+
+def test_prepare_main_writes_identical_canonical_bytes_for_a_fixed_clock(tmp_path):
+    """Using wall-clock time directly would make an otherwise fixed plan non-reproducible."""
+    from scripts import prepare_simulation_benchmark as benchmark
+
+    first = tmp_path / "first.json"
+    second = tmp_path / "second.json"
+    fixed_now = lambda: datetime(2026, 8, 16, tzinfo=timezone.utc)
+    arguments = _prepare_command(first)[2:]
+
+    assert benchmark.main(arguments, now=fixed_now) == 0
+    arguments[arguments.index(str(first))] = str(second)
+    assert benchmark.main(arguments, now=fixed_now) == 0
+
+    assert first.read_bytes() == second.read_bytes()
+    assert first.read_bytes() == canonical_json_bytes(json.loads(first.read_bytes()))
+
+
+@pytest.mark.parametrize(
+    "output,overrides,extra_arguments",
+    [
+        (ROOT / "benchmark-plan.json", {}, []),
+        (Path("missing-parent") / "benchmark-plan.json", {}, []),
+        (Path("existing-directory"), {}, []),
+        (Path("safe-output.json"), {"--skill-ref": "not-a-closed-release"}, []),
+        (Path("safe-output.json"), {"--temperature": "nan"}, []),
+        (Path("safe-output.json"), {}, ["--credential-MARKER-DO-NOT-ECHO", "value"]),
+        (Path("safe-output.json"), {}, ["--model-pro", "synthetic-provider"]),
+    ],
+)
+def test_prepare_cli_rejects_unsafe_or_malformed_input_without_content(
+    tmp_path, output, overrides, extra_arguments
+):
+    """Echoing rejected input or accepting an alias could disclose credentials or drift config."""
+    if output == Path("existing-directory"):
+        output = tmp_path / output
+        output.mkdir()
+    elif not output.is_absolute():
+        output = tmp_path / output
+    if output.parent.name == "missing-parent":
+        output = tmp_path / "missing-parent" / output.name
+    command = _prepare_command(output, **overrides) + extra_arguments
+
+    completed = subprocess.run(command, cwd=ROOT, capture_output=True, check=False)
+
+    assert completed.returncode == 2
+    assert completed.stdout == b""
+    assert completed.stderr == PREP_ERROR
+    assert b"MARKER-DO-NOT-ECHO" not in completed.stdout + completed.stderr
+
+
+def test_prepare_cli_rejects_a_symlinked_or_reparse_output_parent(tmp_path):
+    """Following a redirected parent would permit output to escape its reviewed location."""
+    target = tmp_path / "target"
+    target.mkdir()
+    redirected = tmp_path / "redirected"
+    try:
+        os.symlink(target, redirected, target_is_directory=True)
+    except (NotImplementedError, OSError):
+        junction = subprocess.run(
+            ["cmd.exe", "/d", "/c", "mklink", "/J", str(redirected), str(target)],
+            capture_output=True,
+            check=False,
+        )
+        if junction.returncode:
+            pytest.skip("the current filesystem cannot create a symlink or junction")
+
+    completed = _run_prepare(redirected / "benchmark-plan.json")
+
+    assert completed.returncode == 2
+    assert completed.stdout == b""
+    assert completed.stderr == PREP_ERROR
+    assert not (target / "benchmark-plan.json").exists()
+    if redirected.exists():
+        redirected.rmdir()
+
+
+def test_prepare_cli_failure_does_not_replace_an_existing_output(tmp_path):
+    """A failed validation must not destroy a prior completed external plan."""
+    output = tmp_path / "benchmark-plan.json"
+    original = b"previous-valid-plan-bytes\n"
+    output.write_bytes(original)
+
+    completed = _run_prepare(output, **{"--skill-ref": "MARKER-DO-NOT-ECHO"})
+
+    assert completed.returncode == 2
+    assert completed.stdout == b""
+    assert completed.stderr == PREP_ERROR
+    assert output.read_bytes() == original

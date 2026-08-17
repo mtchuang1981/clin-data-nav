@@ -7,21 +7,29 @@ from datetime import datetime, timezone
 import hashlib
 import json
 import math
+import os
 from pathlib import Path, PurePosixPath
 import random
 import re
 import subprocess
+import sys
 import tempfile
-
-try:
-    from scripts.evaluate_response import load_catalog
-    from scripts.package_skill import build_package
-except ModuleNotFoundError:  # Direct execution from the scripts directory.
-    from evaluate_response import load_catalog
-    from package_skill import build_package
+from typing import Callable
 
 
 ROOT = Path(__file__).resolve().parents[1]
+if __package__ in {None, ""}:
+    sys.path.insert(0, str(ROOT))
+
+try:
+    from scripts.evaluate_response import load_catalog
+    from scripts.effectiveness_contract import ensure_external_path
+    from scripts.package_skill import build_package
+except ModuleNotFoundError:  # Direct execution from the scripts directory.
+    from evaluate_response import load_catalog
+    from effectiveness_contract import ensure_external_path
+    from package_skill import build_package
+
 BINDING_KEYS = frozenset(
     {
         "archive",
@@ -69,6 +77,12 @@ SAFE_IDENTIFIER = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
 SAFE_BENCHMARK_ID = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 SAFE_TAG = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._/-]*$")
 BENCHMARK_ID = "public-simulation-v0-5-0"
+CLI_ERROR = b"simulation benchmark preparation failed\n"
+SUCCESS_STATUS = {
+    "cell_count": 72,
+    "schema_version": "1",
+    "status": "benchmark-plan-ready",
+}
 V050_BINDING = {
     "archive": "clin-nav-0.5.0.zip",
     "archive_sha256": "195967e3e3b1a6ee32de18a442a7c84badc6642ce6b4ddc0456c441b5f25686d",
@@ -444,8 +458,22 @@ def _output_is_inside_root(root: Path, output: Path) -> bool:
     return output.resolve().is_relative_to(root.resolve())
 
 
-def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
+class _SafeArgumentParser(argparse.ArgumentParser):
+    """Return content-free argument errors at the public CLI boundary."""
+
+    def error(self, message: str) -> None:
+        self.exit(2)
+
+    def exit(self, status: int = 0, message: str | None = None) -> None:
+        if status == 2:
+            sys.stderr.buffer.write(CLI_ERROR)
+            sys.stderr.buffer.flush()
+            raise SystemExit(status)
+        super().exit(status, message)
+
+
+def _argument_parser() -> argparse.ArgumentParser:
+    parser = _SafeArgumentParser(description=__doc__, allow_abbrev=False)
     parser.add_argument("--skill-ref", required=True)
     parser.add_argument("--model-provider", required=True)
     parser.add_argument("--model-id", required=True)
@@ -458,13 +486,60 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--model-seed-policy", required=True)
     parser.add_argument("--base-system-prompt-sha256", required=True)
     parser.add_argument("--tool-policy-sha256", required=True)
-    parser.add_argument("--repeats", type=int, default=3)
-    parser.add_argument("--seed", type=int, default=20260816)
+    parser.add_argument("--repeats", type=int, required=True)
+    parser.add_argument("--seed", type=int, required=True)
     parser.add_argument("--output", type=Path, required=True)
+    return parser
+
+
+def _is_link_or_reparse(path: Path) -> bool:
+    stat = path.lstat()
+    return path.is_symlink() or bool(getattr(stat, "st_file_attributes", 0) & 0x400)
+
+
+def _contains_link_or_reparse(path: Path) -> bool:
+    current = path
+    while True:
+        if _is_link_or_reparse(current):
+            return True
+        parent = current.parent
+        if parent == current:
+            return False
+        current = parent
+
+
+def _safe_external_output(path: Path) -> Path:
+    """Resolve one output without following an unchecked parent redirect."""
+    raw_path = path if path.is_absolute() else Path.cwd() / path
+    raw_parent = raw_path.parent
+    if not raw_parent.is_dir() or _contains_link_or_reparse(raw_parent):
+        raise ValueError("unsafe output parent")
+    output = ensure_external_path(path)
+    if not output.parent.is_dir() or output.exists() and (output.is_dir() or _is_link_or_reparse(output)):
+        raise ValueError("unsafe output path")
+    return output
+
+
+def _failure() -> int:
+    sys.stderr.buffer.write(CLI_ERROR)
+    sys.stderr.buffer.flush()
+    return 2
+
+
+def main(
+    argv: list[str] | None = None,
+    *,
+    now: Callable[[], datetime] | None = None,
+) -> int:
+    """Prepare one external plan, with an injectable clock for deterministic tests."""
+    parser = _argument_parser()
     args = parser.parse_args(argv)
-    if _output_is_inside_root(ROOT, args.output):
-        parser.error("output must be outside the repository")
+    staging: Path | None = None
     try:
+        output = _safe_external_output(args.output)
+        current_time = (now or (lambda: datetime.now(timezone.utc)))()
+        if current_time.tzinfo is None:
+            raise ValueError("clock must return an aware timestamp")
         with tempfile.TemporaryDirectory(prefix="clin-nav-plan-") as temporary_root:
             plan = build_benchmark_plan(
                 root=ROOT,
@@ -483,13 +558,29 @@ def main(argv: list[str] | None = None) -> int:
                 tool_policy_sha256=args.tool_policy_sha256,
                 repeats=args.repeats,
                 seed=args.seed,
+                created_at=current_time.astimezone(timezone.utc).isoformat(),
             )
-    except (OSError, ValueError, subprocess.CalledProcessError):
-        parser.error("unable to create a valid benchmark plan")
-    args.output.parent.mkdir(parents=True, exist_ok=True)
-    staging = args.output.with_name(args.output.name + ".tmp")
-    staging.write_bytes(canonical_json_bytes(plan))
-    staging.replace(args.output)
+        if validate_benchmark_plan(plan):
+            raise ValueError("invalid benchmark plan")
+        descriptor, staging_name = tempfile.mkstemp(
+            prefix=f".{output.name}.", suffix=".tmp", dir=output.parent
+        )
+        staging = Path(staging_name)
+        with os.fdopen(descriptor, "wb") as staged_file:
+            staged_file.write(canonical_json_bytes(plan))
+            staged_file.flush()
+            os.fsync(staged_file.fileno())
+        os.replace(staging, output)
+        staging = None
+    except Exception:
+        if staging is not None:
+            try:
+                staging.unlink(missing_ok=True)
+            except OSError:
+                pass
+        return _failure()
+    sys.stdout.buffer.write(canonical_json_bytes(SUCCESS_STATUS))
+    sys.stdout.buffer.flush()
     return 0
 
 
