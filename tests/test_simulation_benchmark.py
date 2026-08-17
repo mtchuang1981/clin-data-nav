@@ -149,6 +149,13 @@ def _move_first_response_under(
     return directory, original.name
 
 
+def _remove_directory_reparse(path: Path) -> None:
+    if path.is_symlink():
+        path.unlink()
+    else:
+        path.rmdir()
+
+
 def test_v050_registry_matches_rebuilt_annotated_tag(tmp_path):
     observed = resolve_released_skill_binding(ROOT, "v0.5.0", tmp_path)
     assert observed == V050_BINDING
@@ -927,6 +934,126 @@ def test_response_loader_rejects_pending_directory_reparse_race_before_scan(
         load_response_cells(plan, response_index, responses_root)
 
     assert raced
+    assert content_reads == []
+    assert marker.decode().strip() not in str(caught.value)
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Windows handle-relative ABA contract")
+def test_windows_response_file_aba_race_is_rejected_before_content_read(
+    response_bundle, tmp_path, monkeypatch
+):
+    """A restored pathname must not hide the reparse object opened by parent handle."""
+    from scripts import evaluate_simulation_benchmark as benchmark
+
+    plan, response_index, responses_root = response_bundle
+    victim = responses_root / response_index["records"][0]["relative_path"]
+    held = tmp_path / "held-response-file.md"
+    target = tmp_path / "response-file-reparse-target"
+    target.mkdir()
+    marker = b"MARKER-WINDOWS-FILE-ABA-DO-NOT-READ\n"
+    (target / "marker.md").write_bytes(marker)
+    swapped = False
+    restored = False
+    content_reads = []
+    original_os_read = os.read
+
+    def swap_after_precheck(parent, name):
+        nonlocal swapped
+        if parent == responses_root and name == victim.name and not swapped:
+            swapped = True
+            victim.rename(held)
+            _make_symlink(target, victim, directory=True)
+
+    def restore_after_relative_open(parent, name):
+        nonlocal restored
+        if parent == responses_root and name == victim.name and swapped and not restored:
+            _remove_directory_reparse(victim)
+            held.rename(victim)
+            restored = True
+
+    def tracking_os_read(file_descriptor, size):
+        content_reads.append(file_descriptor)
+        return original_os_read(file_descriptor, size)
+
+    monkeypatch.setattr(
+        benchmark,
+        "_after_windows_file_precheck_before_relative_open",
+        swap_after_precheck,
+        raising=False,
+    )
+    monkeypatch.setattr(
+        benchmark,
+        "_after_windows_relative_open",
+        restore_after_relative_open,
+        raising=False,
+    )
+    monkeypatch.setattr(os, "read", tracking_os_read)
+
+    with pytest.raises(ValueError, match="invalid response files") as caught:
+        load_response_cells(plan, response_index, responses_root)
+
+    assert swapped and restored
+    assert content_reads == []
+    assert marker.decode().strip() not in str(caught.value)
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Windows handle-relative ABA contract")
+def test_windows_pending_directory_aba_race_is_rejected_before_content_read(
+    response_bundle, tmp_path, monkeypatch
+):
+    """A restored directory name must not hide its opened junction handle."""
+    from scripts import evaluate_simulation_benchmark as benchmark
+
+    plan, response_index, responses_root = response_bundle
+    directory, filename = _move_first_response_under(
+        response_index, responses_root, "windows-aba-directory"
+    )
+    held = tmp_path / "held-windows-aba-directory"
+    target = tmp_path / "directory-aba-reparse-target"
+    target.mkdir()
+    marker = b"MARKER-WINDOWS-DIRECTORY-ABA-DO-NOT-READ\n"
+    (target / filename).write_bytes(marker)
+    swapped = False
+    restored = False
+    content_reads = []
+    original_os_read = os.read
+
+    def swap_after_precheck(parent, name):
+        nonlocal swapped
+        if parent == responses_root and name == directory.name and not swapped:
+            swapped = True
+            directory.rename(held)
+            _make_symlink(target, directory, directory=True)
+
+    def restore_after_relative_open(parent, name):
+        nonlocal restored
+        if parent == responses_root and name == directory.name and swapped and not restored:
+            _remove_directory_reparse(directory)
+            held.rename(directory)
+            restored = True
+
+    def tracking_os_read(file_descriptor, size):
+        content_reads.append(file_descriptor)
+        return original_os_read(file_descriptor, size)
+
+    monkeypatch.setattr(
+        benchmark,
+        "_after_windows_directory_precheck_before_relative_open",
+        swap_after_precheck,
+        raising=False,
+    )
+    monkeypatch.setattr(
+        benchmark,
+        "_after_windows_relative_open",
+        restore_after_relative_open,
+        raising=False,
+    )
+    monkeypatch.setattr(os, "read", tracking_os_read)
+
+    with pytest.raises(ValueError, match="invalid response files") as caught:
+        load_response_cells(plan, response_index, responses_root)
+
+    assert swapped and restored
     assert content_reads == []
     assert marker.decode().strip() not in str(caught.value)
 
