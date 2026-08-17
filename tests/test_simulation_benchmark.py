@@ -203,6 +203,13 @@ def _live_windows_response_resources(benchmark, handles, descriptors):
     return live_handles, live_descriptors
 
 
+def _assert_live_unique_descriptors_at_injection(descriptors, expected_count):
+    assert len(descriptors) == expected_count
+    assert len(set(descriptors)) == expected_count
+    observed_stats = tuple(os.fstat(descriptor) for descriptor in descriptors)
+    assert len(observed_stats) == expected_count
+
+
 def test_v050_registry_matches_rebuilt_annotated_tag(tmp_path):
     observed = resolve_released_skill_binding(ROOT, "v0.5.0", tmp_path)
     assert observed == V050_BINDING
@@ -1189,14 +1196,19 @@ def test_windows_second_snapshot_exception_closes_first_snapshot_with_fixed_erro
     handles, descriptors = _track_windows_response_resources(monkeypatch, benchmark)
     original_open_tree = benchmark._windows_open_response_tree
     call_count = 0
-    first_snapshot_descriptor_count = 0
+    first_snapshot_descriptors = ()
+    injection_checks_completed = False
     marker = "MARKER-WINDOWS-SECOND-SNAPSHOT-DO-NOT-DISCLOSE"
 
     def fail_second_snapshot(root):
-        nonlocal call_count, first_snapshot_descriptor_count
+        nonlocal call_count, first_snapshot_descriptors, injection_checks_completed
         call_count += 1
         if call_count == 2:
-            first_snapshot_descriptor_count = len(descriptors)
+            first_snapshot_descriptors = tuple(descriptors)
+            _assert_live_unique_descriptors_at_injection(
+                first_snapshot_descriptors, 72
+            )
+            injection_checks_completed = True
             raise RuntimeError(marker)
         return original_open_tree(root)
 
@@ -1207,11 +1219,15 @@ def test_windows_second_snapshot_exception_closes_first_snapshot_with_fixed_erro
     except Exception as error:
         failure = error
     live_handles, live_descriptors = _live_windows_response_resources(
-        benchmark, handles, descriptors
+        benchmark, handles, first_snapshot_descriptors
     )
     try:
         assert call_count == 2
-        assert first_snapshot_descriptor_count == len(expected_paths)
+        assert len(expected_paths) == 72
+        assert injection_checks_completed
+        assert len(first_snapshot_descriptors) == 72
+        assert len(set(first_snapshot_descriptors)) == 72
+        assert descriptors == list(first_snapshot_descriptors)
         assert type(failure) is ValueError
         assert str(failure) == "invalid response files"
         assert marker not in str(failure)
@@ -1237,10 +1253,18 @@ def test_windows_snapshot_comparator_exception_closes_both_with_fixed_error(
     }
     handles, descriptors = _track_windows_response_resources(monkeypatch, benchmark)
     compared_snapshot_sizes = []
+    injected_descriptors = ()
+    injection_checks_completed = False
     marker = "MARKER-WINDOWS-COMPARATOR-DO-NOT-DISCLOSE"
 
     def fail_comparison(first, second):
+        nonlocal injected_descriptors, injection_checks_completed
         compared_snapshot_sizes.append((len(first), len(second)))
+        injected_descriptors = tuple(
+            opened.descriptor for opened in (*first.values(), *second.values())
+        )
+        _assert_live_unique_descriptors_at_injection(injected_descriptors, 144)
+        injection_checks_completed = True
         raise RuntimeError(marker)
 
     monkeypatch.setattr(benchmark, "_windows_same_opened_tree", fail_comparison)
@@ -1250,11 +1274,16 @@ def test_windows_snapshot_comparator_exception_closes_both_with_fixed_error(
     except Exception as error:
         failure = error
     live_handles, live_descriptors = _live_windows_response_resources(
-        benchmark, handles, descriptors
+        benchmark, handles, injected_descriptors
     )
     try:
-        assert compared_snapshot_sizes == [(len(expected_paths), len(expected_paths))]
-        assert len(descriptors) == 2 * len(expected_paths)
+        assert len(expected_paths) == 72
+        assert compared_snapshot_sizes == [(72, 72)]
+        assert injection_checks_completed
+        assert len(injected_descriptors) == 144
+        assert len(set(injected_descriptors)) == 144
+        assert len(descriptors) == 144
+        assert set(descriptors) == set(injected_descriptors)
         assert type(failure) is ValueError
         assert str(failure) == "invalid response files"
         assert marker not in str(failure)
@@ -1283,22 +1312,35 @@ def test_windows_snapshot_base_exception_cleans_both_and_propagates_unchanged(
     }
     handles, descriptors = _track_windows_response_resources(monkeypatch, benchmark)
     compared_snapshot_sizes = []
+    injected_descriptors = ()
+    injection_checks_completed = False
     sentinel = OwnershipProbe()
 
     def interrupt_comparison(first, second):
+        nonlocal injected_descriptors, injection_checks_completed
         compared_snapshot_sizes.append((len(first), len(second)))
+        injected_descriptors = tuple(
+            opened.descriptor for opened in (*first.values(), *second.values())
+        )
+        _assert_live_unique_descriptors_at_injection(injected_descriptors, 144)
+        injection_checks_completed = True
         raise sentinel
 
     monkeypatch.setattr(benchmark, "_windows_same_opened_tree", interrupt_comparison)
     with pytest.raises(OwnershipProbe) as caught:
         benchmark._windows_verified_descriptors(responses_root, expected_paths)
     live_handles, live_descriptors = _live_windows_response_resources(
-        benchmark, handles, descriptors
+        benchmark, handles, injected_descriptors
     )
     try:
         assert caught.value is sentinel
-        assert compared_snapshot_sizes == [(len(expected_paths), len(expected_paths))]
-        assert len(descriptors) == 2 * len(expected_paths)
+        assert len(expected_paths) == 72
+        assert compared_snapshot_sizes == [(72, 72)]
+        assert injection_checks_completed
+        assert len(injected_descriptors) == 144
+        assert len(set(injected_descriptors)) == 144
+        assert len(descriptors) == 144
+        assert set(descriptors) == set(injected_descriptors)
         assert live_descriptors == []
         assert live_handles == []
     finally:
