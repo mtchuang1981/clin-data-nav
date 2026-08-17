@@ -747,20 +747,24 @@ def _windows_same_opened_tree(
 def _windows_verified_descriptors(
     root: Path, expected_paths: set[str]
 ) -> dict[str, _WindowsOpenedFile]:
-    opened = _windows_open_response_tree(root)
+    opened: dict[str, _WindowsOpenedFile] = {}
+    confirmed: dict[str, _WindowsOpenedFile] = {}
+    transferred = False
     try:
+        opened = _windows_open_response_tree(root)
         if set(opened) != expected_paths:
             raise ValueError
         confirmed = _windows_open_response_tree(root)
-        try:
-            if not _windows_same_opened_tree(opened, confirmed):
-                raise ValueError
-        finally:
-            _windows_close_opened_files(confirmed)
+        if not _windows_same_opened_tree(opened, confirmed):
+            raise ValueError
+        transferred = True
         return opened
-    except (OSError, ValueError):
-        _windows_close_opened_files(opened)
+    except Exception:
         raise ValueError("invalid response files") from None
+    finally:
+        _windows_close_opened_files(confirmed)
+        if not transferred:
+            _windows_close_opened_files(opened)
 
 
 def _require_same_entry(

@@ -1176,6 +1176,139 @@ def test_windows_deep_unexpected_tree_has_fixed_error_and_closes_owned_resources
 
 
 @pytest.mark.skipif(os.name != "nt", reason="Windows HANDLE ownership contract")
+def test_windows_second_snapshot_exception_closes_first_snapshot_with_fixed_error(
+    response_bundle, monkeypatch
+):
+    """A second traversal failure must release the already returned first snapshot."""
+    from scripts import evaluate_simulation_benchmark as benchmark
+
+    _, response_index, responses_root = response_bundle
+    expected_paths = {
+        record["relative_path"] for record in response_index["records"]
+    }
+    handles, descriptors = _track_windows_response_resources(monkeypatch, benchmark)
+    original_open_tree = benchmark._windows_open_response_tree
+    call_count = 0
+    first_snapshot_descriptor_count = 0
+    marker = "MARKER-WINDOWS-SECOND-SNAPSHOT-DO-NOT-DISCLOSE"
+
+    def fail_second_snapshot(root):
+        nonlocal call_count, first_snapshot_descriptor_count
+        call_count += 1
+        if call_count == 2:
+            first_snapshot_descriptor_count = len(descriptors)
+            raise RuntimeError(marker)
+        return original_open_tree(root)
+
+    monkeypatch.setattr(benchmark, "_windows_open_response_tree", fail_second_snapshot)
+    failure = None
+    try:
+        benchmark._windows_verified_descriptors(responses_root, expected_paths)
+    except Exception as error:
+        failure = error
+    live_handles, live_descriptors = _live_windows_response_resources(
+        benchmark, handles, descriptors
+    )
+    try:
+        assert call_count == 2
+        assert first_snapshot_descriptor_count == len(expected_paths)
+        assert type(failure) is ValueError
+        assert str(failure) == "invalid response files"
+        assert marker not in str(failure)
+        assert live_descriptors == []
+        assert live_handles == []
+    finally:
+        for descriptor in live_descriptors:
+            os.close(descriptor)
+        for handle in live_handles:
+            benchmark._windows_close_handle(handle)
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Windows HANDLE ownership contract")
+def test_windows_snapshot_comparator_exception_closes_both_with_fixed_error(
+    response_bundle, monkeypatch
+):
+    """A comparator failure must release both fully populated snapshots."""
+    from scripts import evaluate_simulation_benchmark as benchmark
+
+    _, response_index, responses_root = response_bundle
+    expected_paths = {
+        record["relative_path"] for record in response_index["records"]
+    }
+    handles, descriptors = _track_windows_response_resources(monkeypatch, benchmark)
+    compared_snapshot_sizes = []
+    marker = "MARKER-WINDOWS-COMPARATOR-DO-NOT-DISCLOSE"
+
+    def fail_comparison(first, second):
+        compared_snapshot_sizes.append((len(first), len(second)))
+        raise RuntimeError(marker)
+
+    monkeypatch.setattr(benchmark, "_windows_same_opened_tree", fail_comparison)
+    failure = None
+    try:
+        benchmark._windows_verified_descriptors(responses_root, expected_paths)
+    except Exception as error:
+        failure = error
+    live_handles, live_descriptors = _live_windows_response_resources(
+        benchmark, handles, descriptors
+    )
+    try:
+        assert compared_snapshot_sizes == [(len(expected_paths), len(expected_paths))]
+        assert len(descriptors) == 2 * len(expected_paths)
+        assert type(failure) is ValueError
+        assert str(failure) == "invalid response files"
+        assert marker not in str(failure)
+        assert live_descriptors == []
+        assert live_handles == []
+    finally:
+        for descriptor in live_descriptors:
+            os.close(descriptor)
+        for handle in live_handles:
+            benchmark._windows_close_handle(handle)
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Windows HANDLE ownership contract")
+def test_windows_snapshot_base_exception_cleans_both_and_propagates_unchanged(
+    response_bundle, monkeypatch
+):
+    """A non-Exception sentinel is re-raised only after both snapshots are closed."""
+    from scripts import evaluate_simulation_benchmark as benchmark
+
+    class OwnershipProbe(BaseException):
+        pass
+
+    _, response_index, responses_root = response_bundle
+    expected_paths = {
+        record["relative_path"] for record in response_index["records"]
+    }
+    handles, descriptors = _track_windows_response_resources(monkeypatch, benchmark)
+    compared_snapshot_sizes = []
+    sentinel = OwnershipProbe()
+
+    def interrupt_comparison(first, second):
+        compared_snapshot_sizes.append((len(first), len(second)))
+        raise sentinel
+
+    monkeypatch.setattr(benchmark, "_windows_same_opened_tree", interrupt_comparison)
+    with pytest.raises(OwnershipProbe) as caught:
+        benchmark._windows_verified_descriptors(responses_root, expected_paths)
+    live_handles, live_descriptors = _live_windows_response_resources(
+        benchmark, handles, descriptors
+    )
+    try:
+        assert caught.value is sentinel
+        assert compared_snapshot_sizes == [(len(expected_paths), len(expected_paths))]
+        assert len(descriptors) == 2 * len(expected_paths)
+        assert live_descriptors == []
+        assert live_handles == []
+    finally:
+        for descriptor in live_descriptors:
+            os.close(descriptor)
+        for handle in live_handles:
+            benchmark._windows_close_handle(handle)
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Windows HANDLE ownership contract")
 def test_windows_success_closes_all_transferred_descriptors_and_handles(
     response_bundle, monkeypatch
 ):
