@@ -473,7 +473,7 @@ class _SafeArgumentParser(argparse.ArgumentParser):
 
 
 def _argument_parser() -> argparse.ArgumentParser:
-    parser = _SafeArgumentParser(description=__doc__, allow_abbrev=False)
+    parser = _SafeArgumentParser(description=__doc__, allow_abbrev=False, add_help=False)
     parser.add_argument("--skill-ref", required=True)
     parser.add_argument("--model-provider", required=True)
     parser.add_argument("--model-id", required=True)
@@ -514,6 +514,11 @@ def _safe_external_output(path: Path) -> Path:
     raw_parent = raw_path.parent
     if not raw_parent.is_dir() or _contains_link_or_reparse(raw_parent):
         raise ValueError("unsafe output parent")
+    try:
+        if _is_link_or_reparse(raw_path):
+            raise ValueError("unsafe output path")
+    except FileNotFoundError:
+        pass
     output = ensure_external_path(path)
     if not output.parent.is_dir() or output.exists() and (output.is_dir() or _is_link_or_reparse(output)):
         raise ValueError("unsafe output path")

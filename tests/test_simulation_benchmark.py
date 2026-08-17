@@ -400,6 +400,48 @@ def test_prepare_cli_rejects_a_symlinked_or_reparse_output_parent(tmp_path):
         redirected.rmdir()
 
 
+def test_prepare_cli_rejects_a_symlinked_final_output_without_changing_its_target(tmp_path):
+    """Resolving the final component first would overwrite an arbitrary external target."""
+    target = tmp_path / "target.json"
+    original = b"existing-external-target\n"
+    target.write_bytes(original)
+    output = tmp_path / "linked-output.json"
+    try:
+        os.symlink(target, output)
+    except (NotImplementedError, OSError):
+        link = subprocess.run(
+            ["cmd.exe", "/d", "/c", "mklink", str(output), str(target)],
+            capture_output=True,
+            check=False,
+        )
+        if link.returncode:
+            pytest.skip("the current filesystem cannot create a file symlink")
+
+    completed = _run_prepare(output)
+
+    assert completed.returncode == 2
+    assert completed.stdout == b""
+    assert completed.stderr == PREP_ERROR
+    assert target.read_bytes() == original
+    assert output.is_symlink()
+
+
+@pytest.mark.parametrize("help_option", ["-h", "--help"])
+def test_prepare_cli_rejects_help_without_echoing_usage(help_option):
+    """A help path would create a second public stdout shape outside the closed contract."""
+    completed = subprocess.run(
+        [sys.executable, str(ROOT / "scripts" / "prepare_simulation_benchmark.py"), help_option],
+        cwd=ROOT,
+        capture_output=True,
+        check=False,
+    )
+
+    assert completed.returncode == 2
+    assert completed.stdout == b""
+    assert completed.stderr == PREP_ERROR
+    assert b"usage" not in completed.stdout + completed.stderr
+
+
 def test_prepare_cli_failure_does_not_replace_an_existing_output(tmp_path):
     """A failed validation must not destroy a prior completed external plan."""
     output = tmp_path / "benchmark-plan.json"
