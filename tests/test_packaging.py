@@ -2,7 +2,12 @@ from pathlib import Path
 import json
 from zipfile import ZipFile
 
-from scripts.package_skill import build_package
+import pytest
+
+from scripts.package_skill import PACKAGE_VERSION, build_package
+
+
+SKILL = Path("skills/clin-nav")
 
 
 def _write_minimal_skill(skill: Path) -> None:
@@ -112,3 +117,42 @@ def test_v050_package_and_manifest_names_match_release_version(tmp_path):
     )
     assert manifest["version"] == "0.5.0"
     assert manifest["archive"] == result.archive.name
+
+
+def test_build_package_accepts_an_explicit_historical_version(tmp_path):
+    result = build_package(SKILL, tmp_path, package_version="0.5.0")
+    manifest = json.loads(result.manifest.read_text(encoding="utf-8"))
+
+    assert result.archive.name == "clin-nav-0.5.0.zip"
+    assert result.manifest.name == "clin-nav-0.5.0.manifest.json"
+    assert manifest["archive"] == result.archive.name
+    assert manifest["version"] == "0.5.0"
+
+
+def test_default_package_call_retains_module_version_and_bytes(tmp_path):
+    default_dir = tmp_path / "default"
+    explicit_dir = tmp_path / "explicit"
+    default = build_package(SKILL, default_dir)
+    explicit = build_package(
+        SKILL,
+        explicit_dir,
+        package_version=PACKAGE_VERSION,
+    )
+
+    assert default.archive.read_bytes() == explicit.archive.read_bytes()
+    assert default.manifest.read_bytes() == explicit.manifest.read_bytes()
+
+
+@pytest.mark.parametrize(
+    "package_version",
+    ["v0.5.0", "0.5", "0.5.0/zip", "", True],
+)
+def test_invalid_package_version_is_rejected_before_output_creation(
+    tmp_path, package_version
+):
+    output_dir = tmp_path / "output"
+
+    with pytest.raises(ValueError, match="package version must be X.Y.Z"):
+        build_package(SKILL, output_dir, package_version=package_version)
+
+    assert not output_dir.exists()

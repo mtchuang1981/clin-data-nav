@@ -6,6 +6,7 @@ import argparse
 from dataclasses import dataclass
 import hashlib
 import json
+import re
 from pathlib import Path
 import tempfile
 from zipfile import ZIP_DEFLATED, ZipFile, ZipInfo
@@ -22,6 +23,7 @@ ARCHIVE_NAME = f"{SKILL_NAME}-{PACKAGE_VERSION}.zip"
 MANIFEST_NAME = f"{SKILL_NAME}-{PACKAGE_VERSION}.manifest.json"
 INCLUDED_DIRECTORIES = ("agents", "references", "scripts", "assets")
 ZIP_TIMESTAMP = (1980, 1, 1, 0, 0, 0)
+SEMVER = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+$")
 
 
 @dataclass(frozen=True)
@@ -52,8 +54,23 @@ def _canonical_package_bytes(path: Path) -> bytes:
     return text.replace("\r\n", "\n").replace("\r", "\n").encode("utf-8")
 
 
-def build_package(skill_dir: Path, output_dir: Path) -> PackageResult:
+def _package_names(package_version: str) -> tuple[str, str]:
+    if not isinstance(package_version, str) or SEMVER.fullmatch(package_version) is None:
+        raise ValueError("package version must be X.Y.Z")
+    return (
+        f"{SKILL_NAME}-{package_version}.zip",
+        f"{SKILL_NAME}-{package_version}.manifest.json",
+    )
+
+
+def build_package(
+    skill_dir: Path,
+    output_dir: Path,
+    *,
+    package_version: str = PACKAGE_VERSION,
+) -> PackageResult:
     """Validate and package *skill_dir* with reproducible metadata."""
+    archive_name, manifest_name = _package_names(package_version)
     skill_dir = skill_dir.resolve()
     errors = validate_skill(skill_dir)
     if errors:
@@ -79,7 +96,7 @@ def build_package(skill_dir: Path, output_dir: Path) -> PackageResult:
         )
 
     output_dir.mkdir(parents=True, exist_ok=True)
-    archive = output_dir / ARCHIVE_NAME
+    archive = output_dir / archive_name
     with ZipFile(
         archive,
         "w",
@@ -99,13 +116,13 @@ def build_package(skill_dir: Path, output_dir: Path) -> PackageResult:
             )
 
     manifest_data = {
-        "archive": ARCHIVE_NAME,
+        "archive": archive_name,
         "archive_sha256": hashlib.sha256(archive.read_bytes()).hexdigest(),
         "files": file_records,
         "name": SKILL_NAME,
-        "version": PACKAGE_VERSION,
+        "version": package_version,
     }
-    manifest = output_dir / MANIFEST_NAME
+    manifest = output_dir / manifest_name
     manifest.write_bytes(
         json.dumps(
             manifest_data,
