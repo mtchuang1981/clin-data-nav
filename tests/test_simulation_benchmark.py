@@ -11,6 +11,11 @@ import sys
 
 import pytest
 
+from scripts.evaluate_simulation_benchmark import (
+    IncompleteBenchmark,
+    load_response_cells,
+    validate_response_index,
+)
 from scripts.evaluate_response import load_catalog
 from scripts.prepare_simulation_benchmark import (
     _output_is_inside_root,
@@ -26,6 +31,7 @@ from scripts.prepare_simulation_benchmark import (
 ROOT = Path(__file__).resolve().parents[1]
 REGISTRY = ROOT / "evals" / "benchmark" / "released-skill-bindings.json"
 TEMPLATE = ROOT / "evals" / "benchmark" / "benchmark-plan-template.json"
+RESPONSE_INDEX_TEMPLATE = ROOT / "evals" / "benchmark" / "response-index-template.json"
 V050_BINDING = {
     "archive": "clin-nav-0.5.0.zip",
     "archive_sha256": "195967e3e3b1a6ee32de18a442a7c84badc6642ce6b4ddc0456c441b5f25686d",
@@ -59,6 +65,75 @@ def valid_plan(tmp_path: Path, *, repeats: int = 3, seed: int = 20260816) -> dic
         seed=seed,
         created_at="2026-08-16T00:00:00+00:00",
     )
+
+
+@pytest.fixture(scope="module")
+def benchmark_plan(tmp_path_factory) -> dict:
+    return valid_plan(tmp_path_factory.mktemp("response-plan"))
+
+
+def _response_bundle(plan: dict, responses_root: Path) -> tuple[dict, Path]:
+    responses_root.mkdir()
+    records = []
+    for cell in plan["cells"]:
+        relative_path = f"response-{cell['sequence']:03d}.md"
+        content = f"# Synthetic response {cell['sequence']}\n".encode()
+        (responses_root / relative_path).write_bytes(content)
+        records.append(
+            {
+                "case_id": cell["case_id"],
+                "condition": cell["condition"],
+                "repeat": cell["repeat"],
+                "relative_path": relative_path,
+                "response_sha256": hashlib.sha256(content).hexdigest(),
+                "size": len(content),
+            }
+        )
+    return (
+        {
+            "schema_version": "1",
+            "plan_sha256": hashlib.sha256(canonical_json_bytes(plan)).hexdigest(),
+            "execution_attestation": {
+                "completed_at": "2026-08-16T01:00:00+00:00",
+                "model_provider": plan["model"]["provider"],
+                "model_id": plan["model"]["id"],
+                "model_snapshot": plan["model"]["snapshot"],
+                "runner_name": plan["runner"]["name"],
+                "runner_version": plan["runner"]["version"],
+                "plan_followed": True,
+                "fresh_sessions": True,
+                "offline": True,
+                "shared_configuration_unchanged": True,
+            },
+            "records": records,
+        },
+        responses_root,
+    )
+
+
+@pytest.fixture
+def response_bundle(benchmark_plan, tmp_path) -> tuple[dict, dict, Path]:
+    index, responses_root = _response_bundle(benchmark_plan, tmp_path / "responses")
+    return deepcopy(benchmark_plan), index, responses_root
+
+
+def _update_record_for_bytes(index: dict, record_index: int, content: bytes) -> None:
+    index["records"][record_index]["size"] = len(content)
+    index["records"][record_index]["response_sha256"] = hashlib.sha256(content).hexdigest()
+
+
+def _make_symlink(target: Path, link: Path, *, directory: bool = False) -> None:
+    try:
+        os.symlink(target, link, target_is_directory=directory)
+    except (NotImplementedError, OSError):
+        command = ["cmd.exe", "/d", "/c", "mklink"]
+        if directory:
+            command.append("/J")
+        completed = subprocess.run(
+            [*command, str(link), str(target)], capture_output=True, check=False
+        )
+        if completed.returncode:
+            pytest.skip("the current filesystem cannot create a symlink or reparse point")
 
 
 def test_v050_registry_matches_rebuilt_annotated_tag(tmp_path):
@@ -454,3 +529,384 @@ def test_prepare_cli_failure_does_not_replace_an_existing_output(tmp_path):
     assert completed.stdout == b""
     assert completed.stderr == PREP_ERROR
     assert output.read_bytes() == original
+
+
+def test_response_loader_returns_the_exact_canonical_cells(response_bundle):
+    plan, response_index, responses_root = response_bundle
+
+    cells = load_response_cells(plan, response_index, responses_root)
+
+    assert len(cells) == 72
+    assert tuple(cell["sequence"] for cell in cells) == tuple(range(1, 73))
+    assert all(
+        set(cell) == {"case_id", "condition", "repeat", "sequence", "text"}
+        for cell in cells
+    )
+    assert cells[0]["text"].startswith("# Synthetic response")
+    assert all("path" not in cell and "bytes" not in cell for cell in cells)
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("schema_version", "2"),
+        ("plan_sha256", "0" * 64),
+        ("execution_attestation", None),
+        ("records", {}),
+    ],
+)
+def test_response_index_rejects_each_mutated_root_field(
+    field, value, response_bundle
+):
+    plan, response_index, _ = response_bundle
+    response_index[field] = value
+
+    assert validate_response_index(response_index, plan)
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("completed_at", "2026-08-16T01:00:00"),
+        ("model_provider", "different-provider"),
+        ("model_id", "different-model"),
+        ("model_snapshot", "different-snapshot"),
+        ("runner_name", "different-runner"),
+        ("runner_version", "2.0.0"),
+        ("plan_followed", False),
+        ("fresh_sessions", False),
+        ("offline", False),
+        ("shared_configuration_unchanged", False),
+    ],
+)
+def test_response_index_rejects_each_mutated_attestation_field(
+    field, value, response_bundle
+):
+    """Runner metadata are externally asserted and cross-checked, not provider-verified."""
+    plan, response_index, _ = response_bundle
+    response_index["execution_attestation"][field] = value
+
+    assert validate_response_index(response_index, plan)
+
+
+@pytest.mark.parametrize(
+    "field",
+    [
+        "plan_followed",
+        "fresh_sessions",
+        "offline",
+        "shared_configuration_unchanged",
+    ],
+)
+def test_response_index_requires_attestation_booleans_to_be_literal_true(
+    field, response_bundle
+):
+    plan, response_index, _ = response_bundle
+    response_index["execution_attestation"][field] = 1
+
+    assert validate_response_index(response_index, plan)
+
+
+def test_response_index_rejects_completion_before_plan_creation(response_bundle):
+    plan, response_index, _ = response_bundle
+    response_index["execution_attestation"]["completed_at"] = (
+        "2026-08-15T23:59:59+00:00"
+    )
+
+    assert validate_response_index(response_index, plan)
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("case_id", "unknown-case"),
+        ("condition", "unknown-condition"),
+        ("repeat", 0),
+        ("relative_path", "/absolute-response.md"),
+        ("response_sha256", "A" * 64),
+        ("size", -1),
+    ],
+)
+def test_response_index_rejects_each_mutated_record_field(
+    field, value, response_bundle
+):
+    plan, response_index, _ = response_bundle
+    response_index["records"][0][field] = value
+
+    assert validate_response_index(response_index, plan)
+
+
+@pytest.mark.parametrize("value", [4, True])
+def test_response_index_rejects_out_of_range_or_boolean_repeat(value, response_bundle):
+    plan, response_index, _ = response_bundle
+    response_index["records"][0]["repeat"] = value
+
+    assert validate_response_index(response_index, plan)
+
+
+def test_response_index_rejects_boolean_size(response_bundle):
+    plan, response_index, _ = response_bundle
+    response_index["records"][0]["size"] = True
+
+    assert validate_response_index(response_index, plan)
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("case_id", []),
+        ("condition", []),
+        ("repeat", []),
+        ("relative_path", []),
+        ("response_sha256", []),
+        ("size", []),
+    ],
+)
+def test_response_index_returns_errors_for_malformed_record_value_types(
+    field, value, response_bundle
+):
+    """An unhashable JSON value must fail closed instead of leaking a TypeError."""
+    plan, response_index, _ = response_bundle
+    response_index["records"][0][field] = value
+
+    assert validate_response_index(response_index, plan)
+
+
+@pytest.mark.parametrize("container", ["root", "attestation", "record"])
+@pytest.mark.parametrize("kind", ["missing", "extra"])
+def test_response_index_requires_closed_keys(container, kind, response_bundle):
+    plan, response_index, _ = response_bundle
+    target = {
+        "root": response_index,
+        "attestation": response_index["execution_attestation"],
+        "record": response_index["records"][0],
+    }[container]
+    if kind == "missing":
+        target.pop(next(iter(target)))
+    else:
+        target["status"] = "MARKER-DO-NOT-ECHO"
+
+    errors = validate_response_index(response_index, plan)
+
+    assert errors
+    assert "MARKER-DO-NOT-ECHO" not in " ".join(errors)
+
+
+@pytest.mark.parametrize(
+    "unsafe_path",
+    [
+        "../response.md",
+        "nested/../../response.md",
+        r"nested\response.md",
+        "C:/absolute-response.md",
+    ],
+)
+def test_response_index_rejects_unsafe_non_posix_paths(unsafe_path, response_bundle):
+    plan, response_index, _ = response_bundle
+    response_index["records"][0]["relative_path"] = unsafe_path
+
+    assert validate_response_index(response_index, plan)
+
+
+def test_response_index_rejects_duplicate_normalized_paths(response_bundle):
+    plan, response_index, _ = response_bundle
+    response_index["records"][0]["relative_path"] = "nested/response.md"
+    response_index["records"][1]["relative_path"] = "nested//response.md"
+
+    assert validate_response_index(response_index, plan)
+
+
+@pytest.mark.parametrize("mutation", ["duplicate", "reordered"])
+def test_response_index_rejects_duplicate_or_reordered_records(mutation, response_bundle):
+    plan, response_index, _ = response_bundle
+    if mutation == "duplicate":
+        response_index["records"].append(deepcopy(response_index["records"][0]))
+    else:
+        response_index["records"][0], response_index["records"][1] = (
+            response_index["records"][1],
+            response_index["records"][0],
+        )
+
+    assert validate_response_index(response_index, plan)
+
+
+def test_response_index_rejects_an_interior_omission_as_invalid(response_bundle):
+    plan, response_index, _ = response_bundle
+    response_index["records"].pop(12)
+
+    assert validate_response_index(response_index, plan)
+
+
+def test_response_index_raises_incomplete_only_for_an_exact_canonical_prefix(
+    response_bundle,
+):
+    plan, response_index, _ = response_bundle
+    response_index["records"] = response_index["records"][:-1]
+
+    with pytest.raises(IncompleteBenchmark) as caught:
+        validate_response_index(response_index, plan)
+
+    assert caught.value.expected_count == 72
+    assert caught.value.observed_count == 71
+
+
+def test_response_loader_rejects_an_extra_response_file_before_content_reads(
+    response_bundle, monkeypatch
+):
+    plan, response_index, responses_root = response_bundle
+    (responses_root / "unexpected.md").write_bytes(b"MARKER-DO-NOT-ECHO\n")
+    reads = []
+    original = Path.read_bytes
+
+    def tracking_read(path):
+        if path.is_relative_to(responses_root):
+            reads.append(path)
+        return original(path)
+
+    monkeypatch.setattr(Path, "read_bytes", tracking_read)
+
+    with pytest.raises(ValueError, match="invalid response files") as caught:
+        load_response_cells(plan, response_index, responses_root)
+
+    assert reads == []
+    assert "MARKER-DO-NOT-ECHO" not in str(caught.value)
+
+
+def test_response_loader_rejects_a_missing_file(response_bundle):
+    plan, response_index, responses_root = response_bundle
+    (responses_root / response_index["records"][0]["relative_path"]).unlink()
+
+    with pytest.raises(ValueError, match="invalid response files"):
+        load_response_cells(plan, response_index, responses_root)
+
+
+def test_response_loader_rejects_a_directory_in_place_of_a_file(response_bundle):
+    plan, response_index, responses_root = response_bundle
+    response_path = responses_root / response_index["records"][0]["relative_path"]
+    response_path.unlink()
+    response_path.mkdir()
+
+    with pytest.raises(ValueError, match="invalid response files"):
+        load_response_cells(plan, response_index, responses_root)
+
+
+def test_response_loader_rejects_a_symlink_or_reparse_file(response_bundle, tmp_path):
+    plan, response_index, responses_root = response_bundle
+    response_path = responses_root / response_index["records"][0]["relative_path"]
+    target = tmp_path / "external-target.md"
+    target.write_bytes(response_path.read_bytes())
+    response_path.unlink()
+    _make_symlink(target, response_path)
+
+    with pytest.raises(ValueError, match="invalid response files"):
+        load_response_cells(plan, response_index, responses_root)
+
+
+def test_response_loader_rejects_an_escaping_symlink_parent(response_bundle, tmp_path):
+    plan, response_index, responses_root = response_bundle
+    original = responses_root / response_index["records"][0]["relative_path"]
+    content = original.read_bytes()
+    original.unlink()
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (outside / "escaped.md").write_bytes(content)
+    redirected = responses_root / "redirected"
+    _make_symlink(outside, redirected, directory=True)
+    response_index["records"][0]["relative_path"] = "redirected/escaped.md"
+
+    with pytest.raises(ValueError, match="invalid response files"):
+        load_response_cells(plan, response_index, responses_root)
+
+
+def test_response_loader_rejects_hardlink_aliases_between_cells(response_bundle):
+    plan, response_index, responses_root = response_bundle
+    first = responses_root / response_index["records"][0]["relative_path"]
+    second = responses_root / response_index["records"][1]["relative_path"]
+    second.unlink()
+    try:
+        os.link(first, second)
+    except OSError:
+        pytest.skip("the current filesystem cannot create hardlinks")
+    _update_record_for_bytes(response_index, 1, first.read_bytes())
+
+    with pytest.raises(ValueError, match="invalid response files"):
+        load_response_cells(plan, response_index, responses_root)
+
+
+def test_response_loader_accepts_identical_bytes_in_distinct_regular_files(
+    response_bundle,
+):
+    plan, response_index, responses_root = response_bundle
+    first = responses_root / response_index["records"][0]["relative_path"]
+    second = responses_root / response_index["records"][1]["relative_path"]
+    content = first.read_bytes()
+    second.write_bytes(content)
+    _update_record_for_bytes(response_index, 1, content)
+    first_identity = (first.stat().st_dev, first.stat().st_ino)
+    second_identity = (second.stat().st_dev, second.stat().st_ino)
+    if first_identity == second_identity:
+        pytest.skip("the current filesystem does not expose distinct file identities")
+
+    cells = load_response_cells(plan, response_index, responses_root)
+
+    assert cells[0]["text"] == cells[1]["text"]
+
+
+@pytest.mark.parametrize("mismatch", ["size", "digest"])
+def test_response_loader_rejects_size_or_digest_mismatch(mismatch, response_bundle):
+    plan, response_index, responses_root = response_bundle
+    if mismatch == "size":
+        response_index["records"][0]["size"] += 1
+    else:
+        response_index["records"][0]["response_sha256"] = "0" * 64
+
+    with pytest.raises(ValueError, match="invalid response files"):
+        load_response_cells(plan, response_index, responses_root)
+
+
+def test_response_loader_rejects_invalid_utf8(response_bundle):
+    plan, response_index, responses_root = response_bundle
+    response_path = responses_root / response_index["records"][0]["relative_path"]
+    content = b"\xff\xfe"
+    response_path.write_bytes(content)
+    _update_record_for_bytes(response_index, 0, content)
+
+    with pytest.raises(ValueError, match="invalid response files"):
+        load_response_cells(plan, response_index, responses_root)
+
+
+def test_response_loader_rejects_a_repository_internal_response_root(response_bundle):
+    plan, response_index, _ = response_bundle
+
+    with pytest.raises(ValueError, match="invalid response files"):
+        load_response_cells(plan, response_index, ROOT / "evals")
+
+
+def test_response_index_template_is_closed_unpopulated_and_invalid(benchmark_plan):
+    template = json.loads(RESPONSE_INDEX_TEMPLATE.read_text(encoding="utf-8"))
+
+    assert set(template) == {
+        "schema_version",
+        "plan_sha256",
+        "execution_attestation",
+        "records",
+    }
+    assert template["schema_version"] == "1"
+    assert template["plan_sha256"] is None
+    assert template["records"] == []
+    assert template["execution_attestation"] == {
+        "completed_at": None,
+        "model_provider": None,
+        "model_id": None,
+        "model_snapshot": None,
+        "runner_name": None,
+        "runner_version": None,
+        "plan_followed": False,
+        "fresh_sessions": False,
+        "offline": False,
+        "shared_configuration_unchanged": False,
+    }
+    assert validate_response_index(template, benchmark_plan)
+    serialized = RESPONSE_INDEX_TEMPLATE.read_bytes()
+    assert b"relative_path" not in serialized
+    assert b"response_sha256" not in serialized
