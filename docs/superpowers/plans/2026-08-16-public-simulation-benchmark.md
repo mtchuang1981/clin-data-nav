@@ -449,7 +449,7 @@ git commit -m "feat: validate external benchmark responses"
 
 **Interfaces:**
 - Consumes: Task 4 response cells and existing `load_catalog()` / `evaluate_response()`.
-- Produces: `classify_direction(overall_difference: Fraction, improved: int, worsened: int, control_forbidden: int, intervention_forbidden: int, depth_differences: tuple[Fraction, ...]) -> str`, `evaluate_benchmark(plan: dict, cells: tuple[dict, ...], execution_attestation: dict) -> dict`, `validate_benchmark_summary(payload: object) -> list[str]`, and `canonical_summary_bytes(summary: dict) -> bytes`.
+- Produces: `classify_direction(overall_difference: Fraction, improved: int, worsened: int, control_forbidden: int, intervention_forbidden: int, depth_differences: tuple[Fraction, ...]) -> str`, `evaluate_benchmark(plan: dict, cells: tuple[dict, ...], execution_attestation: dict) -> dict`, `validate_benchmark_summary(payload: object, *, allow_synthetic: bool = False) -> list[str]`, and `canonical_summary_bytes(summary: dict) -> bytes`.
 
 - [ ] **Step 1: Write failing aggregation tests**
 
@@ -530,7 +530,10 @@ direction = "negative-signal" if negative else "positive-signal" if positive els
 Require output `status == "benchmark-observed"` for every complete valid
 direction. Summary validation rejects unknown keys, recomputes all rates,
 counts, strata, stability, and direction, and rejects any human-effectiveness or
-green field.
+green field. By default it also requires `synthetic_example is False`.
+`allow_synthetic=True` permits the boolean to be true only for the later
+checked-in contract example; canonical real-summary serialization and the
+evaluation CLI always use the default.
 
 - [ ] **Step 5: Verify GREEN and commit Task 5**
 
@@ -618,7 +621,7 @@ git commit -m "feat: evaluate external simulation benchmarks"
 
 **Interfaces:**
 - Consumes: Task 5 `validate_benchmark_summary()` and canonical synthetic summary.
-- Produces: `render_report(summary: dict, language: str) -> str`, paired atomic writer, and CLI `--summary --english --traditional-chinese [--check]`.
+- Produces: `render_report(summary: dict, language: str, *, allow_synthetic: bool = False) -> str`, paired atomic writer, and CLI `--summary --english --traditional-chinese [--check]`.
 
 - [ ] **Step 1: Write failing renderer and alignment tests**
 
@@ -654,17 +657,20 @@ and claim boundary. Generate a complete summary with
 `synthetic_example: true`, 72 cells, and internally consistent
 `positive-signal` counts. The
 example is contract demonstration only; real summary validation requires
-`synthetic_example: false`, while renderer validation permits either and labels
-it visibly.
+`synthetic_example: false`. Synthetic validation is an explicit opt-in used
+only after the CLI proves the input and both outputs are the exact checked-in
+example paths; the report labels it visibly.
 
 - [ ] **Step 4: Implement deterministic bilingual rendering**
 
 `render_report()` validates the summary and language (`en` or `zh-TW`) before
-constructing Markdown. Numbers use fixed six-decimal formatting, and all tables
-use canonical case/depth order. The CLI reads only an external summary for real
-runs. The checked-in synthetic summary is permitted only when generating or
-checking the exact checked-in English and Traditional Chinese example-report
-paths; it cannot be redirected to arbitrary outputs.
+constructing Markdown and rejects synthetic summaries by default. Numbers use
+fixed six-decimal formatting, and all tables use canonical case/depth order.
+The CLI reads only an external summary for real runs. It passes
+`allow_synthetic=True` only when the resolved summary and both output paths are
+the exact checked-in synthetic summary and English/Traditional Chinese example
+reports, whether generating or checking them; it cannot be redirected to
+arbitrary outputs.
 
 Write both outputs via staged files and rollback the first replacement if the
 second replacement fails, following the existing effectiveness renderer

@@ -281,6 +281,10 @@ The summary contains only safe benchmark metadata and evaluator-derived data:
 
 It does not include response text, filenames, local paths, dynamic exception
 text, provider logs, prompts, credentials, or a human-effectiveness field.
+Standalone summary validation rejects `synthetic_example: true` by default.
+An explicit synthetic-validation mode exists only for the renderer's exact
+checked-in example input and exact checked-in bilingual output paths; it is not
+available to arbitrary external summaries or output locations.
 
 ## 9. Primary metric and direction classification
 
@@ -352,6 +356,12 @@ The renderer validates exact schema and recomputes all direction rules. It
 writes both outputs using staged replacement and rollback so mixed report
 versions cannot remain after a partial failure. `--check` compares existing
 outputs without modifying them.
+
+The pure validation and rendering interfaces reject synthetic summaries by
+default. The CLI opts into synthetic validation only after confirming the
+summary and both output paths are the exact checked-in example paths. This
+same narrow rule permits initial example generation and later `--check` while
+preventing arbitrary external output from being mislabeled as an example.
 
 Both reports contain the frozen identities, complete aggregate table, paired
 counts, strata, stability, limitations, and these mandatory statements:
