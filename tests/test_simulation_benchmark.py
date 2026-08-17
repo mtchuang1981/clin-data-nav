@@ -1970,3 +1970,323 @@ def test_evaluate_rejects_execution_attestation_drift_or_expansion(
             _cells_for_pattern(benchmark_plan, "mixed"),
             attestation,
         )
+
+
+EVALUATE_ERROR = b"simulation benchmark evaluation failed\n"
+EVALUATE_SUCCESS = b'{"schema_version":"1","status":"benchmark-observed"}\n'
+
+
+def _evaluation_command(
+    plan_path: Path,
+    response_index_path: Path,
+    responses_root: Path,
+    output: Path,
+) -> list[str]:
+    return [
+        sys.executable,
+        str(ROOT / "scripts" / "evaluate_simulation_benchmark.py"),
+        "--plan",
+        str(plan_path),
+        "--response-index",
+        str(response_index_path),
+        "--responses-dir",
+        str(responses_root),
+        "--output-summary",
+        str(output),
+    ]
+
+
+def _external_evaluation_bundle(
+    tmp_path: Path,
+) -> tuple[dict, dict, Path, Path, Path, Path]:
+    plan = valid_plan(tmp_path / "plan-build")
+    response_index, responses_root = _response_bundle(
+        plan, tmp_path / "responses"
+    )
+    plan_path = tmp_path / "benchmark-plan.json"
+    response_index_path = tmp_path / "response-index.json"
+    output = tmp_path / "benchmark-summary.json"
+    plan_path.write_bytes(canonical_json_bytes(plan))
+    response_index_path.write_bytes(canonical_json_bytes(response_index))
+    return (
+        plan,
+        response_index,
+        responses_root,
+        plan_path,
+        response_index_path,
+        output,
+    )
+
+
+def _run_evaluation_bundle(
+    bundle: tuple[dict, dict, Path, Path, Path, Path],
+    *,
+    output: Path | None = None,
+    extra_arguments: list[str] | None = None,
+) -> subprocess.CompletedProcess[bytes]:
+    _, _, responses_root, plan_path, response_index_path, default_output = bundle
+    return subprocess.run(
+        _evaluation_command(
+            plan_path,
+            response_index_path,
+            responses_root,
+            output or default_output,
+        )
+        + (extra_arguments or []),
+        cwd=ROOT,
+        capture_output=True,
+        check=False,
+    )
+
+
+def test_evaluate_cli_writes_only_a_canonical_complete_summary(tmp_path):
+    """A successful run must not expose aggregate details on the process stream."""
+    bundle = _external_evaluation_bundle(tmp_path)
+    _, _, _, _, _, output = bundle
+
+    completed = _run_evaluation_bundle(bundle)
+
+    assert completed.returncode == 0
+    assert completed.stdout == EVALUATE_SUCCESS
+    assert completed.stderr == b""
+    summary_bytes = output.read_bytes()
+    summary = json.loads(summary_bytes)
+    assert summary_bytes == canonical_json_bytes(summary)
+    assert validate_benchmark_summary(summary) == []
+    assert summary["status"] == "benchmark-observed"
+    assert summary["synthetic_example"] is False
+
+
+def test_evaluate_cli_reports_only_a_valid_canonical_prefix_as_incomplete(tmp_path):
+    """A trailing omission must not be scored or materialized as a summary."""
+    bundle = _external_evaluation_bundle(tmp_path)
+    _, response_index, _, _, response_index_path, output = bundle
+    response_index["records"] = response_index["records"][:-1]
+    response_index_path.write_bytes(canonical_json_bytes(response_index))
+
+    completed = _run_evaluation_bundle(bundle)
+
+    assert completed.returncode == 3
+    assert completed.stdout == (
+        b'{"expected_count":72,"observed_count":71,"schema_version":"1",'
+        b'"status":"benchmark-incomplete"}\n'
+    )
+    assert completed.stderr == b""
+    assert not output.exists()
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    ["invalid-json", "extra-file", "duplicate-record", "digest-mismatch", "unsafe-path"],
+)
+def test_evaluate_cli_maps_malformed_or_unsafe_bundles_to_one_error_shape(
+    tmp_path, mutation
+):
+    """Dynamic parser and validation failures must never become an output channel."""
+    bundle = _external_evaluation_bundle(tmp_path)
+    _, response_index, responses_root, _, response_index_path, output = bundle
+    if mutation == "invalid-json":
+        response_index_path.write_bytes(b'{"MARKER-INVALID-JSON":')
+    elif mutation == "extra-file":
+        (responses_root / "unexpected.md").write_bytes(b"extra\n")
+    elif mutation == "duplicate-record":
+        response_index["records"].append(deepcopy(response_index["records"][0]))
+        response_index_path.write_bytes(canonical_json_bytes(response_index))
+    elif mutation == "digest-mismatch":
+        response_index["plan_sha256"] = "0" * 64
+        response_index_path.write_bytes(canonical_json_bytes(response_index))
+    else:
+        response_index["records"][0]["relative_path"] = "../unsafe.md"
+        response_index_path.write_bytes(canonical_json_bytes(response_index))
+
+    completed = _run_evaluation_bundle(bundle)
+
+    assert completed.returncode == 2
+    assert completed.stdout == b""
+    assert completed.stderr == EVALUATE_ERROR
+    assert not output.exists()
+
+
+@pytest.mark.parametrize(
+    ("flag", "abbreviation"),
+    [
+        ("--plan", "--pla"),
+        ("--response-index", "--response-ind"),
+        ("--responses-dir", "--responses-d"),
+        ("--output-summary", "--output-sum"),
+    ],
+)
+def test_evaluate_cli_rejects_every_abbreviated_flag(tmp_path, flag, abbreviation):
+    """An abbreviated spelling would silently widen the closed CLI contract."""
+    bundle = _external_evaluation_bundle(tmp_path)
+    _, _, responses_root, plan_path, response_index_path, output = bundle
+    command = _evaluation_command(
+        plan_path, response_index_path, responses_root, output
+    )
+    command[command.index(flag)] = abbreviation
+
+    completed = subprocess.run(
+        command, cwd=ROOT, capture_output=True, check=False
+    )
+
+    assert completed.returncode == 2
+    assert completed.stdout == b""
+    assert completed.stderr == EVALUATE_ERROR
+    assert not output.exists()
+
+
+@pytest.mark.parametrize("help_option", ["-h", "--help"])
+def test_evaluate_cli_rejects_help_without_a_second_output_shape(help_option):
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(ROOT / "scripts" / "evaluate_simulation_benchmark.py"),
+            help_option,
+        ],
+        cwd=ROOT,
+        capture_output=True,
+        check=False,
+    )
+
+    assert completed.returncode == 2
+    assert completed.stdout == b""
+    assert completed.stderr == EVALUATE_ERROR
+
+
+def test_evaluate_cli_rejects_duplicate_flags(tmp_path):
+    """Accepting a second value would make the effective input ambiguous."""
+    bundle = _external_evaluation_bundle(tmp_path)
+    _, _, _, plan_path, _, output = bundle
+
+    completed = _run_evaluation_bundle(
+        bundle, extra_arguments=["--plan", str(plan_path)]
+    )
+
+    assert completed.returncode == 2
+    assert completed.stdout == b""
+    assert completed.stderr == EVALUATE_ERROR
+    assert not output.exists()
+
+
+@pytest.mark.parametrize("source", ["response", "metadata", "filename", "json"])
+def test_evaluate_cli_never_discloses_untrusted_markers(tmp_path, source):
+    marker = f"MARKER-{source.upper()}-DO-NOT-DISCLOSE"
+    bundle = _external_evaluation_bundle(tmp_path)
+    plan, response_index, responses_root, plan_path, response_index_path, _ = bundle
+    if source == "response":
+        response_path = responses_root / response_index["records"][0]["relative_path"]
+        content = marker.encode("utf-8")
+        response_path.write_bytes(content)
+        _update_record_for_bytes(response_index, 0, content)
+        response_index_path.write_bytes(canonical_json_bytes(response_index))
+    elif source == "metadata":
+        plan["model"]["unexpected"] = marker
+        plan_path.write_bytes(canonical_json_bytes(plan))
+    elif source == "filename":
+        (responses_root / f"{marker}.md").write_bytes(b"extra\n")
+    else:
+        response_index_path.write_bytes((f'{{"value":"{marker}"').encode())
+
+    completed = _run_evaluation_bundle(bundle)
+
+    assert marker.encode() not in completed.stdout + completed.stderr
+    if source == "response":
+        assert completed.returncode == 0
+        assert completed.stdout == EVALUATE_SUCCESS
+        assert completed.stderr == b""
+    else:
+        assert completed.returncode == 2
+        assert completed.stdout == b""
+        assert completed.stderr == EVALUATE_ERROR
+
+
+@pytest.mark.parametrize("alias_kind", ["spelling", "resolution", "symlink", "hardlink"])
+def test_evaluate_cli_rejects_output_aliases_without_modifying_inputs(
+    tmp_path, alias_kind
+):
+    """Replacing an aliased output could corrupt the evidence it is evaluating."""
+    bundle = _external_evaluation_bundle(tmp_path)
+    _, _, _, plan_path, _, _ = bundle
+    original = plan_path.read_bytes()
+    if alias_kind == "spelling":
+        output = plan_path
+    elif alias_kind == "resolution":
+        output = plan_path.parent / "unused" / ".." / plan_path.name
+    elif alias_kind == "symlink":
+        output = tmp_path / "summary-link.json"
+        _make_symlink(plan_path, output)
+    else:
+        output = tmp_path / "summary-hardlink.json"
+        try:
+            os.link(plan_path, output)
+        except OSError:
+            pytest.skip("the current filesystem cannot create hardlinks")
+
+    completed = _run_evaluation_bundle(bundle, output=output)
+
+    assert completed.returncode == 2
+    assert completed.stdout == b""
+    assert completed.stderr == EVALUATE_ERROR
+    assert plan_path.read_bytes() == original
+    assert output.exists()
+    assert output.read_bytes() == original
+
+
+def test_evaluate_cli_rejects_an_output_hardlinked_to_a_response(tmp_path):
+    """Response cells are inputs even though they are reached through a directory."""
+    bundle = _external_evaluation_bundle(tmp_path)
+    _, response_index, responses_root, _, _, _ = bundle
+    response = responses_root / response_index["records"][0]["relative_path"]
+    original = response.read_bytes()
+    output = tmp_path / "summary-hardlink.json"
+    try:
+        os.link(response, output)
+    except OSError:
+        pytest.skip("the current filesystem cannot create hardlinks")
+
+    completed = _run_evaluation_bundle(bundle, output=output)
+
+    assert completed.returncode == 2
+    assert completed.stdout == b""
+    assert completed.stderr == EVALUATE_ERROR
+    assert response.read_bytes() == original
+    assert output.read_bytes() == original
+
+
+def test_evaluate_cli_rejects_output_inside_the_response_tree(tmp_path):
+    """Staging inside an input tree would mutate the evidence directory."""
+    bundle = _external_evaluation_bundle(tmp_path)
+    _, _, responses_root, _, _, _ = bundle
+    output = responses_root / "benchmark-summary.json"
+
+    completed = _run_evaluation_bundle(bundle, output=output)
+
+    assert completed.returncode == 2
+    assert completed.stdout == b""
+    assert completed.stderr == EVALUATE_ERROR
+    assert not output.exists()
+
+
+def test_evaluate_cli_failure_preserves_existing_output_and_all_inputs(tmp_path):
+    """A failed run must be observationally read-only outside transient staging."""
+    bundle = _external_evaluation_bundle(tmp_path)
+    _, _, responses_root, plan_path, response_index_path, output = bundle
+    previous = b"previous-valid-summary\n"
+    output.write_bytes(previous)
+    response_index_path.write_bytes(b'{"MARKER-INVALID-JSON":')
+    before = {
+        path: path.read_bytes()
+        for path in (plan_path, response_index_path, *sorted(responses_root.iterdir()))
+    }
+
+    completed = _run_evaluation_bundle(bundle)
+
+    assert completed.returncode == 2
+    assert completed.stdout == b""
+    assert completed.stderr == EVALUATE_ERROR
+    assert output.read_bytes() == previous
+    assert {
+        path: path.read_bytes()
+        for path in (plan_path, response_index_path, *sorted(responses_root.iterdir()))
+    } == before
+    assert not list(tmp_path.glob(f".{output.name}.*.tmp"))

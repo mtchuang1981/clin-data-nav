@@ -2,16 +2,19 @@
 
 from __future__ import annotations
 
+import argparse
 from copy import deepcopy
 from datetime import datetime
 from fractions import Fraction
 import hashlib
+import json
 import math
 import os
 from pathlib import Path, PurePosixPath, PureWindowsPath
 import re
 import stat
 import sys
+import tempfile
 
 if os.name == "nt":
     import ctypes
@@ -141,6 +144,14 @@ DESCRIPTOR_RELATIVE_OPEN = (
     os.open in getattr(os, "supports_dir_fd", set())
     and OPEN_DIRECTORY != 0
     and OPEN_NOFOLLOW != 0
+)
+CLI_ERROR = b"simulation benchmark evaluation failed\n"
+COMPLETE_STATUS = {"schema_version": "1", "status": "benchmark-observed"}
+CLI_FLAGS = (
+    "--plan",
+    "--response-index",
+    "--responses-dir",
+    "--output-summary",
 )
 
 if os.name == "nt":
@@ -1048,7 +1059,11 @@ def _read_descriptor(file_descriptor: int) -> bytes:
 
 
 def load_response_cells(
-    plan: dict, index: dict, responses_root: Path
+    plan: dict,
+    index: dict,
+    responses_root: Path,
+    *,
+    forbidden_identities: frozenset[tuple[int, int]] = frozenset(),
 ) -> tuple[dict, ...]:
     """Load verified UTF-8 text once, without retaining paths or raw response bytes."""
     errors = validate_response_index(index, plan)
@@ -1126,6 +1141,8 @@ def load_response_cells(
         for planned, record, file_descriptor in zip(
             plan["cells"], index["records"], ordered_descriptors, strict=True
         ):
+            if _identity(os.fstat(file_descriptor)) in forbidden_identities:
+                raise ValueError
             raw = _read_descriptor(file_descriptor)
             if len(raw) != record["size"]:
                 raise ValueError
@@ -1727,3 +1744,298 @@ def canonical_summary_bytes(summary: dict) -> bytes:
     if validate_benchmark_summary(summary):
         raise ValueError("invalid benchmark summary")
     return canonical_json_bytes(summary)
+
+
+class _SafeArgumentParser(argparse.ArgumentParser):
+    """Reject every parser branch with the fixed public error shape."""
+
+    def error(self, message: str) -> None:
+        self.exit(2)
+
+    def exit(self, status: int = 0, message: str | None = None) -> None:
+        if status == 2:
+            sys.stderr.buffer.write(CLI_ERROR)
+            sys.stderr.buffer.flush()
+            raise SystemExit(status)
+        super().exit(status, message)
+
+
+def _argument_parser() -> argparse.ArgumentParser:
+    parser = _SafeArgumentParser(
+        description=__doc__, allow_abbrev=False, add_help=False
+    )
+    parser.add_argument("--plan", type=Path, required=True)
+    parser.add_argument("--response-index", type=Path, required=True)
+    parser.add_argument("--responses-dir", type=Path, required=True)
+    parser.add_argument("--output-summary", type=Path, required=True)
+    return parser
+
+
+def _absolute_path(path: Path) -> Path:
+    """Normalize spelling without following a filesystem redirect."""
+    return Path(os.path.abspath(os.fspath(path)))
+
+
+def _require_link_free_chain(path: Path) -> None:
+    current = path
+    while True:
+        current_stat = current.lstat()
+        if _is_reparse_or_symlink(current_stat):
+            raise ValueError("unsafe path")
+        parent = current.parent
+        if parent == current:
+            return
+        current = parent
+
+
+def _open_external_regular(path: Path) -> tuple[Path, int, os.stat_result]:
+    absolute = _absolute_path(path)
+    _require_link_free_chain(absolute)
+    resolved = ensure_external_path(absolute, ROOT)
+    initial = absolute.lstat()
+    if not stat.S_ISREG(initial.st_mode):
+        raise ValueError("input must be a regular file")
+    descriptor = os.open(absolute, os.O_RDONLY | OPEN_BINARY | OPEN_NOFOLLOW)
+    try:
+        opened = os.fstat(descriptor)
+        if not stat.S_ISREG(opened.st_mode) or _identity(opened) != _identity(initial):
+            raise ValueError("input identity changed")
+        return resolved, descriptor, opened
+    except Exception:
+        os.close(descriptor)
+        raise
+
+
+def _external_directory(path: Path) -> tuple[Path, os.stat_result]:
+    absolute = _absolute_path(path)
+    _require_link_free_chain(absolute)
+    resolved = ensure_external_path(absolute, ROOT)
+    directory_stat = absolute.lstat()
+    if not stat.S_ISDIR(directory_stat.st_mode):
+        raise ValueError("responses path must be a directory")
+    return resolved, directory_stat
+
+
+def _safe_external_output(
+    path: Path, responses_root: Path
+) -> tuple[Path, os.stat_result, os.stat_result | None]:
+    absolute = _absolute_path(path)
+    _require_link_free_chain(absolute.parent)
+    parent_stat = absolute.parent.lstat()
+    if not stat.S_ISDIR(parent_stat.st_mode):
+        raise ValueError("output parent must be a directory")
+    output = ensure_external_path(absolute, ROOT)
+    if output == responses_root or output.is_relative_to(responses_root):
+        raise ValueError("output overlaps response inputs")
+    try:
+        output_stat = absolute.lstat()
+    except FileNotFoundError:
+        output_stat = None
+    else:
+        if _is_reparse_or_symlink(output_stat) or not stat.S_ISREG(
+            output_stat.st_mode
+        ):
+            raise ValueError("output must be a regular file")
+    return output, parent_stat, output_stat
+
+
+def _read_stable_json(
+    descriptor: int, path: Path, opened: os.stat_result
+) -> object:
+    raw = _read_descriptor(descriptor)
+    confirmed = os.fstat(descriptor)
+    current = path.lstat()
+    if (
+        _identity(confirmed) != _identity(opened)
+        or _identity(current) != _identity(opened)
+        or confirmed.st_size != opened.st_size
+        or current.st_size != opened.st_size
+    ):
+        raise ValueError("input identity changed")
+
+    def reject_duplicate_keys(pairs: list[tuple[str, object]]) -> dict:
+        result: dict = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError("duplicate JSON key")
+            result[key] = value
+        return result
+
+    return json.loads(
+        raw.decode("utf-8", errors="strict"),
+        object_pairs_hook=reject_duplicate_keys,
+        parse_constant=lambda value: (_ for _ in ()).throw(
+            ValueError("non-finite JSON value")
+        ),
+    )
+
+
+def _same_identity(left: os.stat_result, right: os.stat_result) -> bool:
+    return _identity(left) == _identity(right)
+
+
+def _require_output_unchanged(
+    output: Path,
+    parent_stat: os.stat_result,
+    output_stat: os.stat_result | None,
+) -> None:
+    current_parent = output.parent.lstat()
+    if (
+        _is_reparse_or_symlink(current_parent)
+        or not stat.S_ISDIR(current_parent.st_mode)
+        or not _same_identity(current_parent, parent_stat)
+    ):
+        raise ValueError("output parent changed")
+    try:
+        current_output = output.lstat()
+    except FileNotFoundError:
+        if output_stat is not None:
+            raise ValueError("output changed") from None
+    else:
+        if (
+            output_stat is None
+            or _is_reparse_or_symlink(current_output)
+            or not stat.S_ISREG(current_output.st_mode)
+            or not _same_identity(current_output, output_stat)
+        ):
+            raise ValueError("output changed")
+
+
+def _failure() -> int:
+    sys.stderr.buffer.write(CLI_ERROR)
+    sys.stderr.buffer.flush()
+    return 2
+
+
+def _write_stdout(payload: dict) -> None:
+    sys.stdout.buffer.write(canonical_json_bytes(payload))
+    sys.stdout.buffer.flush()
+
+
+def main(argv: list[str] | None = None) -> int:
+    """Evaluate one external response bundle without exposing untrusted content."""
+    arguments = list(sys.argv[1:] if argv is None else argv)
+    if any(arguments.count(flag) != 1 for flag in CLI_FLAGS):
+        return _failure()
+    try:
+        args = _argument_parser().parse_args(arguments)
+    except SystemExit:
+        raise
+    except Exception:
+        return _failure()
+    staging: Path | None = None
+    descriptors: list[int] = []
+    try:
+        plan_path, plan_descriptor, plan_stat = _open_external_regular(args.plan)
+        descriptors.append(plan_descriptor)
+        index_path, index_descriptor, index_stat = _open_external_regular(
+            args.response_index
+        )
+        descriptors.append(index_descriptor)
+        responses_root, responses_stat = _external_directory(args.responses_dir)
+        output, output_parent_stat, output_stat = _safe_external_output(
+            args.output_summary, responses_root
+        )
+
+        if (
+            plan_path == index_path
+            or _same_identity(plan_stat, index_stat)
+            or any(
+                path.is_relative_to(responses_root)
+                for path in (plan_path, index_path)
+            )
+            or any(
+                output == path for path in (plan_path, index_path, responses_root)
+            )
+            or output_stat is not None
+            and any(
+                _same_identity(output_stat, item)
+                for item in (plan_stat, index_stat, responses_stat)
+            )
+        ):
+            raise ValueError("aliased benchmark paths")
+
+        plan = _read_stable_json(plan_descriptor, plan_path, plan_stat)
+        response_index = _read_stable_json(
+            index_descriptor, index_path, index_stat
+        )
+        if not isinstance(plan, dict) or validate_benchmark_plan(plan):
+            raise ValueError("invalid benchmark plan")
+        if not isinstance(response_index, dict):
+            raise ValueError("invalid response index")
+        try:
+            index_errors = validate_response_index(response_index, plan)
+        except IncompleteBenchmark as incomplete:
+            _write_stdout(
+                {
+                    "expected_count": incomplete.expected_count,
+                    "observed_count": incomplete.observed_count,
+                    "schema_version": "1",
+                    "status": "benchmark-incomplete",
+                }
+            )
+            return 3
+        if index_errors:
+            raise ValueError("invalid response index")
+
+        forbidden_identities = {_identity(plan_stat), _identity(index_stat)}
+        if output_stat is not None:
+            forbidden_identities.add(_identity(output_stat))
+        cells = load_response_cells(
+            plan,
+            response_index,
+            responses_root,
+            forbidden_identities=frozenset(forbidden_identities),
+        )
+        summary = evaluate_benchmark(
+            plan,
+            cells,
+            response_index["execution_attestation"],
+        )
+        if validate_benchmark_summary(summary):
+            raise ValueError("invalid benchmark summary")
+        serialized = canonical_summary_bytes(summary)
+        reparsed = json.loads(
+            serialized.decode("utf-8", errors="strict"),
+            parse_constant=lambda value: (_ for _ in ()).throw(
+                ValueError("non-finite JSON value")
+            ),
+        )
+        if (
+            not isinstance(reparsed, dict)
+            or validate_benchmark_summary(reparsed)
+            or canonical_json_bytes(reparsed) != serialized
+        ):
+            raise ValueError("invalid canonical benchmark summary")
+
+        _require_output_unchanged(output, output_parent_stat, output_stat)
+        descriptor, staging_name = tempfile.mkstemp(
+            prefix=f".{output.name}.", suffix=".tmp", dir=output.parent
+        )
+        staging = Path(staging_name)
+        with os.fdopen(descriptor, "wb") as staged_file:
+            staged_file.write(serialized)
+            staged_file.flush()
+            os.fsync(staged_file.fileno())
+        _require_output_unchanged(output, output_parent_stat, output_stat)
+        os.replace(staging, output)
+        staging = None
+    except Exception:
+        if staging is not None:
+            try:
+                staging.unlink(missing_ok=True)
+            except OSError:
+                pass
+        return _failure()
+    finally:
+        for descriptor in descriptors:
+            try:
+                os.close(descriptor)
+            except OSError:
+                pass
+    _write_stdout(COMPLETE_STATUS)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
