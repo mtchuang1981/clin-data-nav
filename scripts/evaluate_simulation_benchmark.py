@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+from copy import deepcopy
 from datetime import datetime
+from fractions import Fraction
 import hashlib
+import math
 import os
 from pathlib import Path, PurePosixPath, PureWindowsPath
 import re
@@ -21,14 +24,29 @@ if __package__ in {None, ""}:
     sys.path.insert(0, str(ROOT))
 
 try:
+    from scripts.evaluate_response import evaluate_response, load_catalog
     from scripts.effectiveness_contract import ensure_external_path
     from scripts.prepare_simulation_benchmark import (
+        BINDING_KEYS,
+        MODEL_KEYS,
+        SAFE_BENCHMARK_ID,
+        _valid_binding,
+        _valid_identifier,
         canonical_json_bytes,
         validate_benchmark_plan,
     )
 except ModuleNotFoundError:  # Direct execution from the scripts directory.
+    from evaluate_response import evaluate_response, load_catalog
     from effectiveness_contract import ensure_external_path
-    from prepare_simulation_benchmark import canonical_json_bytes, validate_benchmark_plan
+    from prepare_simulation_benchmark import (
+        BINDING_KEYS,
+        MODEL_KEYS,
+        SAFE_BENCHMARK_ID,
+        _valid_binding,
+        _valid_identifier,
+        canonical_json_bytes,
+        validate_benchmark_plan,
+    )
 
 
 INDEX_KEYS = frozenset(
@@ -57,6 +75,63 @@ ATTESTATION_BOOLEAN_KEYS = (
 RECORD_KEYS = frozenset(
     {"case_id", "condition", "repeat", "relative_path", "response_sha256", "size"}
 )
+SUMMARY_KEYS = frozenset(
+    {
+        "benchmark_id",
+        "case_results",
+        "catalog_sha256",
+        "cell_counts",
+        "claim_boundaries",
+        "direction",
+        "execution_attestation",
+        "forbidden_violations",
+        "model",
+        "output_depth_results",
+        "overall",
+        "paired_counts",
+        "plan_sha256",
+        "repeats",
+        "rubric_sha256",
+        "schema_version",
+        "skill",
+        "status",
+        "synthetic_example",
+    }
+)
+SUMMARY_ATTESTATION_KEYS = ATTESTATION_KEYS | {"assertion_basis"}
+PAIR_COUNT_KEYS = frozenset({"both_fail", "both_pass", "improved", "worsened"})
+FORBIDDEN_COUNT_KEYS = frozenset({"control", "intervention"})
+STABILITY_KEYS = frozenset({"control", "intervention"})
+CASE_RESULT_KEYS = frozenset(
+    {
+        "case_id",
+        "control_passes",
+        "forbidden_violations",
+        "intervention_passes",
+        "output_depth",
+        "paired_counts",
+        "stability",
+    }
+)
+OVERALL_KEYS = frozenset(
+    {
+        "control_passes",
+        "control_pass_rate",
+        "difference",
+        "intervention_passes",
+        "intervention_pass_rate",
+        "pairs",
+    }
+)
+DEPTH_RESULT_KEYS = OVERALL_KEYS | frozenset(
+    {"case_count", "forbidden_violations", "output_depth", "paired_counts"}
+)
+CLAIM_BOUNDARIES = [
+    "public-synthetic-prompts-only",
+    "deterministic-contract-checks-only",
+    "no-representative-user-evidence",
+    "no-clinical-causal-patient-outcome-or-deployment-claim",
+]
 SHA256 = re.compile(r"^[0-9a-f]{64}$")
 REPARSE_POINT = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400)
 OPEN_BINARY = getattr(os, "O_BINARY", 0)
@@ -245,6 +320,35 @@ def _is_sha256(value: object) -> bool:
     return isinstance(value, str) and SHA256.fullmatch(value) is not None
 
 
+def _execution_attestation_errors(attestation: object, plan: dict) -> list[str]:
+    errors: list[str] = []
+    if not _exact_keys(
+        attestation, ATTESTATION_KEYS, "execution attestation", errors
+    ):
+        return errors
+    assert isinstance(attestation, dict)
+    identities = {
+        "model_provider": plan["model"]["provider"],
+        "model_id": plan["model"]["id"],
+        "model_snapshot": plan["model"]["snapshot"],
+        "runner_name": plan["runner"]["name"],
+        "runner_version": plan["runner"]["version"],
+    }
+    for key, expected in identities.items():
+        if attestation[key] != expected:
+            errors.append(f"execution attestation: {key} mismatch")
+    for key in ATTESTATION_BOOLEAN_KEYS:
+        if attestation[key] is not True:
+            errors.append(f"execution attestation: {key} must be true")
+    completed_at = _aware_datetime(attestation["completed_at"])
+    created_at = _aware_datetime(plan["created_at"])
+    if completed_at is None:
+        errors.append("execution attestation: completed_at must be timezone-aware")
+    elif created_at is None or completed_at < created_at:
+        errors.append("execution attestation: completed_at precedes plan creation")
+    return errors
+
+
 def validate_response_index(payload: object, plan: dict) -> list[str]:
     """Validate a closed response index; execution metadata remain external assertions."""
     errors: list[str] = []
@@ -260,28 +364,7 @@ def validate_response_index(payload: object, plan: dict) -> list[str]:
     if payload["plan_sha256"] != expected_plan_sha256:
         errors.append("response index: plan digest mismatch")
 
-    attestation = payload["execution_attestation"]
-    if _exact_keys(attestation, ATTESTATION_KEYS, "execution attestation", errors):
-        assert isinstance(attestation, dict)
-        identities = {
-            "model_provider": plan["model"]["provider"],
-            "model_id": plan["model"]["id"],
-            "model_snapshot": plan["model"]["snapshot"],
-            "runner_name": plan["runner"]["name"],
-            "runner_version": plan["runner"]["version"],
-        }
-        for key, expected in identities.items():
-            if attestation[key] != expected:
-                errors.append(f"execution attestation: {key} mismatch")
-        for key in ATTESTATION_BOOLEAN_KEYS:
-            if attestation[key] is not True:
-                errors.append(f"execution attestation: {key} must be true")
-        completed_at = _aware_datetime(attestation["completed_at"])
-        created_at = _aware_datetime(plan["created_at"])
-        if completed_at is None:
-            errors.append("execution attestation: completed_at must be timezone-aware")
-        elif created_at is None or completed_at < created_at:
-            errors.append("execution attestation: completed_at precedes plan creation")
+    errors.extend(_execution_attestation_errors(payload["execution_attestation"], plan))
 
     records = payload["records"]
     if not isinstance(records, list):
@@ -1066,3 +1149,576 @@ def load_response_cells(
         if root_descriptor is not None:
             os.close(root_descriptor)
     return tuple(cells)
+
+
+def classify_direction(
+    overall_difference: Fraction,
+    improved: int,
+    worsened: int,
+    control_forbidden: int,
+    intervention_forbidden: int,
+    depth_differences: tuple[Fraction, ...],
+) -> str:
+    """Apply the predeclared exact direction rule with negative precedence."""
+    negative = (
+        overall_difference < 0
+        or intervention_forbidden > control_forbidden
+        or any(difference < 0 for difference in depth_differences)
+    )
+    positive = (
+        overall_difference >= Fraction(1, 5)
+        and improved > worsened
+        and intervention_forbidden == 0
+        and all(difference >= 0 for difference in depth_differences)
+    )
+    return (
+        "negative-signal"
+        if negative
+        else "positive-signal"
+        if positive
+        else "mixed-or-null"
+    )
+
+
+def _six_decimal(value: Fraction) -> float:
+    return float(f"{float(value):.6f}")
+
+
+def _empty_pair_counts() -> dict[str, int]:
+    return {"both_fail": 0, "both_pass": 0, "improved": 0, "worsened": 0}
+
+
+def _pair_outcome(control_passed: bool, intervention_passed: bool) -> str:
+    if control_passed and intervention_passed:
+        return "both_pass"
+    if control_passed:
+        return "worsened"
+    if intervention_passed:
+        return "improved"
+    return "both_fail"
+
+
+def _stability(pass_count: int, repeats: int) -> str:
+    if pass_count == repeats:
+        return "stable-pass"
+    if pass_count == 0:
+        return "stable-fail"
+    return "variable"
+
+
+def _summed_counts(rows: list[dict], field: str, keys: frozenset[str]) -> dict:
+    return {key: sum(row[field][key] for row in rows) for key in sorted(keys)}
+
+
+def _aggregate_case_results(
+    case_results: list[dict],
+) -> tuple[dict, dict, dict, list[dict], str]:
+    pairs = sum(sum(row["paired_counts"].values()) for row in case_results)
+    control_passes = sum(row["control_passes"] for row in case_results)
+    intervention_passes = sum(row["intervention_passes"] for row in case_results)
+    overall_difference = Fraction(intervention_passes - control_passes, pairs)
+    paired_counts = _summed_counts(case_results, "paired_counts", PAIR_COUNT_KEYS)
+    forbidden_violations = _summed_counts(
+        case_results, "forbidden_violations", FORBIDDEN_COUNT_KEYS
+    )
+    exact_depth_results = []
+    depth_differences: list[Fraction] = []
+    for output_depth in sorted({row["output_depth"] for row in case_results}):
+        depth_rows = [
+            row for row in case_results if row["output_depth"] == output_depth
+        ]
+        depth_pairs = sum(sum(row["paired_counts"].values()) for row in depth_rows)
+        depth_control = sum(row["control_passes"] for row in depth_rows)
+        depth_intervention = sum(row["intervention_passes"] for row in depth_rows)
+        depth_difference = Fraction(depth_intervention - depth_control, depth_pairs)
+        depth_differences.append(depth_difference)
+        exact_depth_results.append(
+            (
+                output_depth,
+                depth_rows,
+                depth_pairs,
+                depth_control,
+                depth_intervention,
+                depth_difference,
+            )
+        )
+    direction = classify_direction(
+        overall_difference,
+        paired_counts["improved"],
+        paired_counts["worsened"],
+        forbidden_violations["control"],
+        forbidden_violations["intervention"],
+        tuple(depth_differences),
+    )
+
+    overall = {
+        "control_passes": control_passes,
+        "control_pass_rate": _six_decimal(Fraction(control_passes, pairs)),
+        "difference": _six_decimal(overall_difference),
+        "intervention_passes": intervention_passes,
+        "intervention_pass_rate": _six_decimal(
+            Fraction(intervention_passes, pairs)
+        ),
+        "pairs": pairs,
+    }
+    output_depth_results = []
+    for (
+        output_depth,
+        depth_rows,
+        depth_pairs,
+        depth_control,
+        depth_intervention,
+        depth_difference,
+    ) in exact_depth_results:
+        output_depth_results.append(
+            {
+                "case_count": len(depth_rows),
+                "control_passes": depth_control,
+                "control_pass_rate": _six_decimal(
+                    Fraction(depth_control, depth_pairs)
+                ),
+                "difference": _six_decimal(depth_difference),
+                "forbidden_violations": _summed_counts(
+                    depth_rows, "forbidden_violations", FORBIDDEN_COUNT_KEYS
+                ),
+                "intervention_passes": depth_intervention,
+                "intervention_pass_rate": _six_decimal(
+                    Fraction(depth_intervention, depth_pairs)
+                ),
+                "output_depth": output_depth,
+                "paired_counts": _summed_counts(
+                    depth_rows, "paired_counts", PAIR_COUNT_KEYS
+                ),
+                "pairs": depth_pairs,
+            }
+        )
+    return (
+        overall,
+        paired_counts,
+        forbidden_violations,
+        output_depth_results,
+        direction,
+    )
+
+
+def _case_results_from_facts(
+    plan: dict,
+    cases: dict[str, dict],
+    facts_by_pair: dict[tuple[str, int], dict[str, dict]],
+) -> list[dict]:
+    results: list[dict] = []
+    for case_id in plan["case_ids"]:
+        paired_counts = _empty_pair_counts()
+        control_passes = 0
+        intervention_passes = 0
+        forbidden = {"control": 0, "intervention": 0}
+        for repeat in range(1, plan["repeats"] + 1):
+            pair = facts_by_pair[(case_id, repeat)]
+            control = pair["control"]
+            intervention = pair["intervention"]
+            paired_counts[
+                _pair_outcome(control["passed"], intervention["passed"])
+            ] += 1
+            control_passes += int(control["passed"])
+            intervention_passes += int(intervention["passed"])
+            forbidden["control"] += control["forbidden_violations"]
+            forbidden["intervention"] += intervention["forbidden_violations"]
+        results.append(
+            {
+                "case_id": case_id,
+                "control_passes": control_passes,
+                "forbidden_violations": forbidden,
+                "intervention_passes": intervention_passes,
+                "output_depth": cases[case_id]["output_depth"],
+                "paired_counts": paired_counts,
+                "stability": {
+                    "control": _stability(control_passes, plan["repeats"]),
+                    "intervention": _stability(
+                        intervention_passes, plan["repeats"]
+                    ),
+                },
+            }
+        )
+    return results
+
+
+def evaluate_benchmark(
+    plan: dict, cells: tuple[dict, ...], execution_attestation: dict
+) -> dict:
+    """Evaluate every verified response exactly once and return aggregate-only facts."""
+    if validate_benchmark_plan(plan):
+        raise ValueError("invalid benchmark plan")
+    if _execution_attestation_errors(execution_attestation, plan):
+        raise ValueError("invalid execution attestation")
+    if not isinstance(cells, tuple) or len(cells) != len(plan["cells"]):
+        raise ValueError("invalid response cells")
+
+    catalog, rubric = load_catalog(
+        ROOT / "evals/cases.yaml", ROOT / "evals/rubric.yaml"
+    )
+    cases = {case["id"]: case for case in catalog["cases"]}
+    if list(cases) != plan["case_ids"]:
+        raise ValueError("invalid benchmark catalog binding")
+
+    facts_by_pair: dict[tuple[str, int], dict[str, dict]] = {}
+    for planned, cell in zip(plan["cells"], cells, strict=True):
+        if (
+            not isinstance(cell, dict)
+            or set(cell)
+            != {"case_id", "condition", "repeat", "sequence", "text"}
+            or any(cell[key] != planned[key] for key in planned)
+            or not isinstance(cell["text"], str)
+        ):
+            raise ValueError("invalid response cells")
+        evaluation = evaluate_response(
+            cases[cell["case_id"]], rubric, cell["text"]
+        )
+        failed_forbidden = sum(
+            not result.passed
+            for result in evaluation.results
+            if result.rule.startswith(("forbidden:", "forbidden-section:"))
+        )
+        fact = {
+            "case_id": cell["case_id"],
+            "condition": cell["condition"],
+            "forbidden_violations": failed_forbidden,
+            "passed": evaluation.passed,
+            "repeat": cell["repeat"],
+        }
+        pair_key = (fact["case_id"], fact["repeat"])
+        pair = facts_by_pair.setdefault(pair_key, {})
+        if fact["condition"] in pair:
+            raise ValueError("invalid response cells")
+        pair[fact["condition"]] = fact
+
+    expected_pairs = {
+        (case_id, repeat)
+        for case_id in plan["case_ids"]
+        for repeat in range(1, plan["repeats"] + 1)
+    }
+    if set(facts_by_pair) != expected_pairs or any(
+        set(pair) != {"control", "intervention"}
+        for pair in facts_by_pair.values()
+    ):
+        raise ValueError("invalid response cells")
+
+    case_results = _case_results_from_facts(plan, cases, facts_by_pair)
+    (
+        overall,
+        paired_counts,
+        forbidden_violations,
+        output_depth_results,
+        direction,
+    ) = _aggregate_case_results(case_results)
+    attestation_projection = deepcopy(execution_attestation)
+    attestation_projection["assertion_basis"] = "externally-asserted"
+    summary = {
+        "benchmark_id": plan["benchmark_id"],
+        "case_results": case_results,
+        "catalog_sha256": plan["catalog_sha256"],
+        "cell_counts": {"expected": len(plan["cells"]), "observed": len(cells)},
+        "claim_boundaries": list(CLAIM_BOUNDARIES),
+        "direction": direction,
+        "execution_attestation": attestation_projection,
+        "forbidden_violations": forbidden_violations,
+        "model": deepcopy(plan["model"]),
+        "output_depth_results": output_depth_results,
+        "overall": overall,
+        "paired_counts": paired_counts,
+        "plan_sha256": hashlib.sha256(canonical_json_bytes(plan)).hexdigest(),
+        "repeats": plan["repeats"],
+        "rubric_sha256": plan["rubric_sha256"],
+        "schema_version": "1",
+        "skill": deepcopy(plan["skill"]),
+        "status": "benchmark-observed",
+        "synthetic_example": False,
+    }
+    if validate_benchmark_summary(summary):
+        raise ValueError("invalid benchmark summary")
+    return summary
+
+
+def _nonnegative_integer(value: object) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool) and value >= 0
+
+
+def _closed_nonnegative_counts(
+    value: object, keys: frozenset[str], label: str, errors: list[str]
+) -> bool:
+    if not _exact_keys(value, keys, label, errors):
+        return False
+    assert isinstance(value, dict)
+    if not all(_nonnegative_integer(value[key]) for key in keys):
+        errors.append(f"{label}: counts must be nonnegative integers")
+        return False
+    return True
+
+
+def _aggregate_shape(
+    value: object, keys: frozenset[str], label: str, errors: list[str]
+) -> bool:
+    if not _exact_keys(value, keys, label, errors):
+        return False
+    assert isinstance(value, dict)
+    integer_keys = {
+        "case_count",
+        "control_passes",
+        "intervention_passes",
+        "pairs",
+    } & keys
+    rate_keys = {
+        "control_pass_rate",
+        "difference",
+        "intervention_pass_rate",
+    } & keys
+    if not all(_nonnegative_integer(value[key]) for key in integer_keys):
+        errors.append(f"{label}: aggregate counts must be nonnegative integers")
+        return False
+    if not all(type(value[key]) is float for key in rate_keys):
+        errors.append(f"{label}: rates and differences must be JSON decimals")
+        return False
+    if "output_depth" in keys and not isinstance(value["output_depth"], str):
+        errors.append(f"{label}: output depth must be text")
+        return False
+    if "paired_counts" in keys and not _closed_nonnegative_counts(
+        value["paired_counts"], PAIR_COUNT_KEYS, f"{label} paired counts", errors
+    ):
+        return False
+    if "forbidden_violations" in keys and not _closed_nonnegative_counts(
+        value["forbidden_violations"],
+        FORBIDDEN_COUNT_KEYS,
+        f"{label} forbidden violations",
+        errors,
+    ):
+        return False
+    return True
+
+
+def validate_benchmark_summary(payload: object) -> list[str]:
+    """Validate a closed summary and recompute every aggregate and direction."""
+    errors: list[str] = []
+    if not _exact_keys(payload, SUMMARY_KEYS, "benchmark summary", errors):
+        return errors
+    assert isinstance(payload, dict)
+    if payload["schema_version"] != "1":
+        errors.append("benchmark summary: unsupported schema version")
+    if payload["status"] != "benchmark-observed":
+        errors.append("benchmark summary: invalid status")
+    if (
+        not isinstance(payload["benchmark_id"], str)
+        or SAFE_BENCHMARK_ID.fullmatch(payload["benchmark_id"]) is None
+    ):
+        errors.append("benchmark summary: invalid benchmark ID")
+    repeats_valid = _nonnegative_integer(payload["repeats"]) and payload[
+        "repeats"
+    ] == 3
+    if not repeats_valid:
+        errors.append("benchmark summary: repeats must be exactly 3")
+    if type(payload["synthetic_example"]) is not bool:
+        errors.append("benchmark summary: synthetic_example must be a boolean")
+    for key in ("plan_sha256", "catalog_sha256", "rubric_sha256"):
+        if not _is_sha256(payload[key]):
+            errors.append(f"benchmark summary: invalid {key}")
+    if payload["claim_boundaries"] != CLAIM_BOUNDARIES:
+        errors.append("benchmark summary: invalid claim boundaries")
+
+    _exact_keys(payload["model"], MODEL_KEYS, "summary model", errors)
+    if isinstance(payload["model"], dict) and set(payload["model"]) == MODEL_KEYS:
+        model = payload["model"]
+        if not all(
+            _valid_identifier(model[key])
+            for key in ("id", "provider", "seed_policy", "snapshot")
+        ):
+            errors.append("summary model: invalid identities")
+        if not _nonnegative_integer(model["max_output_tokens"]):
+            errors.append("summary model: invalid output limit")
+        if any(
+            isinstance(model[key], bool) or not isinstance(model[key], (int, float))
+            or not math.isfinite(model[key])
+            for key in ("temperature", "top_p")
+        ):
+            errors.append("summary model: invalid numeric settings")
+    _exact_keys(payload["skill"], BINDING_KEYS, "summary Skill binding", errors)
+    if isinstance(payload["skill"], dict) and set(payload["skill"]) == BINDING_KEYS:
+        if not _valid_binding(payload["skill"]):
+            errors.append("summary Skill binding: invalid public binding")
+
+    attestation = payload["execution_attestation"]
+    if _exact_keys(
+        attestation,
+        SUMMARY_ATTESTATION_KEYS,
+        "summary execution attestation",
+        errors,
+    ):
+        assert isinstance(attestation, dict)
+        if attestation["assertion_basis"] != "externally-asserted":
+            errors.append("summary execution attestation: invalid assertion basis")
+        if _aware_datetime(attestation["completed_at"]) is None:
+            errors.append("summary execution attestation: invalid completion time")
+        for key in ATTESTATION_BOOLEAN_KEYS:
+            if attestation[key] is not True:
+                errors.append(f"summary execution attestation: {key} must be true")
+        if isinstance(payload["model"], dict):
+            identities = {
+                "model_provider": payload["model"].get("provider"),
+                "model_id": payload["model"].get("id"),
+                "model_snapshot": payload["model"].get("snapshot"),
+            }
+            for key, expected in identities.items():
+                if attestation[key] != expected:
+                    errors.append(
+                        f"summary execution attestation: {key} mismatch"
+                    )
+        for key in ("runner_name", "runner_version"):
+            if not _valid_identifier(attestation[key]):
+                errors.append(f"summary execution attestation: invalid {key}")
+
+    try:
+        catalog, _ = load_catalog(
+            ROOT / "evals/cases.yaml", ROOT / "evals/rubric.yaml"
+        )
+    except (OSError, ValueError):
+        return [*errors, "benchmark summary: unavailable evaluation catalog"]
+    expected_cases = catalog["cases"]
+    if payload["catalog_sha256"] != hashlib.sha256(
+        (ROOT / "evals/cases.yaml").read_bytes()
+    ).hexdigest():
+        errors.append("benchmark summary: catalog digest mismatch")
+    if payload["rubric_sha256"] != hashlib.sha256(
+        (ROOT / "evals/rubric.yaml").read_bytes()
+    ).hexdigest():
+        errors.append("benchmark summary: rubric digest mismatch")
+
+    case_results = payload["case_results"]
+    case_results_valid = (
+        repeats_valid
+        and isinstance(case_results, list)
+        and len(case_results) == len(expected_cases)
+    )
+    if not case_results_valid:
+        errors.append("benchmark summary: incomplete case results")
+    else:
+        for index, (row, case) in enumerate(
+            zip(case_results, expected_cases, strict=True)
+        ):
+            label = f"case result {index}"
+            if not _exact_keys(row, CASE_RESULT_KEYS, label, errors):
+                case_results_valid = False
+                continue
+            assert isinstance(row, dict)
+            if (
+                row["case_id"] != case["id"]
+                or row["output_depth"] != case["output_depth"]
+            ):
+                errors.append(f"{label}: catalog binding mismatch")
+                case_results_valid = False
+            if not all(
+                _nonnegative_integer(row[key])
+                and row[key] <= payload["repeats"]
+                for key in ("control_passes", "intervention_passes")
+            ):
+                errors.append(f"{label}: invalid pass counts")
+                case_results_valid = False
+            paired_valid = _closed_nonnegative_counts(
+                row["paired_counts"], PAIR_COUNT_KEYS, f"{label} paired counts", errors
+            )
+            forbidden_valid = _closed_nonnegative_counts(
+                row["forbidden_violations"],
+                FORBIDDEN_COUNT_KEYS,
+                f"{label} forbidden violations",
+                errors,
+            )
+            stability_valid = _exact_keys(
+                row["stability"], STABILITY_KEYS, f"{label} stability", errors
+            )
+            if not (paired_valid and forbidden_valid and stability_valid):
+                case_results_valid = False
+                continue
+            pairs = row["paired_counts"]
+            if sum(pairs.values()) != payload["repeats"]:
+                errors.append(f"{label}: paired counts do not equal repeats")
+                case_results_valid = False
+            if row["control_passes"] != pairs["both_pass"] + pairs["worsened"]:
+                errors.append(f"{label}: control pass count is not paired-recomputable")
+                case_results_valid = False
+            if (
+                row["intervention_passes"]
+                != pairs["both_pass"] + pairs["improved"]
+            ):
+                errors.append(
+                    f"{label}: intervention pass count is not paired-recomputable"
+                )
+                case_results_valid = False
+            assert isinstance(row["stability"], dict)
+            expected_stability = {
+                "control": _stability(row["control_passes"], payload["repeats"]),
+                "intervention": _stability(
+                    row["intervention_passes"], payload["repeats"]
+                ),
+            }
+            if row["stability"] != expected_stability:
+                errors.append(f"{label}: stability mismatch")
+                case_results_valid = False
+
+    _aggregate_shape(payload["overall"], OVERALL_KEYS, "summary overall", errors)
+    _closed_nonnegative_counts(
+        payload["paired_counts"], PAIR_COUNT_KEYS, "summary paired counts", errors
+    )
+    _closed_nonnegative_counts(
+        payload["forbidden_violations"],
+        FORBIDDEN_COUNT_KEYS,
+        "summary forbidden violations",
+        errors,
+    )
+    depth_results = payload["output_depth_results"]
+    if not isinstance(depth_results, list):
+        errors.append("benchmark summary: output depth results must be a list")
+    else:
+        for index, row in enumerate(depth_results):
+            _aggregate_shape(
+                row, DEPTH_RESULT_KEYS, f"output depth result {index}", errors
+            )
+
+    if case_results_valid:
+        (
+            expected_overall,
+            expected_paired,
+            expected_forbidden,
+            expected_depths,
+            expected_direction,
+        ) = _aggregate_case_results(case_results)
+        if payload["overall"] != expected_overall:
+            errors.append("benchmark summary: overall aggregate mismatch")
+        if payload["paired_counts"] != expected_paired:
+            errors.append("benchmark summary: paired aggregate mismatch")
+        if payload["forbidden_violations"] != expected_forbidden:
+            errors.append("benchmark summary: forbidden aggregate mismatch")
+        if payload["output_depth_results"] != expected_depths:
+            errors.append("benchmark summary: output depth aggregate mismatch")
+        if payload["direction"] != expected_direction:
+            errors.append("benchmark summary: direction mismatch")
+        expected_cells = payload["repeats"] * len(case_results) * 2
+        if payload["cell_counts"] != {
+            "expected": expected_cells,
+            "observed": expected_cells,
+        }:
+            errors.append("benchmark summary: cell counts mismatch")
+    if not isinstance(payload["cell_counts"], dict) or set(payload["cell_counts"]) != {
+        "expected",
+        "observed",
+    }:
+        errors.append("benchmark summary: cell counts require exact keys")
+    if not isinstance(payload["direction"], str) or payload["direction"] not in {
+        "positive-signal",
+        "mixed-or-null",
+        "negative-signal",
+    }:
+        errors.append("benchmark summary: invalid direction")
+    return errors
+
+
+def canonical_summary_bytes(summary: dict) -> bytes:
+    """Return canonical bytes only for a closed, internally recomputable summary."""
+    if validate_benchmark_summary(summary):
+        raise ValueError("invalid benchmark summary")
+    return canonical_json_bytes(summary)

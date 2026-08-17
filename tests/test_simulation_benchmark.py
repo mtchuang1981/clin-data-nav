@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 from datetime import datetime, timezone
+from fractions import Fraction
 import hashlib
 import json
 import os
@@ -13,10 +14,18 @@ import pytest
 
 from scripts.evaluate_simulation_benchmark import (
     IncompleteBenchmark,
+    canonical_summary_bytes,
+    classify_direction,
+    evaluate_benchmark,
     load_response_cells,
+    validate_benchmark_summary,
     validate_response_index,
 )
-from scripts.evaluate_response import load_catalog
+from scripts.evaluate_response import (
+    DEPTH_SECTION_CONTRACTS,
+    evaluate_response,
+    load_catalog,
+)
 from scripts.prepare_simulation_benchmark import (
     _output_is_inside_root,
     balanced_cells,
@@ -154,6 +163,209 @@ def _remove_directory_reparse(path: Path) -> None:
         path.unlink()
     else:
         path.rmdir()
+
+
+REQUIRED_RESPONSE_MARKERS = {
+    "adam-quick-explanation": (
+        "Output depth: quick explanation",
+        "plain language",
+        "Analysis Data Model",
+        "SDTM",
+        "analysis-ready",
+        "common confusion",
+    ),
+    "teae-sas-spec": ("protocol", "SAP", "official standard", "code maturity"),
+    "sas-optimization-lexjansen": (
+        "site:lexjansen.com",
+        "specific paper",
+        "title",
+        "author",
+        "conference",
+        "publication year",
+        "stable URL",
+        "access date",
+        "provenance",
+        "license",
+        "reuse terms",
+        "clean-room implementation",
+        "secondary implementation evidence",
+        "network access",
+        "not reviewed",
+        "performance validation",
+    ),
+    "institutional-sql-without-dictionary": (
+        "SPECIFICATION ONLY — NOT EXECUTABLE",
+        "mapping checklist",
+        "versioned data dictionary",
+        "live metadata verification",
+    ),
+    "stale-codingbook": (
+        "live metadata verification",
+        "current",
+        "version",
+        "historical documentation",
+    ),
+    "cdisc-variable-definition": (
+        "CDISC",
+        "controlled terminology",
+        "official",
+        "conference paper",
+    ),
+    "omop-phenotype": (
+        "standard concept",
+        "local code",
+        "research phenotype",
+        "non-executable",
+    ),
+    "tmucrd-public-profile": (
+        "DOI",
+        "public source snapshot",
+        "not a schema",
+        "institutional query guide",
+    ),
+    "descriptive-rwd-no-tte": (
+        "descriptive",
+        "RWD",
+        "RWE",
+        "provenance",
+        "fitness",
+        "not applicable",
+        "not automatically RWE",
+    ),
+    "causal-rwd-tte-handoff": (
+        "causal-comparative",
+        "eligibility",
+        "strategies",
+        "assignment",
+        "time zero",
+        "follow-up",
+        "outcome",
+        "estimand",
+        "analysis plan",
+        "data limitations",
+        "validation gaps",
+        "build-rwe-sap",
+        "unavailable",
+    ),
+    "causal-rwd-incomplete-readiness": (
+        "causal-comparative",
+        "research design only",
+        "not implementation-ready",
+        "missing comparator",
+        "missing time zero",
+        "missing confounding",
+        "validation gap",
+        "no causal conclusion",
+    ),
+    "build-rwe-sap-unavailable": (
+        "optional",
+        "not bundled",
+        "not automatically installed",
+        "unavailable",
+        "continue",
+        "Core",
+        "evidence navigation",
+        "logical data needs",
+        "complete SAP",
+        "not delivered",
+    ),
+}
+
+
+def _passing_generated_response(case: dict) -> str:
+    headings = DEPTH_SECTION_CONTRACTS[case["output_depth"]]["required"]
+    lines = [
+        "Decision: Use the bounded synthetic contract.",
+        "Confirmed facts: Only public synthetic inputs are in scope.",
+        "Assumptions: None beyond the synthetic prompt.",
+        "Limitations: This generated response is a deterministic test fixture.",
+        "Sources actually consulted: The public synthetic case only.",
+        *REQUIRED_RESPONSE_MARKERS[case["id"]],
+    ]
+    for heading in headings:
+        lines.extend((f"## {heading}", "Synthetic bounded content."))
+    return "\n".join(lines) + "\n"
+
+
+def _valid_execution_attestation(plan: dict) -> dict:
+    return {
+        "completed_at": "2026-08-16T01:00:00+00:00",
+        "model_provider": plan["model"]["provider"],
+        "model_id": plan["model"]["id"],
+        "model_snapshot": plan["model"]["snapshot"],
+        "runner_name": plan["runner"]["name"],
+        "runner_version": plan["runner"]["version"],
+        "plan_followed": True,
+        "fresh_sessions": True,
+        "offline": True,
+        "shared_configuration_unchanged": True,
+    }
+
+
+def _cells_for_pattern(plan: dict, pattern: str) -> tuple[dict, ...]:
+    catalog, rubric = load_catalog(
+        ROOT / "evals/cases.yaml", ROOT / "evals/rubric.yaml"
+    )
+    cases = {case["id"]: case for case in catalog["cases"]}
+    pair_keys = [
+        (case_id, repeat)
+        for case_id in plan["case_ids"]
+        for repeat in range(1, plan["repeats"] + 1)
+    ]
+    outcomes = {pair: "both_pass" for pair in pair_keys}
+    if pattern == "positive":
+        outcomes.update({pair: "improved" for pair in pair_keys[:12]})
+    elif pattern == "negative":
+        outcomes.update({pair: "worsened" for pair in pair_keys[:12]})
+    elif pattern == "boundary-7":
+        outcomes.update({pair: "improved" for pair in pair_keys[:7]})
+    elif pattern == "boundary-8":
+        outcomes.update({pair: "improved" for pair in pair_keys[:8]})
+    elif pattern == "equal-discordance":
+        outcomes[pair_keys[0]] = "improved"
+        outcomes[pair_keys[1]] = "worsened"
+    elif pattern == "intervention-forbidden":
+        forbidden_pair = ("adam-quick-explanation", 1)
+        improved_pairs = [pair for pair in pair_keys if pair != forbidden_pair][:8]
+        outcomes.update({pair: "improved" for pair in improved_pairs})
+        outcomes[forbidden_pair] = "intervention_forbidden"
+    elif pattern == "negative-depth":
+        worsened_pair = ("adam-quick-explanation", 1)
+        non_quick = [
+            pair
+            for pair in pair_keys
+            if cases[pair[0]]["output_depth"] != "quick explanation"
+        ]
+        outcomes.update({pair: "improved" for pair in non_quick[:9]})
+        outcomes[worsened_pair] = "worsened"
+    elif pattern != "mixed":
+        raise AssertionError(f"unknown generated response pattern: {pattern}")
+
+    cells = []
+    for planned in plan["cells"]:
+        pair = (planned["case_id"], planned["repeat"])
+        outcome = outcomes[pair]
+        condition = planned["condition"]
+        passes = outcome == "both_pass" or (
+            outcome == "improved" and condition == "intervention"
+        ) or (outcome == "worsened" and condition == "control")
+        response = (
+            _passing_generated_response(cases[planned["case_id"]])
+            if passes
+            else ""
+        )
+        if outcome == "intervention_forbidden" and condition == "intervention":
+            response = (
+                _passing_generated_response(cases[planned["case_id"]])
+                + "ADaM is raw collection data\n"
+            )
+        cells.append({**planned, "text": response})
+    assert all(
+        evaluate_response(cases[cell["case_id"]], rubric, cell["text"]).passed
+        == (cell["text"] != "" and "ADaM is raw collection data" not in cell["text"])
+        for cell in cells
+    )
+    return tuple(cells)
 
 
 def _track_windows_response_resources(monkeypatch, benchmark):
@@ -1468,3 +1680,248 @@ def test_response_index_template_is_closed_unpopulated_and_invalid(benchmark_pla
     serialized = RESPONSE_INDEX_TEMPLATE.read_bytes()
     assert b"relative_path" not in serialized
     assert b"response_sha256" not in serialized
+
+
+def test_complete_pairs_compute_exact_aggregate_counts(benchmark_plan):
+    summary = evaluate_benchmark(
+        benchmark_plan,
+        _cells_for_pattern(benchmark_plan, "positive"),
+        _valid_execution_attestation(benchmark_plan),
+    )
+
+    assert summary["status"] == "benchmark-observed"
+    assert summary["cell_counts"] == {"expected": 72, "observed": 72}
+    assert summary["paired_counts"] == {
+        "both_fail": 0,
+        "both_pass": 24,
+        "improved": 12,
+        "worsened": 0,
+    }
+    assert summary["overall"] == {
+        "control_passes": 24,
+        "control_pass_rate": 0.666667,
+        "difference": 0.333333,
+        "intervention_passes": 36,
+        "intervention_pass_rate": 1.0,
+        "pairs": 36,
+    }
+    assert summary["direction"] == "positive-signal"
+    assert summary["case_results"][0]["stability"] == {
+        "control": "stable-fail",
+        "intervention": "stable-pass",
+    }
+    assert validate_benchmark_summary(summary) == []
+
+
+@pytest.mark.parametrize(
+    ("difference", "expected"),
+    [
+        (Fraction(1, 5), "positive-signal"),
+        (Fraction(1, 5) - Fraction(1, 10_000), "mixed-or-null"),
+    ],
+)
+def test_direction_uses_the_exact_practical_threshold(difference, expected):
+    assert (
+        classify_direction(
+            difference,
+            improved=8,
+            worsened=0,
+            control_forbidden=0,
+            intervention_forbidden=0,
+            depth_differences=(Fraction(0),),
+        )
+        == expected
+    )
+
+
+@pytest.mark.parametrize(
+    ("pattern", "expected_direction", "expected_difference"),
+    [
+        ("boundary-7", "mixed-or-null", 0.194444),
+        ("boundary-8", "positive-signal", 0.222222),
+        ("equal-discordance", "mixed-or-null", 0.0),
+        ("intervention-forbidden", "negative-signal", 0.222222),
+        ("negative-depth", "negative-signal", 0.222222),
+    ],
+)
+def test_complete_aggregate_direction_guardrails(
+    benchmark_plan, pattern, expected_direction, expected_difference
+):
+    summary = evaluate_benchmark(
+        benchmark_plan,
+        _cells_for_pattern(benchmark_plan, pattern),
+        _valid_execution_attestation(benchmark_plan),
+    )
+
+    assert summary["direction"] == expected_direction
+    assert summary["overall"]["difference"] == expected_difference
+    if pattern == "equal-discordance":
+        assert summary["paired_counts"]["improved"] == 1
+        assert summary["paired_counts"]["worsened"] == 1
+    elif pattern == "intervention-forbidden":
+        assert summary["forbidden_violations"] == {
+            "control": 0,
+            "intervention": 1,
+        }
+    elif pattern == "negative-depth":
+        assert any(
+            row["difference"] < 0 for row in summary["output_depth_results"]
+        )
+    assert validate_benchmark_summary(summary) == []
+
+
+@pytest.mark.parametrize(
+    ("pattern", "expected_direction"),
+    [
+        ("positive", "positive-signal"),
+        ("mixed", "mixed-or-null"),
+        ("negative", "negative-signal"),
+    ],
+)
+def test_complete_generated_scenarios_have_exact_direction(
+    benchmark_plan, pattern, expected_direction
+):
+    summary = evaluate_benchmark(
+        benchmark_plan,
+        _cells_for_pattern(benchmark_plan, pattern),
+        _valid_execution_attestation(benchmark_plan),
+    )
+
+    assert summary["status"] == "benchmark-observed"
+    assert summary["direction"] == expected_direction
+
+
+def test_evaluate_calls_the_existing_evaluator_once_per_bound_cell(
+    benchmark_plan, monkeypatch
+):
+    from scripts import evaluate_simulation_benchmark as benchmark
+
+    cells = _cells_for_pattern(benchmark_plan, "mixed")
+    catalog, rubric = load_catalog(
+        ROOT / "evals/cases.yaml", ROOT / "evals/rubric.yaml"
+    )
+    cases = {case["id"]: case for case in catalog["cases"]}
+    calls = []
+    real_evaluate_response = benchmark.evaluate_response
+
+    def evaluate_spy(case, bound_rubric, response):
+        calls.append((case, bound_rubric, response))
+        return real_evaluate_response(case, bound_rubric, response)
+
+    monkeypatch.setattr(benchmark, "evaluate_response", evaluate_spy)
+    evaluate_benchmark(
+        benchmark_plan,
+        cells,
+        _valid_execution_attestation(benchmark_plan),
+    )
+
+    assert len(calls) == 72
+    assert [case["id"] for case, _, _ in calls] == [
+        cell["case_id"] for cell in cells
+    ]
+    assert all(case == cases[case["id"]] for case, _, _ in calls)
+    assert all(bound_rubric == rubric for _, bound_rubric, _ in calls)
+    assert [response for _, _, response in calls] == [cell["text"] for cell in cells]
+
+
+def test_summary_is_closed_recomputable_and_contains_no_response_material(
+    benchmark_plan
+):
+    summary = evaluate_benchmark(
+        benchmark_plan,
+        _cells_for_pattern(benchmark_plan, "positive"),
+        _valid_execution_attestation(benchmark_plan),
+    )
+    serialized = canonical_summary_bytes(summary)
+
+    assert json.loads(serialized) == summary
+    assert serialized == canonical_json_bytes(summary)
+    assert summary["synthetic_example"] is False
+    assert summary["execution_attestation"]["assertion_basis"] == "externally-asserted"
+    assert b"response-" not in serialized
+    assert b"relative_path" not in serialized
+    assert b'"text"' not in serialized
+    assert b'"score"' not in serialized
+    assert b"human-effective" not in serialized
+    assert b"evaluation-green" not in serialized
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        lambda summary: summary.update({"evaluation_green": True}),
+        lambda summary: summary["overall"].update({"difference": 0.9}),
+        lambda summary: summary["paired_counts"].update({"both_pass": 0}),
+        lambda summary: summary["output_depth_results"][0].update(
+            {"difference": -0.5}
+        ),
+        lambda summary: summary["case_results"][0]["stability"].update(
+            {"intervention": "stable-pass"}
+        ),
+        lambda summary: summary.update({"direction": "positive-signal"}),
+    ],
+)
+def test_summary_validation_recomputes_derived_fields_and_rejects_unknown_keys(
+    benchmark_plan, mutation
+):
+    summary = evaluate_benchmark(
+        benchmark_plan,
+        _cells_for_pattern(benchmark_plan, "negative"),
+        _valid_execution_attestation(benchmark_plan),
+    )
+    mutation(summary)
+
+    assert validate_benchmark_summary(summary)
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        lambda summary: summary.update({"repeats": "3"}),
+        lambda summary: summary.update({"direction": []}),
+        lambda summary: summary.update({"benchmark_id": "../private-run"}),
+        lambda summary: summary["model"].update({"top_p": float("nan")}),
+        lambda summary: summary["skill"].update({"archive": "../private.zip"}),
+        lambda summary: summary["execution_attestation"].update(
+            {"runner_name": "../private-runner"}
+        ),
+        lambda summary: summary["case_results"][0].update(
+            {"paired_counts": None}
+        ),
+        lambda summary: summary.update({"output_depth_results": None}),
+    ],
+)
+def test_summary_validation_fails_closed_for_malformed_value_types(
+    benchmark_plan, mutation
+):
+    summary = evaluate_benchmark(
+        benchmark_plan,
+        _cells_for_pattern(benchmark_plan, "mixed"),
+        _valid_execution_attestation(benchmark_plan),
+    )
+    mutation(summary)
+
+    assert validate_benchmark_summary(summary)
+
+
+@pytest.mark.parametrize(
+    ("path", "value"),
+    [
+        (("model_provider",), "drifted-provider"),
+        (("runner_version",), "drifted-runner"),
+        (("offline",), False),
+        (("unknown",), True),
+    ],
+)
+def test_evaluate_rejects_execution_attestation_drift_or_expansion(
+    benchmark_plan, path, value
+):
+    attestation = _valid_execution_attestation(benchmark_plan)
+    attestation[path[0]] = value
+
+    with pytest.raises(ValueError, match="invalid execution attestation"):
+        evaluate_benchmark(
+            benchmark_plan,
+            _cells_for_pattern(benchmark_plan, "mixed"),
+            attestation,
+        )
