@@ -480,7 +480,7 @@ def _windows_open_root(root: Path) -> int:
             or identity != _windows_stat_identity(expected)
         ):
             raise ValueError
-    except (OSError, ValueError):
+    except BaseException:
         _windows_close_handle(handle)
         raise
     return handle
@@ -594,82 +594,143 @@ def _windows_open_relative(parent_handle: int, name: str) -> int:
     return _windows_handle_number(child_handle)
 
 
-def _windows_walk_directory(
-    directory_handle: int,
-    directory_path: Path,
-    relative_parts: tuple[str, ...],
+def _windows_close_opened_files(
     opened_files: dict[str, _WindowsOpenedFile],
-    identities: set[tuple[int, bytes]],
 ) -> None:
-    _before_directory_scan(directory_path)
-    _windows_require_path_matches_handle(
-        directory_path, directory_handle, directory=True
-    )
-    for name, enumerated_attributes in _windows_directory_entries(directory_handle):
-        if enumerated_attributes & _WIN_FILE_ATTRIBUTE_REPARSE_POINT:
-            raise ValueError
-        is_directory = bool(
-            enumerated_attributes & _WIN_FILE_ATTRIBUTE_DIRECTORY
-        )
-        child_path = directory_path / name
-        if is_directory:
-            _after_windows_directory_precheck_before_relative_open(
-                directory_path, name
-            )
-        else:
-            _before_response_file_open(child_path)
-            _after_windows_file_precheck_before_relative_open(directory_path, name)
-        child_handle = _windows_open_relative(directory_handle, name)
+    for opened in opened_files.values():
         try:
-            _after_windows_relative_open(directory_path, name)
-            attributes, identity, size = _windows_handle_info(child_handle)
-            if (
-                attributes & _WIN_FILE_ATTRIBUTE_REPARSE_POINT
-                or bool(attributes & _WIN_FILE_ATTRIBUTE_DIRECTORY) != is_directory
-            ):
-                raise ValueError
-            _windows_require_path_matches_handle(
-                child_path, child_handle, directory=is_directory
-            )
-            child_parts = (*relative_parts, name)
-            if is_directory:
-                _windows_walk_directory(
-                    child_handle,
-                    child_path,
-                    child_parts,
-                    opened_files,
-                    identities,
-                )
-            else:
-                if identity in identities:
-                    raise ValueError
-                identities.add(identity)
-                descriptor = msvcrt.open_osfhandle(
-                    child_handle, os.O_RDONLY | OPEN_BINARY
-                )
-                child_handle = 0
-                opened_files["/".join(child_parts)] = _WindowsOpenedFile(
-                    descriptor, identity, size
-                )
-        finally:
-            _windows_close_handle(child_handle)
+            os.close(opened.descriptor)
+        except OSError:
+            pass
 
 
 def _windows_open_response_tree(root: Path) -> dict[str, _WindowsOpenedFile]:
     opened_files: dict[str, _WindowsOpenedFile] = {}
+    identities: set[tuple[int, bytes]] = set()
+    pending_directories: list[
+        tuple[
+            int,
+            Path,
+            tuple[str, ...],
+            tuple[tuple[str, int], ...] | None,
+            int,
+        ]
+    ] = []
     root_handle = 0
+    successful = False
     try:
         root_handle = _windows_open_root(root)
-        _windows_walk_directory(
-            root_handle, root, (), opened_files, set()
-        )
+        pending_directories.append((root_handle, root, (), None, 0))
+        root_handle = 0
+
+        while pending_directories:
+            (
+                directory_handle,
+                directory_path,
+                relative_parts,
+                entries,
+                entry_index,
+            ) = pending_directories[-1]
+            if entries is None:
+                _before_directory_scan(directory_path)
+                _windows_require_path_matches_handle(
+                    directory_path, directory_handle, directory=True
+                )
+                entries = tuple(
+                    sorted(
+                        _windows_directory_entries(directory_handle),
+                        key=lambda item: item[0],
+                    )
+                )
+                pending_directories[-1] = (
+                    directory_handle,
+                    directory_path,
+                    relative_parts,
+                    entries,
+                    0,
+                )
+                continue
+
+            if entry_index == len(entries):
+                _windows_close_handle(directory_handle)
+                pending_directories.pop()
+                continue
+
+            name, enumerated_attributes = entries[entry_index]
+            pending_directories[-1] = (
+                directory_handle,
+                directory_path,
+                relative_parts,
+                entries,
+                entry_index + 1,
+            )
+            if enumerated_attributes & _WIN_FILE_ATTRIBUTE_REPARSE_POINT:
+                raise ValueError
+            is_directory = bool(
+                enumerated_attributes & _WIN_FILE_ATTRIBUTE_DIRECTORY
+            )
+            child_path = directory_path / name
+            if is_directory:
+                _after_windows_directory_precheck_before_relative_open(
+                    directory_path, name
+                )
+            else:
+                _before_response_file_open(child_path)
+                _after_windows_file_precheck_before_relative_open(
+                    directory_path, name
+                )
+
+            child_handle = _windows_open_relative(directory_handle, name)
+            descriptor = -1
+            try:
+                _after_windows_relative_open(directory_path, name)
+                attributes, identity, size = _windows_handle_info(child_handle)
+                if (
+                    attributes & _WIN_FILE_ATTRIBUTE_REPARSE_POINT
+                    or bool(attributes & _WIN_FILE_ATTRIBUTE_DIRECTORY)
+                    != is_directory
+                ):
+                    raise ValueError
+                _windows_require_path_matches_handle(
+                    child_path, child_handle, directory=is_directory
+                )
+                child_parts = (*relative_parts, name)
+                if is_directory:
+                    pending_directories.append(
+                        (child_handle, child_path, child_parts, None, 0)
+                    )
+                    child_handle = 0
+                else:
+                    relative_path = "/".join(child_parts)
+                    if relative_path in opened_files or identity in identities:
+                        raise ValueError
+                    identities.add(identity)
+                    descriptor = msvcrt.open_osfhandle(
+                        child_handle, os.O_RDONLY | OPEN_BINARY
+                    )
+                    child_handle = 0
+                    opened_files[relative_path] = _WindowsOpenedFile(
+                        descriptor, identity, size
+                    )
+                    descriptor = -1
+            finally:
+                if descriptor >= 0:
+                    try:
+                        os.close(descriptor)
+                    except OSError:
+                        pass
+                _windows_close_handle(child_handle)
+
+        successful = True
         return opened_files
-    except (OSError, UnicodeError, ValueError):
-        for opened in opened_files.values():
-            os.close(opened.descriptor)
+    except Exception:
         raise ValueError("invalid response files") from None
     finally:
         _windows_close_handle(root_handle)
+        for directory_handle, _, _, _, _ in reversed(pending_directories):
+            _windows_close_handle(directory_handle)
+        if not successful:
+            _windows_close_opened_files(opened_files)
 
 
 def _windows_same_opened_tree(
@@ -695,12 +756,10 @@ def _windows_verified_descriptors(
             if not _windows_same_opened_tree(opened, confirmed):
                 raise ValueError
         finally:
-            for item in confirmed.values():
-                os.close(item.descriptor)
+            _windows_close_opened_files(confirmed)
         return opened
     except (OSError, ValueError):
-        for item in opened.values():
-            os.close(item.descriptor)
+        _windows_close_opened_files(opened)
         raise ValueError("invalid response files") from None
 
 

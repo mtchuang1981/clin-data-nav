@@ -156,6 +156,53 @@ def _remove_directory_reparse(path: Path) -> None:
         path.rmdir()
 
 
+def _track_windows_response_resources(monkeypatch, benchmark):
+    opened_handles = []
+    opened_descriptors = []
+    original_open_root = benchmark._windows_open_root
+    original_open_relative = benchmark._windows_open_relative
+    original_open_osfhandle = benchmark.msvcrt.open_osfhandle
+
+    def tracking_open_root(path):
+        handle = original_open_root(path)
+        opened_handles.append(handle)
+        return handle
+
+    def tracking_open_relative(parent_handle, name):
+        handle = original_open_relative(parent_handle, name)
+        opened_handles.append(handle)
+        return handle
+
+    def tracking_open_osfhandle(handle, flags):
+        descriptor = original_open_osfhandle(handle, flags)
+        opened_descriptors.append(descriptor)
+        return descriptor
+
+    monkeypatch.setattr(benchmark, "_windows_open_root", tracking_open_root)
+    monkeypatch.setattr(benchmark, "_windows_open_relative", tracking_open_relative)
+    monkeypatch.setattr(benchmark.msvcrt, "open_osfhandle", tracking_open_osfhandle)
+    return opened_handles, opened_descriptors
+
+
+def _live_windows_response_resources(benchmark, handles, descriptors):
+    live_descriptors = []
+    for descriptor in set(descriptors):
+        try:
+            os.fstat(descriptor)
+        except OSError:
+            continue
+        live_descriptors.append(descriptor)
+
+    live_handles = []
+    for handle in set(handles):
+        try:
+            benchmark._windows_handle_info(handle)
+        except ValueError:
+            continue
+        live_handles.append(handle)
+    return live_handles, live_descriptors
+
+
 def test_v050_registry_matches_rebuilt_annotated_tag(tmp_path):
     observed = resolve_released_skill_binding(ROOT, "v0.5.0", tmp_path)
     assert observed == V050_BINDING
@@ -1056,6 +1103,102 @@ def test_windows_pending_directory_aba_race_is_rejected_before_content_read(
     assert swapped and restored
     assert content_reads == []
     assert marker.decode().strip() not in str(caught.value)
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Windows HANDLE ownership contract")
+def test_windows_deep_unexpected_tree_has_fixed_error_and_closes_owned_resources(
+    response_bundle, monkeypatch
+):
+    """Depth must not escape the safe error contract or strand prior response opens."""
+    from scripts import evaluate_simulation_benchmark as benchmark
+
+    plan, response_index, responses_root = response_bundle
+    deep_directories = []
+    current = responses_root / "unexpected"
+    current.mkdir()
+    deep_directories.append(current)
+    for _ in range(sys.getrecursionlimit() + 32):
+        current = current / "d"
+        current.mkdir()
+        deep_directories.append(current)
+    marker = b"MARKER-WINDOWS-DEEP-TREE-DO-NOT-DISCLOSE\n"
+    marker_path = current / "unexpected.md"
+    marker_path.write_bytes(marker)
+
+    original_entries = benchmark._windows_directory_entries
+
+    def sorted_entries(directory_handle):
+        return tuple(sorted(original_entries(directory_handle), key=lambda item: item[0]))
+
+    monkeypatch.setattr(benchmark, "_windows_directory_entries", sorted_entries)
+
+    def fail_at_deepest_directory(directory_path):
+        if directory_path == current:
+            raise RuntimeError(marker.decode().strip())
+
+    monkeypatch.setattr(benchmark, "_before_directory_scan", fail_at_deepest_directory)
+    handles, descriptors = _track_windows_response_resources(monkeypatch, benchmark)
+    original_os_read = os.read
+    content_reads = []
+
+    def tracking_os_read(file_descriptor, size):
+        content_reads.append(file_descriptor)
+        return original_os_read(file_descriptor, size)
+
+    monkeypatch.setattr(os, "read", tracking_os_read)
+    failure = None
+    live_handles = []
+    live_descriptors = []
+    try:
+        try:
+            load_response_cells(plan, response_index, responses_root)
+        except BaseException as error:  # Probe leaked resources before test cleanup.
+            failure = error
+        live_handles, live_descriptors = _live_windows_response_resources(
+            benchmark, handles, descriptors
+        )
+    finally:
+        for descriptor in live_descriptors:
+            os.close(descriptor)
+        for handle in live_handles:
+            benchmark._windows_close_handle(handle)
+        marker_path.unlink()
+        for directory in reversed(deep_directories):
+            directory.rmdir()
+
+    assert descriptors, "the fixture responses must be opened before the deep tree"
+    assert type(failure) is ValueError
+    assert str(failure) == "invalid response files"
+    assert marker.decode().strip() not in str(failure)
+    assert content_reads == []
+    assert live_descriptors == []
+    assert live_handles == []
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Windows HANDLE ownership contract")
+def test_windows_success_closes_all_transferred_descriptors_and_handles(
+    response_bundle, monkeypatch
+):
+    from scripts import evaluate_simulation_benchmark as benchmark
+
+    plan, response_index, responses_root = response_bundle
+    handles, descriptors = _track_windows_response_resources(monkeypatch, benchmark)
+
+    cells = load_response_cells(plan, response_index, responses_root)
+    live_handles, live_descriptors = _live_windows_response_resources(
+        benchmark, handles, descriptors
+    )
+    try:
+        assert len(cells) == 72
+        assert descriptors
+        assert handles
+        assert live_descriptors == []
+        assert live_handles == []
+    finally:
+        for descriptor in live_descriptors:
+            os.close(descriptor)
+        for handle in live_handles:
+            benchmark._windows_close_handle(handle)
 
 
 def test_response_loader_rejects_hardlink_aliases_between_cells(response_bundle):
