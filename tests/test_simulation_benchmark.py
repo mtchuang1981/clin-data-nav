@@ -136,6 +136,19 @@ def _make_symlink(target: Path, link: Path, *, directory: bool = False) -> None:
             pytest.skip("the current filesystem cannot create a symlink or reparse point")
 
 
+def _move_first_response_under(
+    response_index: dict, responses_root: Path, directory_name: str
+) -> tuple[Path, str]:
+    record = response_index["records"][0]
+    original = responses_root / record["relative_path"]
+    directory = responses_root / directory_name
+    directory.mkdir()
+    moved = directory / original.name
+    original.rename(moved)
+    record["relative_path"] = f"{directory_name}/{original.name}"
+    return directory, original.name
+
+
 def test_v050_registry_matches_rebuilt_annotated_tag(tmp_path):
     observed = resolve_released_skill_binding(ROOT, "v0.5.0", tmp_path)
     assert observed == V050_BINDING
@@ -816,6 +829,106 @@ def test_response_loader_rejects_an_escaping_symlink_parent(response_bundle, tmp
 
     with pytest.raises(ValueError, match="invalid response files"):
         load_response_cells(plan, response_index, responses_root)
+
+
+def test_response_loader_rejects_response_path_reparse_race_before_content_read(
+    response_bundle, tmp_path, monkeypatch
+):
+    """Opening by pathname after validation would read a replacement reparse target."""
+    from scripts import evaluate_simulation_benchmark as benchmark
+
+    plan, response_index, responses_root = response_bundle
+    directory, filename = _move_first_response_under(
+        response_index, responses_root, "race-file-parent"
+    )
+    held = tmp_path / "held-file-parent"
+    target = tmp_path / "file-race-target"
+    target.mkdir()
+    marker = b"MARKER-FILE-RACE-DO-NOT-READ\n"
+    (target / filename).write_bytes(marker)
+    raced = False
+    content_reads = []
+    original_path_read = Path.read_bytes
+    original_os_read = os.read
+
+    def replace_before_open(path):
+        nonlocal raced
+        if path == directory / filename and not raced:
+            raced = True
+            directory.rename(held)
+            _make_symlink(target, directory, directory=True)
+
+    def tracking_path_read(path):
+        if path.is_relative_to(responses_root) or path.is_relative_to(target):
+            content_reads.append(path)
+        return original_path_read(path)
+
+    def tracking_os_read(file_descriptor, size):
+        content_reads.append(file_descriptor)
+        return original_os_read(file_descriptor, size)
+
+    monkeypatch.setattr(
+        benchmark, "_before_response_file_open", replace_before_open, raising=False
+    )
+    monkeypatch.setattr(Path, "read_bytes", tracking_path_read)
+    monkeypatch.setattr(os, "read", tracking_os_read)
+
+    with pytest.raises(ValueError, match="invalid response files") as caught:
+        load_response_cells(plan, response_index, responses_root)
+
+    assert raced
+    assert content_reads == []
+    assert marker.decode().strip() not in str(caught.value)
+
+
+def test_response_loader_rejects_pending_directory_reparse_race_before_scan(
+    response_bundle, tmp_path, monkeypatch
+):
+    """Scanning an enqueued directory by pathname would follow a replacement target."""
+    from scripts import evaluate_simulation_benchmark as benchmark
+
+    plan, response_index, responses_root = response_bundle
+    directory, filename = _move_first_response_under(
+        response_index, responses_root, "race-pending-directory"
+    )
+    held = tmp_path / "held-pending-directory"
+    target = tmp_path / "directory-race-target"
+    target.mkdir()
+    marker = b"MARKER-DIRECTORY-RACE-DO-NOT-READ\n"
+    (target / filename).write_bytes(marker)
+    raced = False
+    content_reads = []
+    original_path_read = Path.read_bytes
+    original_os_read = os.read
+
+    def replace_before_scan(path):
+        nonlocal raced
+        if path == directory and not raced:
+            raced = True
+            directory.rename(held)
+            _make_symlink(target, directory, directory=True)
+
+    def tracking_path_read(path):
+        if path.is_relative_to(responses_root) or path.is_relative_to(target):
+            content_reads.append(path)
+        return original_path_read(path)
+
+    def tracking_os_read(file_descriptor, size):
+        content_reads.append(file_descriptor)
+        return original_os_read(file_descriptor, size)
+
+    monkeypatch.setattr(
+        benchmark, "_before_directory_scan", replace_before_scan, raising=False
+    )
+    monkeypatch.setattr(Path, "read_bytes", tracking_path_read)
+    monkeypatch.setattr(os, "read", tracking_os_read)
+
+    with pytest.raises(ValueError, match="invalid response files") as caught:
+        load_response_cells(plan, response_index, responses_root)
+
+    assert raced
+    assert content_reads == []
+    assert marker.decode().strip() not in str(caught.value)
 
 
 def test_response_loader_rejects_hardlink_aliases_between_cells(response_bundle):

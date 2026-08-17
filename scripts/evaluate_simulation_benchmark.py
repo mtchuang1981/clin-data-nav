@@ -54,6 +54,14 @@ RECORD_KEYS = frozenset(
 )
 SHA256 = re.compile(r"^[0-9a-f]{64}$")
 REPARSE_POINT = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400)
+OPEN_BINARY = getattr(os, "O_BINARY", 0)
+OPEN_DIRECTORY = getattr(os, "O_DIRECTORY", 0)
+OPEN_NOFOLLOW = getattr(os, "O_NOFOLLOW", 0)
+DESCRIPTOR_RELATIVE_OPEN = (
+    os.open in getattr(os, "supports_dir_fd", set())
+    and OPEN_DIRECTORY != 0
+    and OPEN_NOFOLLOW != 0
+)
 
 
 class IncompleteBenchmark(Exception):
@@ -228,6 +236,32 @@ def _is_reparse_or_symlink(file_stat: os.stat_result) -> bool:
     return stat.S_ISLNK(file_stat.st_mode) or bool(attributes & REPARSE_POINT)
 
 
+def _identity(file_stat: os.stat_result) -> tuple[int, int]:
+    return file_stat.st_dev, file_stat.st_ino
+
+
+def _before_directory_scan(directory: Path) -> None:
+    """Narrow test seam for a directory-replacement race."""
+
+
+def _before_response_file_open(response_path: Path) -> None:
+    """Narrow test seam for a response-path replacement race."""
+
+
+def _require_same_entry(
+    path: Path, expected: os.stat_result, *, directory: bool
+) -> os.stat_result:
+    current = path.lstat()
+    expected_kind = stat.S_ISDIR if directory else stat.S_ISREG
+    if (
+        _is_reparse_or_symlink(current)
+        or not expected_kind(current.st_mode)
+        or _identity(current) != _identity(expected)
+    ):
+        raise ValueError
+    return current
+
+
 def _external_regular_root(responses_root: Path) -> Path:
     try:
         root_stat = responses_root.lstat()
@@ -238,13 +272,22 @@ def _external_regular_root(responses_root: Path) -> Path:
         raise ValueError("invalid response files") from None
 
 
-def _scan_regular_files(root: Path) -> dict[str, os.stat_result]:
+def _scan_regular_files(
+    root: Path,
+) -> tuple[dict[str, os.stat_result], dict[str, os.stat_result]]:
     observed: dict[str, os.stat_result] = {}
+    directories: dict[str, os.stat_result] = {}
     identities: set[tuple[int, int]] = set()
-    pending = [root]
     try:
+        root_stat = root.lstat()
+        if _is_reparse_or_symlink(root_stat) or not stat.S_ISDIR(root_stat.st_mode):
+            raise ValueError
+        directories[""] = root_stat
+        pending = [(root, root_stat)]
         while pending:
-            directory = pending.pop()
+            directory, expected_directory = pending.pop()
+            _before_directory_scan(directory)
+            _require_same_entry(directory, expected_directory, directory=True)
             with os.scandir(directory) as entries:
                 for entry in entries:
                     entry_path = Path(entry.path)
@@ -252,19 +295,154 @@ def _scan_regular_files(root: Path) -> dict[str, os.stat_result]:
                     if _is_reparse_or_symlink(entry_stat):
                         raise ValueError
                     if stat.S_ISDIR(entry_stat.st_mode):
-                        pending.append(entry_path)
+                        relative = entry_path.relative_to(root).as_posix()
+                        directories[relative] = entry_stat
+                        pending.append((entry_path, entry_stat))
                     elif stat.S_ISREG(entry_stat.st_mode):
                         relative = entry_path.relative_to(root).as_posix()
-                        identity = (entry_stat.st_dev, entry_stat.st_ino)
+                        identity = _identity(entry_stat)
                         if identity in identities:
                             raise ValueError
                         identities.add(identity)
                         observed[relative] = entry_stat
                     else:
                         raise ValueError
+            _require_same_entry(directory, expected_directory, directory=True)
     except (OSError, RuntimeError, ValueError):
         raise ValueError("invalid response files") from None
-    return observed
+    return observed, directories
+
+
+def _same_snapshot(
+    first: tuple[dict[str, os.stat_result], dict[str, os.stat_result]],
+    second: tuple[dict[str, os.stat_result], dict[str, os.stat_result]],
+) -> bool:
+    return all(
+        set(left) == set(right)
+        and all(_identity(left[key]) == _identity(right[key]) for key in left)
+        for left, right in zip(first, second, strict=True)
+    )
+
+
+def _validate_directory_chain(
+    root: Path,
+    parent_parts: tuple[str, ...],
+    directories: dict[str, os.stat_result],
+) -> None:
+    _require_same_entry(root, directories[""], directory=True)
+    current = root
+    prefix: list[str] = []
+    for part in parent_parts:
+        prefix.append(part)
+        current = current / part
+        _require_same_entry(
+            current, directories["/".join(prefix)], directory=True
+        )
+
+
+def _require_open_file_identity(
+    file_descriptor: int, expected: os.stat_result
+) -> os.stat_result:
+    opened = os.fstat(file_descriptor)
+    if not stat.S_ISREG(opened.st_mode) or _identity(opened) != _identity(expected):
+        raise ValueError
+    return opened
+
+
+def _open_response_windows(
+    root: Path,
+    parts: tuple[str, ...],
+    files: dict[str, os.stat_result],
+    directories: dict[str, os.stat_result],
+) -> int:
+    relative_path = "/".join(parts)
+    response_path = root.joinpath(*parts)
+    _validate_directory_chain(root, parts[:-1], directories)
+    _require_same_entry(response_path, files[relative_path], directory=False)
+    file_descriptor = os.open(response_path, os.O_RDONLY | OPEN_BINARY)
+    try:
+        _require_open_file_identity(file_descriptor, files[relative_path])
+        _validate_directory_chain(root, parts[:-1], directories)
+        _require_same_entry(response_path, files[relative_path], directory=False)
+    except (OSError, ValueError):
+        os.close(file_descriptor)
+        raise
+    return file_descriptor
+
+
+def _open_response_relative(
+    root: Path,
+    root_descriptor: int,
+    parts: tuple[str, ...],
+    files: dict[str, os.stat_result],
+    directories: dict[str, os.stat_result],
+) -> int:
+    parent_descriptor = os.dup(root_descriptor)
+    prefix: list[str] = []
+    try:
+        for part in parts[:-1]:
+            prefix.append(part)
+            child_descriptor = os.open(
+                part,
+                os.O_RDONLY | OPEN_DIRECTORY | OPEN_NOFOLLOW,
+                dir_fd=parent_descriptor,
+            )
+            os.close(parent_descriptor)
+            parent_descriptor = child_descriptor
+            expected_directory = directories["/".join(prefix)]
+            opened_directory = os.fstat(parent_descriptor)
+            if (
+                not stat.S_ISDIR(opened_directory.st_mode)
+                or _identity(opened_directory) != _identity(expected_directory)
+            ):
+                raise ValueError
+            _require_same_entry(
+                root.joinpath(*prefix), expected_directory, directory=True
+            )
+
+        relative_path = "/".join(parts)
+        file_descriptor = os.open(
+            parts[-1],
+            os.O_RDONLY | OPEN_BINARY | OPEN_NOFOLLOW,
+            dir_fd=parent_descriptor,
+        )
+        try:
+            _require_open_file_identity(file_descriptor, files[relative_path])
+            _require_same_entry(
+                root.joinpath(*parts), files[relative_path], directory=False
+            )
+        except (OSError, ValueError):
+            os.close(file_descriptor)
+            raise
+        return file_descriptor
+    finally:
+        os.close(parent_descriptor)
+
+
+def _open_response_descriptor(
+    root: Path,
+    root_descriptor: int | None,
+    relative_path: str,
+    files: dict[str, os.stat_result],
+    directories: dict[str, os.stat_result],
+) -> int:
+    parts = PurePosixPath(relative_path).parts
+    response_path = root.joinpath(*parts)
+    _before_response_file_open(response_path)
+    if root_descriptor is None:
+        return _open_response_windows(root, parts, files, directories)
+    return _open_response_relative(
+        root, root_descriptor, parts, files, directories
+    )
+
+
+def _read_descriptor(file_descriptor: int) -> bytes:
+    chunks: list[bytes] = []
+    while True:
+        chunk = os.read(file_descriptor, 1024 * 1024)
+        if not chunk:
+            return b"".join(chunks)
+        chunks.append(chunk)
 
 
 def load_response_cells(
@@ -276,24 +454,55 @@ def load_response_cells(
         raise ValueError("invalid response index")
 
     root = _external_regular_root(Path(responses_root))
-    observed = _scan_regular_files(root)
+    snapshot = _scan_regular_files(root)
+    observed, directories = snapshot
     expected_paths = {record["relative_path"] for record in index["records"]}
     if set(observed) != expected_paths:
         raise ValueError("invalid response files")
 
     cells: list[dict] = []
+    descriptors: list[int] = []
+    root_descriptor: int | None = None
     try:
-        for planned, record in zip(plan["cells"], index["records"], strict=True):
-            response_path = root.joinpath(*PurePosixPath(record["relative_path"]).parts)
-            current_stat = response_path.lstat()
+        if DESCRIPTOR_RELATIVE_OPEN:
+            root_descriptor = os.open(
+                root, os.O_RDONLY | OPEN_DIRECTORY | OPEN_NOFOLLOW
+            )
+            opened_root = os.fstat(root_descriptor)
             if (
-                _is_reparse_or_symlink(current_stat)
-                or not stat.S_ISREG(current_stat.st_mode)
-                or (current_stat.st_dev, current_stat.st_ino)
-                != (observed[record["relative_path"]].st_dev, observed[record["relative_path"]].st_ino)
+                not stat.S_ISDIR(opened_root.st_mode)
+                or _identity(opened_root) != _identity(directories[""])
             ):
                 raise ValueError
-            raw = response_path.read_bytes()
+            _require_same_entry(root, directories[""], directory=True)
+
+        for record in index["records"]:
+            descriptors.append(
+                _open_response_descriptor(
+                    root,
+                    root_descriptor,
+                    record["relative_path"],
+                    observed,
+                    directories,
+                )
+            )
+
+        confirmed_snapshot = _scan_regular_files(root)
+        if not _same_snapshot(snapshot, confirmed_snapshot):
+            raise ValueError
+
+        for file_descriptor, record in zip(
+            descriptors, index["records"], strict=True
+        ):
+            opened = _require_open_file_identity(
+                file_descriptor, observed[record["relative_path"]]
+            )
+            if opened.st_size != record["size"]:
+                raise ValueError
+
+        for planned, record in zip(plan["cells"], index["records"], strict=True):
+            file_descriptor = descriptors[planned["sequence"] - 1]
+            raw = _read_descriptor(file_descriptor)
             if len(raw) != record["size"]:
                 raise ValueError
             if hashlib.sha256(raw).hexdigest() != record["response_sha256"]:
@@ -310,4 +519,9 @@ def load_response_cells(
             )
     except (OSError, UnicodeError, ValueError):
         raise ValueError("invalid response files") from None
+    finally:
+        for file_descriptor in descriptors:
+            os.close(file_descriptor)
+        if root_descriptor is not None:
+            os.close(root_descriptor)
     return tuple(cells)
