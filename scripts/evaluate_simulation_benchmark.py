@@ -12,9 +12,9 @@ import math
 import os
 from pathlib import Path, PurePosixPath, PureWindowsPath
 import re
+import secrets
 import stat
 import sys
-import tempfile
 
 if os.name == "nt":
     import ctypes
@@ -147,6 +147,7 @@ DESCRIPTOR_RELATIVE_OPEN = (
 )
 CLI_ERROR = b"simulation benchmark evaluation failed\n"
 COMPLETE_STATUS = {"schema_version": "1", "status": "benchmark-observed"}
+COMPLETE_STATUS_BYTES = b'{"schema_version":"1","status":"benchmark-observed"}\n'
 CLI_FLAGS = (
     "--plan",
     "--response-index",
@@ -163,12 +164,18 @@ if os.name == "nt":
     _WIN_SHARE_ALL = 0x00000007
     _WIN_OPEN_EXISTING = 3
     _WIN_FILE_OPEN = 1
+    _WIN_FILE_CREATE = 2
     _WIN_FILE_OPEN_REPARSE_POINT = 0x00200000
+    _WIN_FILE_NON_DIRECTORY_FILE = 0x00000040
     _WIN_FILE_SYNCHRONOUS_IO_NONALERT = 0x00000020
     _WIN_FILE_FLAG_BACKUP_SEMANTICS = 0x02000000
     _WIN_FILE_FLAG_OPEN_REPARSE_POINT = 0x00200000
     _WIN_FILE_DIRECTORY_INFORMATION = 1
     _WIN_FILE_ID_INFO_CLASS = 0x12
+    _WIN_FILE_RENAME_INFORMATION_CLASS = 10
+    _WIN_FILE_DISPOSITION_INFORMATION_CLASS = 13
+    _WIN_DELETE = 0x00010000
+    _WIN_GENERIC_WRITE = 0x40000000
     _WIN_STATUS_NO_MORE_FILES = 0x80000006
     _WIN_DIRECTORY_BUFFER_SIZE = 64 * 1024
     _WIN_INVALID_HANDLE = ctypes.c_void_p(-1).value
@@ -218,6 +225,17 @@ if os.name == "nt":
             ("volume_serial_number", ctypes.c_ulonglong),
             ("file_id", _WinFileId128),
         ]
+
+    class _WinFileRenameInformation(ctypes.Structure):
+        _fields_ = [
+            ("replace_if_exists", wintypes.BOOLEAN),
+            ("root_directory", wintypes.HANDLE),
+            ("file_name_length", wintypes.ULONG),
+            ("file_name", wintypes.WCHAR * 1),
+        ]
+
+    class _WinFileDispositionInformation(ctypes.Structure):
+        _fields_ = [("delete_file", wintypes.BOOLEAN)]
 
     _WIN_KERNEL32 = ctypes.WinDLL("kernel32", use_last_error=True)
     _WIN_NTDLL = ctypes.WinDLL("ntdll")
@@ -279,6 +297,15 @@ if os.name == "nt":
         wintypes.BOOLEAN,
     ]
     _WIN_NT_QUERY_DIRECTORY.restype = ctypes.c_long
+    _WIN_NT_SET_INFORMATION = _WIN_NTDLL.NtSetInformationFile
+    _WIN_NT_SET_INFORMATION.argtypes = [
+        wintypes.HANDLE,
+        ctypes.POINTER(_WinIoStatusBlock),
+        ctypes.c_void_p,
+        wintypes.ULONG,
+        ctypes.c_int,
+    ]
+    _WIN_NT_SET_INFORMATION.restype = ctypes.c_long
 
 
 class IncompleteBenchmark(Exception):
@@ -650,7 +677,14 @@ def _windows_directory_entries(directory_handle: int) -> tuple[tuple[str, int], 
         restart = False
 
 
-def _windows_open_relative(parent_handle: int, name: str) -> int:
+def _windows_nt_open_relative(
+    parent_handle: int,
+    name: str,
+    *,
+    desired_access: int,
+    disposition: int,
+    options: int,
+) -> int:
     encoded = name.encode("utf-16-le")
     if len(encoded) > 0xFFFC:
         raise ValueError
@@ -672,20 +706,117 @@ def _windows_open_relative(parent_handle: int, name: str) -> int:
     io_status = _WinIoStatusBlock()
     status = _WIN_NT_CREATE_FILE(
         ctypes.byref(child_handle),
-        _WIN_FILE_LIST_DIRECTORY | _WIN_FILE_READ_ATTRIBUTES | _WIN_SYNCHRONIZE,
+        desired_access,
         ctypes.byref(object_attributes),
         ctypes.byref(io_status),
         None,
         0,
         _WIN_SHARE_ALL,
-        _WIN_FILE_OPEN,
-        _WIN_FILE_OPEN_REPARSE_POINT | _WIN_FILE_SYNCHRONOUS_IO_NONALERT,
+        disposition,
+        options,
         None,
         0,
     )
     if status < 0:
         raise ValueError
     return _windows_handle_number(child_handle)
+
+
+def _windows_open_relative(parent_handle: int, name: str) -> int:
+    return _windows_nt_open_relative(
+        parent_handle,
+        name,
+        desired_access=(
+            _WIN_FILE_LIST_DIRECTORY | _WIN_FILE_READ_ATTRIBUTES | _WIN_SYNCHRONIZE
+        ),
+        disposition=_WIN_FILE_OPEN,
+        options=_WIN_FILE_OPEN_REPARSE_POINT | _WIN_FILE_SYNCHRONOUS_IO_NONALERT,
+    )
+
+
+def _windows_open_owned_file(parent_handle: int, name: str) -> int:
+    return _windows_nt_open_relative(
+        parent_handle,
+        name,
+        desired_access=_WIN_DELETE | _WIN_FILE_READ_ATTRIBUTES | _WIN_SYNCHRONIZE,
+        disposition=_WIN_FILE_OPEN,
+        options=(
+            _WIN_FILE_OPEN_REPARSE_POINT
+            | _WIN_FILE_NON_DIRECTORY_FILE
+            | _WIN_FILE_SYNCHRONOUS_IO_NONALERT
+        ),
+    )
+
+
+def _windows_create_owned_file(parent_handle: int, name: str) -> int:
+    return _windows_nt_open_relative(
+        parent_handle,
+        name,
+        desired_access=_WIN_DELETE | _WIN_FILE_READ_ATTRIBUTES | _WIN_SYNCHRONIZE,
+        disposition=_WIN_FILE_CREATE,
+        options=(
+            _WIN_FILE_OPEN_REPARSE_POINT
+            | _WIN_FILE_NON_DIRECTORY_FILE
+            | _WIN_FILE_SYNCHRONOUS_IO_NONALERT
+        ),
+    )
+
+
+def _windows_open_stage_writer(parent_handle: int, name: str) -> int:
+    return _windows_nt_open_relative(
+        parent_handle,
+        name,
+        desired_access=_WIN_GENERIC_WRITE | _WIN_FILE_READ_ATTRIBUTES | _WIN_SYNCHRONIZE,
+        disposition=_WIN_FILE_OPEN,
+        options=(
+            _WIN_FILE_OPEN_REPARSE_POINT
+            | _WIN_FILE_NON_DIRECTORY_FILE
+            | _WIN_FILE_SYNCHRONOUS_IO_NONALERT
+        ),
+    )
+
+
+def _windows_rename_owned(
+    file_handle: int,
+    parent_handle: int,
+    destination_name: str,
+    *,
+    replace: bool,
+) -> None:
+    encoded = destination_name.encode("utf-16-le")
+    name_offset = _WinFileRenameInformation.file_name.offset
+    information_buffer = ctypes.create_string_buffer(name_offset + len(encoded))
+    information = _WinFileRenameInformation.from_buffer(information_buffer)
+    information.replace_if_exists = replace
+    information.root_directory = wintypes.HANDLE(parent_handle)
+    information.file_name_length = len(encoded)
+    ctypes.memmove(
+        ctypes.addressof(information_buffer) + name_offset, encoded, len(encoded)
+    )
+    io_status = _WinIoStatusBlock()
+    status = _WIN_NT_SET_INFORMATION(
+        wintypes.HANDLE(file_handle),
+        ctypes.byref(io_status),
+        information_buffer,
+        len(information_buffer),
+        _WIN_FILE_RENAME_INFORMATION_CLASS,
+    )
+    if status < 0:
+        raise ValueError
+
+
+def _windows_delete_owned(file_handle: int) -> None:
+    information = _WinFileDispositionInformation(True)
+    io_status = _WinIoStatusBlock()
+    status = _WIN_NT_SET_INFORMATION(
+        wintypes.HANDLE(file_handle),
+        ctypes.byref(io_status),
+        ctypes.byref(information),
+        ctypes.sizeof(information),
+        _WIN_FILE_DISPOSITION_INFORMATION_CLASS,
+    )
+    if status < 0:
+        raise ValueError
 
 
 def _windows_close_opened_files(
@@ -1064,9 +1195,15 @@ def load_response_cells(
     responses_root: Path,
     *,
     forbidden_identities: frozenset[tuple[int, int]] = frozenset(),
+    allow_incomplete_prefix: bool = False,
 ) -> tuple[dict, ...]:
     """Load verified UTF-8 text once, without retaining paths or raw response bytes."""
-    errors = validate_response_index(index, plan)
+    try:
+        errors = validate_response_index(index, plan)
+    except IncompleteBenchmark:
+        if not allow_incomplete_prefix:
+            raise
+        errors = []
     if errors:
         raise ValueError("invalid response index")
 
@@ -1138,8 +1275,9 @@ def load_response_cells(
                 if opened.st_size != record["size"]:
                     raise ValueError
 
+        planned_prefix = plan["cells"][: len(index["records"])]
         for planned, record, file_descriptor in zip(
-            plan["cells"], index["records"], ordered_descriptors, strict=True
+            planned_prefix, index["records"], ordered_descriptors, strict=True
         ):
             if _identity(os.fstat(file_descriptor)) in forbidden_identities:
                 raise ValueError
@@ -1166,6 +1304,28 @@ def load_response_cells(
         if root_descriptor is not None:
             os.close(root_descriptor)
     return tuple(cells)
+
+
+def validate_response_prefix_evidence(
+    plan: dict,
+    index: dict,
+    responses_root: Path,
+    *,
+    forbidden_identities: frozenset[tuple[int, int]] = frozenset(),
+) -> IncompleteBenchmark:
+    """Validate physical prefix evidence without scoring any response text."""
+    try:
+        validate_response_index(index, plan)
+    except IncompleteBenchmark as incomplete:
+        load_response_cells(
+            plan,
+            index,
+            responses_root,
+            forbidden_identities=forbidden_identities,
+            allow_incomplete_prefix=True,
+        )
+        return incomplete
+    raise ValueError("response evidence is not an incomplete canonical prefix")
 
 
 def classify_direction(
@@ -1874,31 +2034,318 @@ def _same_identity(left: os.stat_result, right: os.stat_result) -> bool:
     return _identity(left) == _identity(right)
 
 
-def _require_output_unchanged(
-    output: Path,
-    parent_stat: os.stat_result,
-    output_stat: os.stat_result | None,
+def _before_summary_commit(
+    parent: Path, stage_name: str, output_name: str
 ) -> None:
-    current_parent = output.parent.lstat()
-    if (
-        _is_reparse_or_symlink(current_parent)
-        or not stat.S_ISDIR(current_parent.st_mode)
-        or not _same_identity(current_parent, parent_stat)
-    ):
-        raise ValueError("output parent changed")
-    try:
-        current_output = output.lstat()
-    except FileNotFoundError:
-        if output_stat is not None:
-            raise ValueError("output changed") from None
-    else:
-        if (
-            output_stat is None
-            or _is_reparse_or_symlink(current_output)
-            or not stat.S_ISREG(current_output.st_mode)
-            or not _same_identity(current_output, output_stat)
+    """Narrow race-injection seam before the identity-bound commit."""
+
+
+def _before_summary_cleanup(parent: Path, stage_name: str) -> None:
+    """Narrow race-injection seam before exact-owned stage cleanup."""
+
+
+class _SummaryTransaction:
+    """Own one parent, stage, and optional prior output through commit/rollback."""
+
+    def __init__(
+        self,
+        output: Path,
+        parent_stat: os.stat_result,
+        output_stat: os.stat_result | None,
+    ) -> None:
+        self.parent_path = output.parent
+        self.output_name = output.name
+        self.parent_stat = parent_stat
+        self.output_stat = output_stat
+        self.parent_reference = 0
+        self.stage_name: str | None = None
+        self.stage_owner = 0
+        self.backup_name: str | None = None
+        self.backup_owner = 0
+        self.committed = False
+        if os.name == "nt":
+            self.parent_reference = _windows_open_absolute(
+                self.parent_path, list_directory=True
+            )
+            _, parent_identity, _ = _windows_handle_info(self.parent_reference)
+            if parent_identity != _windows_stat_identity(parent_stat):
+                self.close()
+                raise ValueError("output parent identity changed")
+        else:
+            self.parent_reference = os.open(
+                self.parent_path, os.O_RDONLY | OPEN_DIRECTORY | OPEN_NOFOLLOW
+            )
+            if _identity(os.fstat(self.parent_reference)) != _identity(parent_stat):
+                self.close()
+                raise ValueError("output parent identity changed")
+
+    def _require_parent_current(self) -> None:
+        current = self.parent_path.lstat()
+        if _is_reparse_or_symlink(current) or not stat.S_ISDIR(current.st_mode):
+            raise ValueError("output parent changed")
+        if os.name == "nt":
+            _, held_identity, _ = _windows_handle_info(self.parent_reference)
+            if (
+                held_identity != _windows_stat_identity(self.parent_stat)
+                or _windows_stat_identity(current) != held_identity
+            ):
+                raise ValueError("output parent changed")
+        elif (
+            _identity(os.fstat(self.parent_reference)) != _identity(self.parent_stat)
+            or _identity(current) != _identity(self.parent_stat)
         ):
-            raise ValueError("output changed")
+            raise ValueError("output parent changed")
+
+    def _entry_identity(self, name: str) -> tuple[int, object] | None:
+        if os.name == "nt":
+            entries = dict(_windows_directory_entries(self.parent_reference))
+            if name not in entries:
+                return None
+            handle = _windows_open_owned_file(self.parent_reference, name)
+            try:
+                attributes, identity, _ = _windows_handle_info(handle)
+                if attributes & (
+                    _WIN_FILE_ATTRIBUTE_DIRECTORY | _WIN_FILE_ATTRIBUTE_REPARSE_POINT
+                ):
+                    raise ValueError("unsafe transaction entry")
+                return identity
+            finally:
+                _windows_close_handle(handle)
+        try:
+            current = os.stat(
+                name,
+                dir_fd=self.parent_reference,
+                follow_symlinks=False,
+            )
+        except FileNotFoundError:
+            return None
+        if _is_reparse_or_symlink(current) or not stat.S_ISREG(current.st_mode):
+            raise ValueError("unsafe transaction entry")
+        return _identity(current)
+
+    def _owner_identity(self, owner: int) -> tuple[int, object]:
+        if os.name == "nt":
+            attributes, identity, _ = _windows_handle_info(owner)
+            if attributes & (
+                _WIN_FILE_ATTRIBUTE_DIRECTORY | _WIN_FILE_ATTRIBUTE_REPARSE_POINT
+            ):
+                raise ValueError("unsafe owned transaction file")
+            return identity
+        opened = os.fstat(owner)
+        if not stat.S_ISREG(opened.st_mode):
+            raise ValueError("unsafe owned transaction file")
+        return _identity(opened)
+
+    def _unique_name(self, label: str) -> str:
+        for _ in range(128):
+            candidate = f".{self.output_name}.{label}-{secrets.token_hex(16)}.tmp"
+            if self._entry_identity(candidate) is None:
+                return candidate
+        raise ValueError("unable to allocate transaction name")
+
+    def _open_existing_owner(self, name: str) -> int:
+        if os.name == "nt":
+            return _windows_open_owned_file(self.parent_reference, name)
+        flags = getattr(os, "O_PATH", os.O_RDONLY) | OPEN_NOFOLLOW
+        return os.open(name, flags, dir_fd=self.parent_reference)
+
+    def _rename_owned(
+        self, owner: int, source_name: str, destination_name: str, *, replace: bool
+    ) -> None:
+        if os.name == "nt":
+            _windows_rename_owned(
+                owner,
+                self.parent_reference,
+                destination_name,
+                replace=replace,
+            )
+            return
+        if not replace and self._entry_identity(destination_name) is not None:
+            raise ValueError("transaction destination exists")
+        if self._entry_identity(source_name) != self._owner_identity(owner):
+            raise ValueError("transaction source identity changed")
+        os.replace(
+            source_name,
+            destination_name,
+            src_dir_fd=self.parent_reference,
+            dst_dir_fd=self.parent_reference,
+        )
+
+    def _create_stage(self) -> int:
+        assert self.stage_name is not None
+        if os.name == "nt":
+            self.stage_owner = _windows_create_owned_file(
+                self.parent_reference, self.stage_name
+            )
+            writer_handle = _windows_open_stage_writer(
+                self.parent_reference, self.stage_name
+            )
+            try:
+                return msvcrt.open_osfhandle(
+                    writer_handle, os.O_WRONLY | OPEN_BINARY
+                )
+            except Exception:
+                _windows_close_handle(writer_handle)
+                raise
+        writer = os.open(
+            self.stage_name,
+            os.O_WRONLY | os.O_CREAT | os.O_EXCL | OPEN_NOFOLLOW | OPEN_BINARY,
+            0o600,
+            dir_fd=self.parent_reference,
+        )
+        self.stage_owner = os.dup(writer)
+        return writer
+
+    def prepare(self, payload: bytes) -> None:
+        self._require_parent_current()
+        current_output = self._entry_identity(self.output_name)
+        if self.output_stat is None:
+            if current_output is not None:
+                raise ValueError("output appeared before transaction")
+        else:
+            expected_identity: tuple[int, object]
+            if os.name == "nt":
+                expected_identity = _windows_stat_identity(self.output_stat)
+            else:
+                expected_identity = _identity(self.output_stat)
+            if current_output != expected_identity:
+                raise ValueError("output identity changed")
+            self.backup_owner = self._open_existing_owner(self.output_name)
+            if self._owner_identity(self.backup_owner) != expected_identity:
+                raise ValueError("output identity changed")
+            self.backup_name = self._unique_name("backup")
+            self._rename_owned(
+                self.backup_owner,
+                self.output_name,
+                self.backup_name,
+                replace=False,
+            )
+
+        self.stage_name = self._unique_name("stage")
+        writer = self._create_stage()
+        with os.fdopen(writer, "wb") as staged_file:
+            staged_file.write(payload)
+            staged_file.flush()
+            os.fsync(staged_file.fileno())
+        if self._entry_identity(self.stage_name) != self._owner_identity(
+            self.stage_owner
+        ):
+            raise ValueError("stage identity changed")
+
+    def commit(self) -> None:
+        if self.stage_name is None or not self.stage_owner:
+            raise ValueError("transaction is not prepared")
+        _before_summary_commit(
+            self.parent_path, self.stage_name, self.output_name
+        )
+        self._require_parent_current()
+        if self._entry_identity(self.output_name) is not None:
+            raise ValueError("output appeared before commit")
+        if self._entry_identity(self.stage_name) != self._owner_identity(
+            self.stage_owner
+        ):
+            raise ValueError("stage identity changed before commit")
+        self._rename_owned(
+            self.stage_owner,
+            self.stage_name,
+            self.output_name,
+            replace=False,
+        )
+        self.committed = True
+
+    def _cleanup_posix_owner(self, owner: int) -> None:
+        owned_identity = self._owner_identity(owner)
+        for name in os.listdir(self.parent_reference):
+            try:
+                current = os.stat(
+                    name,
+                    dir_fd=self.parent_reference,
+                    follow_symlinks=False,
+                )
+            except FileNotFoundError:
+                continue
+            if (
+                stat.S_ISREG(current.st_mode)
+                and _identity(current) == owned_identity
+            ):
+                os.unlink(name, dir_fd=self.parent_reference)
+
+    def _delete_owner(self, owner: int) -> None:
+        if os.name == "nt":
+            _windows_delete_owned(owner)
+        else:
+            self._cleanup_posix_owner(owner)
+
+    def _remove_current_output(self) -> None:
+        if self._entry_identity(self.output_name) is None:
+            return
+        if os.name == "nt":
+            owner = _windows_open_owned_file(
+                self.parent_reference, self.output_name
+            )
+            try:
+                _windows_delete_owned(owner)
+            finally:
+                _windows_close_handle(owner)
+        else:
+            os.unlink(self.output_name, dir_fd=self.parent_reference)
+
+    def rollback(self) -> None:
+        try:
+            if self.stage_name is not None and not self.committed:
+                try:
+                    _before_summary_cleanup(self.parent_path, self.stage_name)
+                except Exception:
+                    pass
+            if self.stage_owner:
+                self._delete_owner(self.stage_owner)
+                if os.name == "nt":
+                    _windows_close_handle(self.stage_owner)
+                else:
+                    os.close(self.stage_owner)
+                self.stage_owner = 0
+            if self.backup_owner:
+                self._rename_owned(
+                    self.backup_owner,
+                    self.backup_name or "",
+                    self.output_name,
+                    replace=True,
+                )
+                if os.name == "nt":
+                    _windows_close_handle(self.backup_owner)
+                else:
+                    os.close(self.backup_owner)
+                self.backup_owner = 0
+            elif self.output_stat is None:
+                self._remove_current_output()
+        finally:
+            self.close()
+
+    def finish(self) -> None:
+        try:
+            if self.stage_owner:
+                if os.name == "nt":
+                    _windows_close_handle(self.stage_owner)
+                else:
+                    os.close(self.stage_owner)
+                self.stage_owner = 0
+            if self.backup_owner:
+                self._delete_owner(self.backup_owner)
+                if os.name == "nt":
+                    _windows_close_handle(self.backup_owner)
+                else:
+                    os.close(self.backup_owner)
+                self.backup_owner = 0
+        finally:
+            self.close()
+
+    def close(self) -> None:
+        if self.parent_reference:
+            if os.name == "nt":
+                _windows_close_handle(self.parent_reference)
+            else:
+                os.close(self.parent_reference)
+            self.parent_reference = 0
 
 
 def _failure() -> int:
@@ -1912,6 +2359,29 @@ def _write_stdout(payload: dict) -> None:
     sys.stdout.buffer.flush()
 
 
+def _serialize_complete_status() -> bytes:
+    serialized = canonical_json_bytes(COMPLETE_STATUS)
+    if serialized != COMPLETE_STATUS_BYTES:
+        raise ValueError("invalid complete status")
+    return serialized
+
+
+def _flush_stdout_before_status() -> None:
+    sys.stdout.buffer.flush()
+
+
+def _write_stdout_all(payload: bytes) -> None:
+    written = os.write(sys.stdout.fileno(), payload)
+    if written != len(payload):
+        raise OSError("incomplete fixed status write")
+
+
+def _emit_complete_status() -> None:
+    payload = _serialize_complete_status()
+    _flush_stdout_before_status()
+    _write_stdout_all(payload)
+
+
 def main(argv: list[str] | None = None) -> int:
     """Evaluate one external response bundle without exposing untrusted content."""
     arguments = list(sys.argv[1:] if argv is None else argv)
@@ -1923,7 +2393,7 @@ def main(argv: list[str] | None = None) -> int:
         raise
     except Exception:
         return _failure()
-    staging: Path | None = None
+    transaction: _SummaryTransaction | None = None
     descriptors: list[int] = []
     try:
         plan_path, plan_descriptor, plan_stat = _open_external_regular(args.plan)
@@ -1963,9 +2433,30 @@ def main(argv: list[str] | None = None) -> int:
             raise ValueError("invalid benchmark plan")
         if not isinstance(response_index, dict):
             raise ValueError("invalid response index")
+        incomplete: IncompleteBenchmark | None = None
         try:
             index_errors = validate_response_index(response_index, plan)
-        except IncompleteBenchmark as incomplete:
+        except IncompleteBenchmark as caught:
+            incomplete = caught
+            index_errors = []
+        if index_errors:
+            raise ValueError("invalid response index")
+
+        forbidden_identities = {_identity(plan_stat), _identity(index_stat)}
+        if output_stat is not None:
+            forbidden_identities.add(_identity(output_stat))
+        if incomplete is not None:
+            validated_incomplete = validate_response_prefix_evidence(
+                plan,
+                response_index,
+                responses_root,
+                forbidden_identities=frozenset(forbidden_identities),
+            )
+            if (
+                validated_incomplete.expected_count != incomplete.expected_count
+                or validated_incomplete.observed_count != incomplete.observed_count
+            ):
+                raise ValueError("incomplete response counts changed")
             _write_stdout(
                 {
                     "expected_count": incomplete.expected_count,
@@ -1975,12 +2466,6 @@ def main(argv: list[str] | None = None) -> int:
                 }
             )
             return 3
-        if index_errors:
-            raise ValueError("invalid response index")
-
-        forbidden_identities = {_identity(plan_stat), _identity(index_stat)}
-        if output_stat is not None:
-            forbidden_identities.add(_identity(output_stat))
         cells = load_response_cells(
             plan,
             response_index,
@@ -2008,23 +2493,22 @@ def main(argv: list[str] | None = None) -> int:
         ):
             raise ValueError("invalid canonical benchmark summary")
 
-        _require_output_unchanged(output, output_parent_stat, output_stat)
-        descriptor, staging_name = tempfile.mkstemp(
-            prefix=f".{output.name}.", suffix=".tmp", dir=output.parent
+        for descriptor in descriptors:
+            os.close(descriptor)
+        descriptors.clear()
+        transaction = _SummaryTransaction(
+            output, output_parent_stat, output_stat
         )
-        staging = Path(staging_name)
-        with os.fdopen(descriptor, "wb") as staged_file:
-            staged_file.write(serialized)
-            staged_file.flush()
-            os.fsync(staged_file.fileno())
-        _require_output_unchanged(output, output_parent_stat, output_stat)
-        os.replace(staging, output)
-        staging = None
+        transaction.prepare(serialized)
+        transaction.commit()
+        _emit_complete_status()
+        transaction.finish()
+        transaction = None
     except Exception:
-        if staging is not None:
+        if transaction is not None:
             try:
-                staging.unlink(missing_ok=True)
-            except OSError:
+                transaction.rollback()
+            except Exception:
                 pass
         return _failure()
     finally:
@@ -2033,7 +2517,6 @@ def main(argv: list[str] | None = None) -> int:
                 os.close(descriptor)
             except OSError:
                 pass
-    _write_stdout(COMPLETE_STATUS)
     return 0
 
 

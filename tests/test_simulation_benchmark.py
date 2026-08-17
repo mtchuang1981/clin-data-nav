@@ -7,6 +7,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 
@@ -2057,11 +2058,28 @@ def test_evaluate_cli_writes_only_a_canonical_complete_summary(tmp_path):
     assert summary["synthetic_example"] is False
 
 
+def test_evaluate_cli_atomically_replaces_an_existing_summary(tmp_path):
+    """Success must retire its identity-held backup without leaving artifacts."""
+    bundle = _external_evaluation_bundle(tmp_path)
+    _, _, _, _, _, output = bundle
+    output.write_bytes(b"previous-summary\n")
+
+    completed = _run_evaluation_bundle(bundle)
+
+    assert completed.returncode == 0
+    assert completed.stdout == EVALUATE_SUCCESS
+    assert completed.stderr == b""
+    assert validate_benchmark_summary(json.loads(output.read_bytes())) == []
+    assert not list(tmp_path.glob(f".{output.name}.*.tmp"))
+
+
 def test_evaluate_cli_reports_only_a_valid_canonical_prefix_as_incomplete(tmp_path):
     """A trailing omission must not be scored or materialized as a summary."""
     bundle = _external_evaluation_bundle(tmp_path)
-    _, response_index, _, _, response_index_path, output = bundle
+    _, response_index, responses_root, _, response_index_path, output = bundle
+    omitted = responses_root / response_index["records"][-1]["relative_path"]
     response_index["records"] = response_index["records"][:-1]
+    omitted.unlink()
     response_index_path.write_bytes(canonical_json_bytes(response_index))
 
     completed = _run_evaluation_bundle(bundle)
@@ -2073,6 +2091,93 @@ def test_evaluate_cli_reports_only_a_valid_canonical_prefix_as_incomplete(tmp_pa
     )
     assert completed.stderr == b""
     assert not output.exists()
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        "missing",
+        "size",
+        "digest",
+        "utf8",
+        "extra",
+        "reparse",
+        "hardlink",
+        "output-alias",
+    ],
+)
+def test_evaluate_cli_requires_safe_physical_prefix_evidence(tmp_path, mutation):
+    """Schema-valid partial declarations are not evidence until their files verify."""
+    bundle = _external_evaluation_bundle(tmp_path)
+    _, response_index, responses_root, _, response_index_path, output = bundle
+    omitted = responses_root / response_index["records"][-1]["relative_path"]
+    response_index["records"] = response_index["records"][:-1]
+    omitted.unlink()
+    first = responses_root / response_index["records"][0]["relative_path"]
+    if mutation == "missing":
+        first.unlink()
+    elif mutation == "size":
+        response_index["records"][0]["size"] += 1
+    elif mutation == "digest":
+        response_index["records"][0]["response_sha256"] = "0" * 64
+    elif mutation == "utf8":
+        first.write_bytes(b"\xff")
+        _update_record_for_bytes(response_index, 0, b"\xff")
+    elif mutation == "extra":
+        (responses_root / "extra.md").write_bytes(b"extra\n")
+    elif mutation == "reparse":
+        target = tmp_path / "reparse-target.md"
+        target.write_bytes(first.read_bytes())
+        first.unlink()
+        _make_symlink(target, first)
+    elif mutation == "hardlink":
+        second = responses_root / response_index["records"][1]["relative_path"]
+        second.unlink()
+        try:
+            os.link(first, second)
+        except OSError:
+            pytest.skip("the current filesystem cannot create hardlinks")
+        _update_record_for_bytes(response_index, 1, first.read_bytes())
+    else:
+        try:
+            os.link(first, output)
+        except OSError:
+            pytest.skip("the current filesystem cannot create hardlinks")
+    response_index_path.write_bytes(canonical_json_bytes(response_index))
+
+    completed = _run_evaluation_bundle(bundle)
+
+    assert completed.returncode == 2
+    assert completed.stdout == b""
+    assert completed.stderr == EVALUATE_ERROR
+    if mutation != "output-alias":
+        assert not output.exists()
+
+
+def test_incomplete_prefix_validation_never_calls_the_response_evaluator(
+    tmp_path, monkeypatch, capfd
+):
+    """Physical prefix validation must remain non-scoring."""
+    from scripts import evaluate_simulation_benchmark as benchmark
+
+    bundle = _external_evaluation_bundle(tmp_path)
+    _, response_index, responses_root, _, response_index_path, _ = bundle
+    omitted = responses_root / response_index["records"][-1]["relative_path"]
+    response_index["records"] = response_index["records"][:-1]
+    omitted.unlink()
+    response_index_path.write_bytes(canonical_json_bytes(response_index))
+
+    def fail_if_scored(*args, **kwargs):
+        raise AssertionError("MARKER-INCOMPLETE-WAS-SCORED")
+
+    monkeypatch.setattr(benchmark, "evaluate_response", fail_if_scored)
+    result = benchmark.main(_evaluation_command(*bundle[3:5], bundle[2], bundle[5])[2:])
+    captured = capfd.readouterr()
+
+    assert result == 3
+    assert captured.err == ""
+    assert "benchmark-incomplete" in captured.out
+    assert "MARKER" not in captured.out
 
 
 @pytest.mark.parametrize(
@@ -2290,3 +2395,233 @@ def test_evaluate_cli_failure_preserves_existing_output_and_all_inputs(tmp_path)
         for path in (plan_path, response_index_path, *sorted(responses_root.iterdir()))
     } == before
     assert not list(tmp_path.glob(f".{output.name}.*.tmp"))
+
+
+def _evaluation_main_arguments(
+    bundle: tuple[dict, dict, Path, Path, Path, Path]
+) -> list[str]:
+    _, _, responses_root, plan_path, response_index_path, output = bundle
+    return _evaluation_command(
+        plan_path, response_index_path, responses_root, output
+    )[2:]
+
+
+def _bundle_input_bytes(
+    bundle: tuple[dict, dict, Path, Path, Path, Path]
+) -> dict[Path, bytes]:
+    _, _, responses_root, plan_path, response_index_path, _ = bundle
+    paths = (plan_path, response_index_path, *sorted(responses_root.iterdir()))
+    return {path: path.read_bytes() for path in paths}
+
+
+def test_stage_replacement_before_commit_cannot_be_committed_or_miscleaned(
+    tmp_path, monkeypatch, capfd
+):
+    """A pathname replacement must never substitute for the owned staged inode."""
+    from scripts import evaluate_simulation_benchmark as benchmark
+
+    bundle = _external_evaluation_bundle(tmp_path)
+    output = bundle[5]
+    previous = b"previous-summary\n"
+    output.write_bytes(previous)
+    before = _bundle_input_bytes(bundle)
+    injected: dict[str, Path] = {}
+
+    def replace_stage(parent: Path, stage_name: str, output_name: str) -> None:
+        stage = parent / stage_name
+        stolen = parent / "moved-owned-stage.tmp"
+        os.replace(stage, stolen)
+        stage.write_bytes(b"MARKER-REPLACEMENT-STAGE\n")
+        injected.update(stage=stage, stolen=stolen)
+
+    monkeypatch.setattr(
+        benchmark, "_before_summary_commit", replace_stage, raising=False
+    )
+
+    result = benchmark.main(_evaluation_main_arguments(bundle))
+    captured = capfd.readouterr()
+
+    assert result == 2
+    assert captured.out == ""
+    assert captured.err == EVALUATE_ERROR.decode()
+    assert output.read_bytes() == previous
+    assert _bundle_input_bytes(bundle) == before
+    assert injected["stage"].read_bytes() == b"MARKER-REPLACEMENT-STAGE\n"
+    assert not injected["stolen"].exists()
+
+
+def test_final_hardlink_replacement_before_commit_is_rolled_back_safely(
+    tmp_path, monkeypatch, capfd
+):
+    """A newly injected final alias must not be replaced as if it were validated."""
+    from scripts import evaluate_simulation_benchmark as benchmark
+
+    bundle = _external_evaluation_bundle(tmp_path)
+    plan_path = bundle[3]
+    output = bundle[5]
+    previous = b"previous-summary\n"
+    output.write_bytes(previous)
+    before = _bundle_input_bytes(bundle)
+    original_links = plan_path.stat().st_nlink
+
+    def replace_final(parent: Path, stage_name: str, output_name: str) -> None:
+        try:
+            os.link(plan_path, parent / output_name)
+        except OSError:
+            pytest.skip("the current filesystem cannot create hardlinks")
+
+    monkeypatch.setattr(
+        benchmark, "_before_summary_commit", replace_final, raising=False
+    )
+
+    result = benchmark.main(_evaluation_main_arguments(bundle))
+    captured = capfd.readouterr()
+
+    assert result == 2
+    assert captured.out == ""
+    assert captured.err == EVALUATE_ERROR.decode()
+    assert output.read_bytes() == previous
+    assert _bundle_input_bytes(bundle) == before
+    assert plan_path.stat().st_nlink == original_links
+
+
+def test_output_ancestor_replacement_is_detected_before_handle_relative_commit(
+    tmp_path, monkeypatch, capfd
+):
+    """A held parent may not silently commit into a renamed ancestor."""
+    from scripts import evaluate_simulation_benchmark as benchmark
+
+    bundle = _external_evaluation_bundle(tmp_path)
+    output = bundle[5]
+    previous = b"previous-summary\n"
+    output.write_bytes(previous)
+    moved = tmp_path.with_name(f"{tmp_path.name}-moved")
+    injected = False
+    blocked_by_held_handles = False
+
+    def replace_ancestor(parent: Path, stage_name: str, output_name: str) -> None:
+        nonlocal injected, blocked_by_held_handles
+        injected = True
+        try:
+            os.replace(parent, moved)
+        except OSError:
+            blocked_by_held_handles = True
+            raise RuntimeError("ancestor replacement blocked") from None
+        parent.mkdir()
+
+    monkeypatch.setattr(
+        benchmark, "_before_summary_commit", replace_ancestor, raising=False
+    )
+    try:
+        result = benchmark.main(_evaluation_main_arguments(bundle))
+        captured = capfd.readouterr()
+
+        assert injected
+        assert result == 2
+        assert captured.out == ""
+        assert captured.err == EVALUATE_ERROR.decode()
+        if blocked_by_held_handles:
+            assert output.read_bytes() == previous
+        else:
+            assert not (tmp_path / output.name).exists()
+            assert (moved / output.name).read_bytes() == previous
+    finally:
+        if injected and not blocked_by_held_handles:
+            shutil.rmtree(tmp_path)
+            os.replace(moved, tmp_path)
+
+
+def test_cleanup_race_removes_only_the_owned_stage_identity(
+    tmp_path, monkeypatch, capfd
+):
+    """Cleanup must retain an attacker replacement and dispose only owned bytes."""
+    from scripts import evaluate_simulation_benchmark as benchmark
+
+    bundle = _external_evaluation_bundle(tmp_path)
+    output = bundle[5]
+    previous = b"previous-summary\n"
+    output.write_bytes(previous)
+    injected: dict[str, Path] = {}
+
+    def fail_commit(parent: Path, stage_name: str, output_name: str) -> None:
+        raise RuntimeError("MARKER-FORCE-CLEANUP")
+
+    def replace_during_cleanup(parent: Path, stage_name: str) -> None:
+        stage = parent / stage_name
+        stolen = parent / "cleanup-owned-stage.tmp"
+        os.replace(stage, stolen)
+        stage.write_bytes(b"MARKER-CLEANUP-REPLACEMENT\n")
+        injected.update(stage=stage, stolen=stolen)
+
+    monkeypatch.setattr(
+        benchmark, "_before_summary_commit", fail_commit, raising=False
+    )
+    monkeypatch.setattr(
+        benchmark, "_before_summary_cleanup", replace_during_cleanup, raising=False
+    )
+
+    result = benchmark.main(_evaluation_main_arguments(bundle))
+    captured = capfd.readouterr()
+
+    assert result == 2
+    assert captured.out == ""
+    assert captured.err == EVALUATE_ERROR.decode()
+    assert output.read_bytes() == previous
+    assert injected["stage"].read_bytes() == b"MARKER-CLEANUP-REPLACEMENT\n"
+    assert not injected["stolen"].exists()
+
+
+@pytest.mark.parametrize(
+    ("seam", "replacement"),
+    [
+        ("_serialize_complete_status", lambda: (_ for _ in ()).throw(RuntimeError())),
+        ("_flush_stdout_before_status", lambda: (_ for _ in ()).throw(OSError())),
+        ("_write_stdout_all", lambda payload: (_ for _ in ()).throw(OSError())),
+    ],
+)
+def test_success_status_failures_roll_back_output_without_mixed_stdout(
+    tmp_path, monkeypatch, capfd, seam, replacement
+):
+    """The summary commit and fixed status emission form one rollback boundary."""
+    from scripts import evaluate_simulation_benchmark as benchmark
+
+    bundle = _external_evaluation_bundle(tmp_path)
+    output = bundle[5]
+    previous = b"previous-summary\n"
+    output.write_bytes(previous)
+    before = _bundle_input_bytes(bundle)
+    monkeypatch.setattr(benchmark, seam, replacement, raising=False)
+
+    result = benchmark.main(_evaluation_main_arguments(bundle))
+    captured = capfd.readouterr()
+
+    assert result == 2
+    assert captured.out == ""
+    assert captured.err == EVALUATE_ERROR.decode()
+    assert output.read_bytes() == previous
+    assert _bundle_input_bytes(bundle) == before
+
+
+def test_success_status_failure_removes_a_newly_created_output(
+    tmp_path, monkeypatch, capfd
+):
+    """Rollback restores absence when no summary existed before the transaction."""
+    from scripts import evaluate_simulation_benchmark as benchmark
+
+    bundle = _external_evaluation_bundle(tmp_path)
+    output = bundle[5]
+    before = _bundle_input_bytes(bundle)
+    monkeypatch.setattr(
+        benchmark,
+        "_write_stdout_all",
+        lambda payload: (_ for _ in ()).throw(OSError()),
+    )
+
+    result = benchmark.main(_evaluation_main_arguments(bundle))
+    captured = capfd.readouterr()
+
+    assert result == 2
+    assert captured.out == ""
+    assert captured.err == EVALUATE_ERROR.decode()
+    assert not output.exists()
+    assert _bundle_input_bytes(bundle) == before
