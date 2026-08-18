@@ -2358,6 +2358,33 @@ def test_evaluate_cli_rejects_an_output_hardlinked_to_a_response(tmp_path):
     assert output.read_bytes() == original
 
 
+def test_evaluate_cli_rejects_existing_output_with_a_sibling_hardlink(tmp_path):
+    """A non-input sibling link may not be retired with the prior output."""
+    bundle = _external_evaluation_bundle(tmp_path)
+    output = bundle[5]
+    sibling = tmp_path / "prior-summary-sibling.json"
+    initial = _run_evaluation_bundle(bundle)
+    assert initial.returncode == 0
+    previous = output.read_bytes()
+    assert validate_benchmark_summary(json.loads(previous)) == []
+    try:
+        os.link(output, sibling)
+    except OSError:
+        pytest.skip("the current filesystem cannot create hardlinks")
+    before_identity = (output.stat().st_dev, output.stat().st_ino)
+
+    completed = _run_evaluation_bundle(bundle)
+
+    assert completed.returncode == 2
+    assert completed.stdout == b""
+    assert completed.stderr == EVALUATE_ERROR
+    assert output.read_bytes() == previous
+    assert sibling.read_bytes() == previous
+    assert (output.stat().st_dev, output.stat().st_ino) == before_identity
+    assert (sibling.stat().st_dev, sibling.stat().st_ino) == before_identity
+    assert not list(tmp_path.glob(f".{output.name}.*.tmp"))
+
+
 def test_evaluate_cli_rejects_output_inside_the_response_tree(tmp_path):
     """Staging inside an input tree would mutate the evidence directory."""
     bundle = _external_evaluation_bundle(tmp_path)
@@ -2448,6 +2475,42 @@ def test_detected_stage_drift_before_commit_is_rejected_and_rolled_back(
     assert _bundle_input_bytes(bundle) == before
     assert injected["stage"].read_bytes() == b"MARKER-REPLACEMENT-STAGE\n"
     assert not injected["stolen"].exists()
+
+
+@pytest.mark.skipif(os.name == "nt", reason="POSIX dir-fd cleanup contract")
+def test_posix_cleanup_deletes_only_the_verified_owned_name(
+    tmp_path, monkeypatch, capfd
+):
+    """An unexpected same-inode link must never be found and deleted by scan."""
+    from scripts import evaluate_simulation_benchmark as benchmark
+
+    bundle = _external_evaluation_bundle(tmp_path)
+    output = bundle[5]
+    previous = b"previous-summary\n"
+    output.write_bytes(previous)
+    before = _bundle_input_bytes(bundle)
+    unexpected = tmp_path / "unexpected-owned-sibling.tmp"
+
+    def link_stage_then_fail(
+        parent: Path, stage_name: str, output_name: str
+    ) -> None:
+        os.link(parent / stage_name, unexpected)
+        raise OSError("MARKER-TRIGGER-ROLLBACK")
+
+    monkeypatch.setattr(
+        benchmark, "_before_summary_commit", link_stage_then_fail
+    )
+
+    result = benchmark.main(_evaluation_main_arguments(bundle))
+    captured = capfd.readouterr()
+
+    assert result == 2
+    assert captured.out == ""
+    assert captured.err == EVALUATE_ERROR.decode()
+    assert output.read_bytes() == previous
+    assert unexpected.is_file()
+    assert _bundle_input_bytes(bundle) == before
+    assert not list(tmp_path.glob(f".{output.name}.*.tmp"))
 
 
 def test_detected_final_hardlink_drift_before_commit_is_rolled_back_safely(
@@ -2675,12 +2738,12 @@ def test_backup_cleanup_failure_rolls_back_before_success_notification(
     original_delete = benchmark._SummaryTransaction._delete_owner
     failed = False
 
-    def fail_backup_once(self, owner: int) -> None:
+    def fail_backup_once(self, owner: int, name: str) -> None:
         nonlocal failed
         if not failed and owner == self.backup_owner:
             failed = True
             raise OSError("MARKER-BACKUP-CLEANUP")
-        original_delete(self, owner)
+        original_delete(self, owner, name)
 
     monkeypatch.setattr(
         benchmark._SummaryTransaction, "_delete_owner", fail_backup_once
@@ -2738,12 +2801,12 @@ def test_rollback_cleanup_failure_is_normalized_and_restores_prior_output(
     original_delete = benchmark._SummaryTransaction._delete_owner
     failed = False
 
-    def fail_stage_once(self, owner: int) -> None:
+    def fail_stage_once(self, owner: int, name: str) -> None:
         nonlocal failed
         if not failed and owner == self.stage_owner:
             failed = True
             raise OSError("MARKER-ROLLBACK-CLEANUP")
-        original_delete(self, owner)
+        original_delete(self, owner, name)
 
     monkeypatch.setattr(
         benchmark,
@@ -2785,3 +2848,130 @@ def test_stderr_transport_failure_never_escapes_the_cli_boundary(
     assert result == 2
     assert captured.out == ""
     assert captured.err == ""
+
+
+@pytest.mark.parametrize(
+    ("seam", "existing_output"),
+    [
+        ("_close_summary_backup_owner", True),
+        ("_close_summary_stage_owner", True),
+        ("_close_summary_parent_reference", True),
+        ("_close_summary_stage_owner", False),
+        ("_close_summary_parent_reference", False),
+    ],
+)
+def test_summary_close_failures_are_retried_after_namespace_success(
+    tmp_path, monkeypatch, capfd, seam, existing_output
+):
+    """Close retry is finalization and cannot misclassify a valid summary."""
+    from scripts import evaluate_simulation_benchmark as benchmark
+
+    bundle = _external_evaluation_bundle(tmp_path)
+    output = bundle[5]
+    if existing_output:
+        output.write_bytes(b"previous-summary\n")
+    before = _bundle_input_bytes(bundle)
+    original_close = getattr(benchmark, seam, None)
+    attempts = 0
+
+    def fail_once(reference: int) -> None:
+        nonlocal attempts
+        attempts += 1
+        if attempts == 1:
+            raise OSError("MARKER-CLOSE-FAILURE")
+        assert original_close is not None
+        original_close(reference)
+
+    monkeypatch.setattr(benchmark, seam, fail_once, raising=False)
+
+    result = benchmark.main(_evaluation_main_arguments(bundle))
+    captured = capfd.readouterr()
+
+    assert attempts == (2 if os.name == "nt" else 1)
+    assert result == 0
+    assert captured.out.encode() == EVALUATE_SUCCESS
+    assert captured.err == ""
+    summary_bytes = output.read_bytes()
+    summary = json.loads(summary_bytes)
+    assert summary_bytes == canonical_json_bytes(summary)
+    assert validate_benchmark_summary(summary) == []
+    assert _bundle_input_bytes(bundle) == before
+    assert not list(tmp_path.glob(f".{output.name}.*.tmp"))
+
+
+def test_repeated_parent_close_failure_is_contained_after_summary_success(
+    tmp_path, monkeypatch, capfd
+):
+    """Exhausted close retries cannot reopen the namespace transaction."""
+    from scripts import evaluate_simulation_benchmark as benchmark
+
+    bundle = _external_evaluation_bundle(tmp_path)
+    output = bundle[5]
+    output.write_bytes(b"previous-summary\n")
+    attempts = 0
+
+    def always_fail(reference: int) -> None:
+        nonlocal attempts
+        attempts += 1
+        raise OSError("MARKER-PERSISTENT-CLOSE-FAILURE")
+
+    monkeypatch.setattr(
+        benchmark, "_close_summary_parent_reference", always_fail, raising=False
+    )
+
+    result = benchmark.main(_evaluation_main_arguments(bundle))
+    captured = capfd.readouterr()
+
+    assert attempts == (2 if os.name == "nt" else 1)
+    assert result == 0
+    assert captured.out.encode() == EVALUATE_SUCCESS
+    assert captured.err == ""
+    assert validate_benchmark_summary(json.loads(output.read_bytes())) == []
+    assert not list(tmp_path.glob(f".{output.name}.*.tmp"))
+
+
+def test_close_failures_during_precommit_rollback_do_not_mask_fixed_error(
+    tmp_path, monkeypatch, capfd
+):
+    """Resource finalization errors cannot replace a primary transaction error."""
+    from scripts import evaluate_simulation_benchmark as benchmark
+
+    bundle = _external_evaluation_bundle(tmp_path)
+    output = bundle[5]
+    previous = b"previous-summary\n"
+    output.write_bytes(previous)
+    before = _bundle_input_bytes(bundle)
+    attempts = {
+        "_close_summary_backup_owner": 0,
+        "_close_summary_stage_owner": 0,
+        "_close_summary_parent_reference": 0,
+    }
+
+    def failing_close(seam: str):
+        def fail(reference: int) -> None:
+            attempts[seam] += 1
+            raise OSError("MARKER-ROLLBACK-CLOSE-FAILURE")
+
+        return fail
+
+    monkeypatch.setattr(
+        benchmark,
+        "_before_summary_commit",
+        lambda parent, stage_name, output_name: (_ for _ in ()).throw(OSError()),
+    )
+    for seam in attempts:
+        monkeypatch.setattr(
+            benchmark, seam, failing_close(seam), raising=False
+        )
+
+    result = benchmark.main(_evaluation_main_arguments(bundle))
+    captured = capfd.readouterr()
+
+    expected_attempts = 2 if os.name == "nt" else 1
+    assert attempts == {seam: expected_attempts for seam in attempts}
+    assert result == 2
+    assert captured.out == ""
+    assert captured.err == EVALUATE_ERROR.decode()
+    assert output.read_bytes() == previous
+    assert _bundle_input_bytes(bundle) == before
+    assert not list(tmp_path.glob(f".{output.name}.*.tmp"))

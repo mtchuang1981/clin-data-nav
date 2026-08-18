@@ -1991,8 +1991,10 @@ def _safe_external_output(
     except FileNotFoundError:
         output_stat = None
     else:
-        if _is_reparse_or_symlink(output_stat) or not stat.S_ISREG(
-            output_stat.st_mode
+        if (
+            _is_reparse_or_symlink(output_stat)
+            or not stat.S_ISREG(output_stat.st_mode)
+            or output_stat.st_nlink != 1
         ):
             raise ValueError("output must be a regular file")
     return output, parent_stat, output_stat
@@ -2043,6 +2045,27 @@ def _before_summary_finish(
     parent: Path, stage_name: str, output_name: str
 ) -> None:
     """Narrow drift-injection seam after commit and before cleanup."""
+
+
+def _close_summary_reference(reference: int) -> None:
+    if os.name == "nt":
+        value = _windows_handle_number(reference)
+        if not _WIN_CLOSE_HANDLE(wintypes.HANDLE(value)):
+            raise OSError("summary handle close failed")
+        return
+    os.close(reference)
+
+
+def _close_summary_backup_owner(reference: int) -> None:
+    _close_summary_reference(reference)
+
+
+def _close_summary_stage_owner(reference: int) -> None:
+    _close_summary_reference(reference)
+
+
+def _close_summary_parent_reference(reference: int) -> None:
+    _close_summary_reference(reference)
 
 
 class _SummaryTransaction:
@@ -2254,39 +2277,37 @@ class _SummaryTransaction:
         )
         self.committed = True
 
-    def _cleanup_posix_owner(self, owner: int) -> None:
-        owned_identity = self._owner_identity(owner)
-        for name in os.listdir(self.parent_reference):
-            try:
-                current = os.stat(
-                    name,
-                    dir_fd=self.parent_reference,
-                    follow_symlinks=False,
-                )
-            except FileNotFoundError:
-                continue
-            if (
-                stat.S_ISREG(current.st_mode)
-                and _identity(current) == owned_identity
-            ):
-                os.unlink(name, dir_fd=self.parent_reference)
+    def _cleanup_posix_owner(self, owner: int, name: str) -> None:
+        current = os.stat(
+            name,
+            dir_fd=self.parent_reference,
+            follow_symlinks=False,
+        )
+        if (
+            not stat.S_ISREG(current.st_mode)
+            or _identity(current) != self._owner_identity(owner)
+        ):
+            raise ValueError("owned transaction name changed")
+        os.unlink(name, dir_fd=self.parent_reference)
 
-    def _delete_owner(self, owner: int) -> None:
+    def _delete_owner(self, owner: int, name: str) -> None:
         if os.name == "nt":
             _windows_delete_owned(owner)
         else:
-            self._cleanup_posix_owner(owner)
+            self._cleanup_posix_owner(owner, name)
 
     @staticmethod
-    def _release_owner(owner: int) -> None:
-        if not owner:
-            return
-        if os.name == "nt":
-            _windows_close_handle(owner)
-            return
+    def _finalize_reference(reference: int, close_operation) -> None:
+        attempts = 2 if os.name == "nt" else 1
+        for _ in range(attempts):
+            try:
+                close_operation(reference)
+                return
+            except Exception:
+                pass
         try:
-            os.close(owner)
-        except OSError:
+            _close_summary_reference(reference)
+        except Exception:
             pass
 
     def rollback(self) -> None:
@@ -2294,10 +2315,17 @@ class _SummaryTransaction:
         try:
             if self.stage_owner:
                 try:
-                    self._delete_owner(self.stage_owner)
+                    stage_name = (
+                        self.output_name
+                        if self.committed
+                        else self.stage_name or ""
+                    )
+                    self._delete_owner(self.stage_owner, stage_name)
                 except Exception:
                     failure = True
-                self._release_owner(self.stage_owner)
+                self._finalize_reference(
+                    self.stage_owner, _close_summary_stage_owner
+                )
                 self.stage_owner = 0
             if self.backup_owner:
                 try:
@@ -2309,7 +2337,9 @@ class _SummaryTransaction:
                     )
                 except Exception:
                     failure = True
-                self._release_owner(self.backup_owner)
+                self._finalize_reference(
+                    self.backup_owner, _close_summary_backup_owner
+                )
                 self.backup_owner = 0
         finally:
             self.close()
@@ -2331,22 +2361,20 @@ class _SummaryTransaction:
         # Backup deletion is the last operation that can still require rollback.
         # Keep every held identity open until it succeeds.
         if self.backup_owner:
-            self._delete_owner(self.backup_owner)
-            self._release_owner(self.backup_owner)
+            self._delete_owner(self.backup_owner, self.backup_name or "")
+            self._finalize_reference(
+                self.backup_owner, _close_summary_backup_owner
+            )
             self.backup_owner = 0
-        self._release_owner(self.stage_owner)
+        self._finalize_reference(self.stage_owner, _close_summary_stage_owner)
         self.stage_owner = 0
         self.close()
 
     def close(self) -> None:
         if self.parent_reference:
-            if os.name == "nt":
-                _windows_close_handle(self.parent_reference)
-            else:
-                try:
-                    os.close(self.parent_reference)
-                except OSError:
-                    pass
+            self._finalize_reference(
+                self.parent_reference, _close_summary_parent_reference
+            )
             self.parent_reference = 0
 
 
