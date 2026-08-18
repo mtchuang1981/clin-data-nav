@@ -1914,8 +1914,7 @@ class _SafeArgumentParser(argparse.ArgumentParser):
 
     def exit(self, status: int = 0, message: str | None = None) -> None:
         if status == 2:
-            sys.stderr.buffer.write(CLI_ERROR)
-            sys.stderr.buffer.flush()
+            _failure()
             raise SystemExit(status)
         super().exit(status, message)
 
@@ -2040,8 +2039,10 @@ def _before_summary_commit(
     """Narrow race-injection seam before the identity-bound commit."""
 
 
-def _before_summary_cleanup(parent: Path, stage_name: str) -> None:
-    """Narrow race-injection seam before exact-owned stage cleanup."""
+def _before_summary_finish(
+    parent: Path, stage_name: str, output_name: str
+) -> None:
+    """Narrow drift-injection seam after commit and before cleanup."""
 
 
 class _SummaryTransaction:
@@ -2276,81 +2277,99 @@ class _SummaryTransaction:
         else:
             self._cleanup_posix_owner(owner)
 
-    def _remove_current_output(self) -> None:
-        if self._entry_identity(self.output_name) is None:
+    @staticmethod
+    def _release_owner(owner: int) -> None:
+        if not owner:
             return
         if os.name == "nt":
-            owner = _windows_open_owned_file(
-                self.parent_reference, self.output_name
-            )
-            try:
-                _windows_delete_owned(owner)
-            finally:
-                _windows_close_handle(owner)
-        else:
-            os.unlink(self.output_name, dir_fd=self.parent_reference)
+            _windows_close_handle(owner)
+            return
+        try:
+            os.close(owner)
+        except OSError:
+            pass
 
     def rollback(self) -> None:
+        failure = False
         try:
-            if self.stage_name is not None and not self.committed:
-                try:
-                    _before_summary_cleanup(self.parent_path, self.stage_name)
-                except Exception:
-                    pass
             if self.stage_owner:
-                self._delete_owner(self.stage_owner)
-                if os.name == "nt":
-                    _windows_close_handle(self.stage_owner)
-                else:
-                    os.close(self.stage_owner)
+                try:
+                    self._delete_owner(self.stage_owner)
+                except Exception:
+                    failure = True
+                self._release_owner(self.stage_owner)
                 self.stage_owner = 0
             if self.backup_owner:
-                self._rename_owned(
-                    self.backup_owner,
-                    self.backup_name or "",
-                    self.output_name,
-                    replace=True,
-                )
-                if os.name == "nt":
-                    _windows_close_handle(self.backup_owner)
-                else:
-                    os.close(self.backup_owner)
+                try:
+                    self._rename_owned(
+                        self.backup_owner,
+                        self.backup_name or "",
+                        self.output_name,
+                        replace=True,
+                    )
+                except Exception:
+                    failure = True
+                self._release_owner(self.backup_owner)
                 self.backup_owner = 0
-            elif self.output_stat is None:
-                self._remove_current_output()
         finally:
             self.close()
+        if failure:
+            raise ValueError("summary rollback failed")
 
     def finish(self) -> None:
-        try:
-            if self.stage_owner:
-                if os.name == "nt":
-                    _windows_close_handle(self.stage_owner)
-                else:
-                    os.close(self.stage_owner)
-                self.stage_owner = 0
-            if self.backup_owner:
-                self._delete_owner(self.backup_owner)
-                if os.name == "nt":
-                    _windows_close_handle(self.backup_owner)
-                else:
-                    os.close(self.backup_owner)
-                self.backup_owner = 0
-        finally:
-            self.close()
+        if not self.committed or self.stage_name is None or not self.stage_owner:
+            raise ValueError("transaction is not committed")
+        _before_summary_finish(
+            self.parent_path, self.stage_name, self.output_name
+        )
+        self._require_parent_current()
+        if self._entry_identity(self.output_name) != self._owner_identity(
+            self.stage_owner
+        ):
+            raise ValueError("committed output identity changed")
+
+        # Backup deletion is the last operation that can still require rollback.
+        # Keep every held identity open until it succeeds.
+        if self.backup_owner:
+            self._delete_owner(self.backup_owner)
+            self._release_owner(self.backup_owner)
+            self.backup_owner = 0
+        self._release_owner(self.stage_owner)
+        self.stage_owner = 0
+        self.close()
 
     def close(self) -> None:
         if self.parent_reference:
             if os.name == "nt":
                 _windows_close_handle(self.parent_reference)
             else:
-                os.close(self.parent_reference)
+                try:
+                    os.close(self.parent_reference)
+                except OSError:
+                    pass
             self.parent_reference = 0
 
 
+def _write_stderr_chunk(payload: bytes) -> int:
+    return os.write(sys.stderr.fileno(), payload)
+
+
 def _failure() -> int:
-    sys.stderr.buffer.write(CLI_ERROR)
-    sys.stderr.buffer.flush()
+    try:
+        sys.stderr.buffer.flush()
+        offset = 0
+        while offset < len(CLI_ERROR):
+            written = _write_stderr_chunk(CLI_ERROR[offset:])
+            if (
+                type(written) is not int
+                or written <= 0
+                or written > len(CLI_ERROR) - offset
+            ):
+                raise OSError("invalid fixed error write")
+            offset += written
+        sys.stderr.buffer.flush()
+    except Exception:
+        pass
     return 2
 
 
@@ -2370,15 +2389,40 @@ def _flush_stdout_before_status() -> None:
     sys.stdout.buffer.flush()
 
 
+class _NotificationFailure(Exception):
+    """Record only whether fixed notification bytes reached stdout."""
+
+    def __init__(self, bytes_written: int) -> None:
+        super().__init__()
+        self.bytes_written = bytes_written
+
+
+def _write_stdout_chunk(payload: bytes) -> int:
+    return os.write(sys.stdout.fileno(), payload)
+
+
 def _write_stdout_all(payload: bytes) -> None:
-    written = os.write(sys.stdout.fileno(), payload)
-    if written != len(payload):
-        raise OSError("incomplete fixed status write")
+    offset = 0
+    while offset < len(payload):
+        try:
+            written = _write_stdout_chunk(payload[offset:])
+            if (
+                type(written) is not int
+                or written <= 0
+                or written > len(payload) - offset
+            ):
+                raise OSError("invalid fixed status write")
+        except Exception:
+            raise _NotificationFailure(offset) from None
+        offset += written
 
 
 def _emit_complete_status() -> None:
-    payload = _serialize_complete_status()
-    _flush_stdout_before_status()
+    try:
+        payload = _serialize_complete_status()
+        _flush_stdout_before_status()
+    except Exception:
+        raise _NotificationFailure(0) from None
     _write_stdout_all(payload)
 
 
@@ -2501,9 +2545,14 @@ def main(argv: list[str] | None = None) -> int:
         )
         transaction.prepare(serialized)
         transaction.commit()
-        _emit_complete_status()
         transaction.finish()
         transaction = None
+        try:
+            _emit_complete_status()
+        except _NotificationFailure as notification_failure:
+            if notification_failure.bytes_written:
+                return 2
+            return _failure()
     except Exception:
         if transaction is not None:
             try:

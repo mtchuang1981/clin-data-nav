@@ -2414,10 +2414,10 @@ def _bundle_input_bytes(
     return {path: path.read_bytes() for path in paths}
 
 
-def test_stage_replacement_before_commit_cannot_be_committed_or_miscleaned(
+def test_detected_stage_drift_before_commit_is_rejected_and_rolled_back(
     tmp_path, monkeypatch, capfd
 ):
-    """A pathname replacement must never substitute for the owned staged inode."""
+    """One-writer drift detected before commit must preserve prior output."""
     from scripts import evaluate_simulation_benchmark as benchmark
 
     bundle = _external_evaluation_bundle(tmp_path)
@@ -2450,10 +2450,10 @@ def test_stage_replacement_before_commit_cannot_be_committed_or_miscleaned(
     assert not injected["stolen"].exists()
 
 
-def test_final_hardlink_replacement_before_commit_is_rolled_back_safely(
+def test_detected_final_hardlink_drift_before_commit_is_rolled_back_safely(
     tmp_path, monkeypatch, capfd
 ):
-    """A newly injected final alias must not be replaced as if it were validated."""
+    """A final alias present at the commit check must fail closed."""
     from scripts import evaluate_simulation_benchmark as benchmark
 
     bundle = _external_evaluation_bundle(tmp_path)
@@ -2485,10 +2485,10 @@ def test_final_hardlink_replacement_before_commit_is_rolled_back_safely(
     assert plan_path.stat().st_nlink == original_links
 
 
-def test_output_ancestor_replacement_is_detected_before_handle_relative_commit(
+def test_output_ancestor_drift_after_commit_is_detected_before_cleanup(
     tmp_path, monkeypatch, capfd
 ):
-    """A held parent may not silently commit into a renamed ancestor."""
+    """A one-time parent drift must rollback within the held directory."""
     from scripts import evaluate_simulation_benchmark as benchmark
 
     bundle = _external_evaluation_bundle(tmp_path)
@@ -2510,7 +2510,7 @@ def test_output_ancestor_replacement_is_detected_before_handle_relative_commit(
         parent.mkdir()
 
     monkeypatch.setattr(
-        benchmark, "_before_summary_commit", replace_ancestor, raising=False
+        benchmark, "_before_summary_finish", replace_ancestor, raising=False
     )
     try:
         result = benchmark.main(_evaluation_main_arguments(bundle))
@@ -2531,58 +2531,18 @@ def test_output_ancestor_replacement_is_detected_before_handle_relative_commit(
             os.replace(moved, tmp_path)
 
 
-def test_cleanup_race_removes_only_the_owned_stage_identity(
-    tmp_path, monkeypatch, capfd
-):
-    """Cleanup must retain an attacker replacement and dispose only owned bytes."""
-    from scripts import evaluate_simulation_benchmark as benchmark
-
-    bundle = _external_evaluation_bundle(tmp_path)
-    output = bundle[5]
-    previous = b"previous-summary\n"
-    output.write_bytes(previous)
-    injected: dict[str, Path] = {}
-
-    def fail_commit(parent: Path, stage_name: str, output_name: str) -> None:
-        raise RuntimeError("MARKER-FORCE-CLEANUP")
-
-    def replace_during_cleanup(parent: Path, stage_name: str) -> None:
-        stage = parent / stage_name
-        stolen = parent / "cleanup-owned-stage.tmp"
-        os.replace(stage, stolen)
-        stage.write_bytes(b"MARKER-CLEANUP-REPLACEMENT\n")
-        injected.update(stage=stage, stolen=stolen)
-
-    monkeypatch.setattr(
-        benchmark, "_before_summary_commit", fail_commit, raising=False
-    )
-    monkeypatch.setattr(
-        benchmark, "_before_summary_cleanup", replace_during_cleanup, raising=False
-    )
-
-    result = benchmark.main(_evaluation_main_arguments(bundle))
-    captured = capfd.readouterr()
-
-    assert result == 2
-    assert captured.out == ""
-    assert captured.err == EVALUATE_ERROR.decode()
-    assert output.read_bytes() == previous
-    assert injected["stage"].read_bytes() == b"MARKER-CLEANUP-REPLACEMENT\n"
-    assert not injected["stolen"].exists()
-
-
 @pytest.mark.parametrize(
     ("seam", "replacement"),
     [
         ("_serialize_complete_status", lambda: (_ for _ in ()).throw(RuntimeError())),
         ("_flush_stdout_before_status", lambda: (_ for _ in ()).throw(OSError())),
-        ("_write_stdout_all", lambda payload: (_ for _ in ()).throw(OSError())),
+        ("_write_stdout_chunk", lambda payload: (_ for _ in ()).throw(OSError())),
     ],
 )
-def test_success_status_failures_roll_back_output_without_mixed_stdout(
+def test_zero_byte_success_notification_failure_retains_committed_summary(
     tmp_path, monkeypatch, capfd, seam, replacement
 ):
-    """The summary commit and fixed status emission form one rollback boundary."""
+    """A zero-byte notification failure reports error after summary commit."""
     from scripts import evaluate_simulation_benchmark as benchmark
 
     bundle = _external_evaluation_bundle(tmp_path)
@@ -2598,14 +2558,18 @@ def test_success_status_failures_roll_back_output_without_mixed_stdout(
     assert result == 2
     assert captured.out == ""
     assert captured.err == EVALUATE_ERROR.decode()
-    assert output.read_bytes() == previous
+    summary_bytes = output.read_bytes()
+    summary = json.loads(summary_bytes)
+    assert summary_bytes == canonical_json_bytes(summary)
+    assert validate_benchmark_summary(summary) == []
+    assert summary_bytes != previous
     assert _bundle_input_bytes(bundle) == before
 
 
-def test_success_status_failure_removes_a_newly_created_output(
+def test_zero_byte_notification_failure_retains_newly_created_summary(
     tmp_path, monkeypatch, capfd
 ):
-    """Rollback restores absence when no summary existed before the transaction."""
+    """The canonical summary, not stdout, is authoritative after commit."""
     from scripts import evaluate_simulation_benchmark as benchmark
 
     bundle = _external_evaluation_bundle(tmp_path)
@@ -2613,8 +2577,140 @@ def test_success_status_failure_removes_a_newly_created_output(
     before = _bundle_input_bytes(bundle)
     monkeypatch.setattr(
         benchmark,
-        "_write_stdout_all",
+        "_write_stdout_chunk",
         lambda payload: (_ for _ in ()).throw(OSError()),
+        raising=False,
+    )
+
+    result = benchmark.main(_evaluation_main_arguments(bundle))
+    captured = capfd.readouterr()
+
+    assert result == 2
+    assert captured.out == ""
+    assert captured.err == EVALUATE_ERROR.decode()
+    summary_bytes = output.read_bytes()
+    summary = json.loads(summary_bytes)
+    assert summary_bytes == canonical_json_bytes(summary)
+    assert validate_benchmark_summary(summary) == []
+    assert _bundle_input_bytes(bundle) == before
+
+
+def test_short_success_notification_writes_are_retried_to_completion(
+    tmp_path, monkeypatch, capfd
+):
+    """Every positive short write must advance until the fixed status is complete."""
+    from scripts import evaluate_simulation_benchmark as benchmark
+
+    bundle = _external_evaluation_bundle(tmp_path)
+    calls: list[int] = []
+
+    def write_short(payload: bytes) -> int:
+        chunk = payload[:7]
+        written = os.write(sys.stdout.fileno(), chunk)
+        calls.append(written)
+        return written
+
+    monkeypatch.setattr(
+        benchmark, "_write_stdout_chunk", write_short, raising=False
+    )
+
+    result = benchmark.main(_evaluation_main_arguments(bundle))
+    captured = capfd.readouterr()
+
+    assert result == 0
+    assert captured.out.encode() == EVALUATE_SUCCESS
+    assert captured.err == ""
+    assert len(calls) > 1
+
+
+def test_partial_success_notification_failure_has_no_contradictory_stderr(
+    tmp_path, monkeypatch, capfd
+):
+    """Once status bytes escape, failure must retain summary and silence stderr."""
+    from scripts import evaluate_simulation_benchmark as benchmark
+
+    bundle = _external_evaluation_bundle(tmp_path)
+    output = bundle[5]
+    previous = b"previous-summary\n"
+    output.write_bytes(previous)
+    before = _bundle_input_bytes(bundle)
+    calls = 0
+
+    def write_then_fail(payload: bytes) -> int:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            return os.write(sys.stdout.fileno(), payload[:9])
+        raise OSError("MARKER-STATUS-TRANSPORT")
+
+    monkeypatch.setattr(
+        benchmark, "_write_stdout_chunk", write_then_fail, raising=False
+    )
+
+    result = benchmark.main(_evaluation_main_arguments(bundle))
+    captured = capfd.readouterr()
+
+    assert result == 2
+    assert captured.out.encode() == EVALUATE_SUCCESS[:9]
+    assert captured.err == ""
+    summary_bytes = output.read_bytes()
+    summary = json.loads(summary_bytes)
+    assert summary_bytes == canonical_json_bytes(summary)
+    assert validate_benchmark_summary(summary) == []
+    assert summary_bytes != previous
+    assert _bundle_input_bytes(bundle) == before
+
+
+def test_backup_cleanup_failure_rolls_back_before_success_notification(
+    tmp_path, monkeypatch, capfd
+):
+    """A fallible backup retirement must complete before stdout success."""
+    from scripts import evaluate_simulation_benchmark as benchmark
+
+    bundle = _external_evaluation_bundle(tmp_path)
+    output = bundle[5]
+    previous = b"previous-summary\n"
+    output.write_bytes(previous)
+    before = _bundle_input_bytes(bundle)
+    original_delete = benchmark._SummaryTransaction._delete_owner
+    failed = False
+
+    def fail_backup_once(self, owner: int) -> None:
+        nonlocal failed
+        if not failed and owner == self.backup_owner:
+            failed = True
+            raise OSError("MARKER-BACKUP-CLEANUP")
+        original_delete(self, owner)
+
+    monkeypatch.setattr(
+        benchmark._SummaryTransaction, "_delete_owner", fail_backup_once
+    )
+
+    result = benchmark.main(_evaluation_main_arguments(bundle))
+    captured = capfd.readouterr()
+
+    assert failed
+    assert result == 2
+    assert captured.out == ""
+    assert captured.err == EVALUATE_ERROR.decode()
+    assert output.read_bytes() == previous
+    assert _bundle_input_bytes(bundle) == before
+    assert not list(tmp_path.glob(f".{output.name}.*.tmp"))
+
+
+def test_pre_finish_failure_removes_a_newly_created_summary(
+    tmp_path, monkeypatch, capfd
+):
+    """Before cleanup completes, rollback must restore initial absence."""
+    from scripts import evaluate_simulation_benchmark as benchmark
+
+    bundle = _external_evaluation_bundle(tmp_path)
+    output = bundle[5]
+    before = _bundle_input_bytes(bundle)
+    monkeypatch.setattr(
+        benchmark,
+        "_before_summary_finish",
+        lambda parent, stage_name, output_name: (_ for _ in ()).throw(OSError()),
     )
 
     result = benchmark.main(_evaluation_main_arguments(bundle))
@@ -2625,3 +2721,67 @@ def test_success_status_failure_removes_a_newly_created_output(
     assert captured.err == EVALUATE_ERROR.decode()
     assert not output.exists()
     assert _bundle_input_bytes(bundle) == before
+    assert not list(tmp_path.glob(f".{output.name}.*.tmp"))
+
+
+def test_rollback_cleanup_failure_is_normalized_and_restores_prior_output(
+    tmp_path, monkeypatch, capfd
+):
+    """A cleanup error may not mask safe restoration or escape the CLI."""
+    from scripts import evaluate_simulation_benchmark as benchmark
+
+    bundle = _external_evaluation_bundle(tmp_path)
+    output = bundle[5]
+    previous = b"previous-summary\n"
+    output.write_bytes(previous)
+    before = _bundle_input_bytes(bundle)
+    original_delete = benchmark._SummaryTransaction._delete_owner
+    failed = False
+
+    def fail_stage_once(self, owner: int) -> None:
+        nonlocal failed
+        if not failed and owner == self.stage_owner:
+            failed = True
+            raise OSError("MARKER-ROLLBACK-CLEANUP")
+        original_delete(self, owner)
+
+    monkeypatch.setattr(
+        benchmark,
+        "_before_summary_commit",
+        lambda parent, stage_name, output_name: (_ for _ in ()).throw(OSError()),
+    )
+    monkeypatch.setattr(
+        benchmark._SummaryTransaction, "_delete_owner", fail_stage_once
+    )
+
+    result = benchmark.main(_evaluation_main_arguments(bundle))
+    captured = capfd.readouterr()
+
+    assert failed
+    assert result == 2
+    assert captured.out == ""
+    assert captured.err == EVALUATE_ERROR.decode()
+    assert output.read_bytes() == previous
+    assert _bundle_input_bytes(bundle) == before
+
+
+def test_stderr_transport_failure_never_escapes_the_cli_boundary(
+    tmp_path, monkeypatch, capfd
+):
+    """A broken stderr transport must still return the closed malformed exit."""
+    from scripts import evaluate_simulation_benchmark as benchmark
+
+    bundle = _external_evaluation_bundle(tmp_path)
+    monkeypatch.setattr(
+        benchmark,
+        "_write_stderr_chunk",
+        lambda payload: (_ for _ in ()).throw(OSError()),
+        raising=False,
+    )
+
+    result = benchmark.main([])
+    captured = capfd.readouterr()
+
+    assert result == 2
+    assert captured.out == ""
+    assert captured.err == ""
