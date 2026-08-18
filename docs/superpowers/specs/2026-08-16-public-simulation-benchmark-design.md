@@ -240,6 +240,15 @@ aliases between cells, duplicate records, unexpected files, non-UTF-8 input,
 and size or digest mismatch. Identical bytes in two distinct regular files are
 valid and produce a tie; content equality alone is not treated as fraud.
 
+The external plan, response, and output directories are controlled by the
+runner and must have a single writer for the duration of each CLI transaction.
+The implementation rejects unsafe state present at validation time and detects
+ordinary namespace drift where the operating system exposes stable handles or
+identities. It does not claim to defeat a separate malicious process that
+continuously replaces POSIX directory entries during commit: POSIX provides no
+atomic "unlink this name only if it still names this held inode" primitive.
+This concurrency boundary must be stated in the public guidance.
+
 ## 8. Evaluation and summary
 
 The evaluation command is:
@@ -340,6 +349,17 @@ The CLI writes fixed content-free stderr for invalid inputs. It never echoes a
 response, model name, provider value, external identifier, local path, hash,
 or exception string. Incomplete output is a sanitized fixed-shape summary and
 cannot be rendered as a result report.
+
+The canonical summary file is the authoritative result; success stdout is a
+bounded notification written only after the validated summary transaction has
+committed. The CLI retries short writes. If notification fails before any byte
+is written, it emits the fixed stderr and exits `2`; if failure occurs after a
+partial notification, it emits no additional stderr and exits `2` to avoid a
+mixed message. In either transport-failure case, the already committed valid
+summary remains in place and is not rolled back. This is the sole exception to
+the pre-commit rule that a reported failure leaves an existing output
+unchanged, because stdout bytes already delivered to a pipe or terminal cannot
+be withdrawn.
 
 ## 11. Bilingual reporting
 
@@ -461,6 +481,8 @@ Required tests include:
 - zero-intervention-forbidden and no-negative-stratum guardrails;
 - input immutability, staged output, rollback, content-free errors, and fixed
   exit codes;
+- exclusive-writer transaction assumptions, summary-authoritative status,
+  short-write completion, and zero-byte versus partial stdout failure behavior;
 - bilingual report equality of facts and renderer `--check` behavior;
 - Issue Form structure and mandatory sensitive-data acknowledgement;
 - public-boundary allowlist and reject-before-read mutations; and

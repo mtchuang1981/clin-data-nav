@@ -21,7 +21,7 @@
 - `positive-signal` requires at least `0.20` absolute improvement, more improved than worsened pairs, zero intervention forbidden violations, and no negative output-depth stratum.
 - A complete result is `benchmark-observed`; no input may claim or force a status, direction, `human-effective`, or `evaluation-green`.
 - The benchmark performs no human-study power analysis and makes no clinical, causal, patient-outcome, usability, or deployment claim.
-- All external paths fail closed on repository containment, traversal, symlink/reparse escape, hardlink alias, and input/output aliasing.
+- All external paths fail closed on repository containment, traversal, symlink/reparse escape, hardlink alias, and input/output aliasing. External transaction directories require a single writer; resistance to a malicious process continuously replacing POSIX directory entries is outside the threat model and must be documented.
 - Errors are content-free and never echo model metadata, response text, external paths, hashes, or exception strings.
 - Add a failing test before every production behavior change. Use only generated synthetic responses and unique external temporary directories.
 - Before completion run the four repository gates, all three renderer checks, a complete diff review, and the same suite on official Python 3.11.9.
@@ -572,7 +572,14 @@ Subprocess tests require:
 - all parsers reject abbreviated flags;
 - output cannot alias any input by spelling, resolution, symlink/reparse point,
   or hardlink;
-- failures leave an existing output unchanged; and
+- every failure before summary commit leaves an existing output unchanged;
+- the canonical summary file is authoritative after commit, while stdout is a
+  bounded notification: retry short writes, use fixed stderr only when zero
+  bytes were written, use no additional stderr after a partial write, exit `2`
+  on either transport failure, and do not roll back the valid summary;
+- tests and guidance require the output directory to have one writer for the
+  transaction and state that hostile concurrent POSIX namespace mutation is
+  outside the supported threat model; and
 - a marker in response text, metadata, filename, and invalid JSON never appears
   in stdout or stderr.
 
@@ -590,6 +597,14 @@ For complete evidence, validate the summary twice: once after computation and
 once after canonical serialize/parse. Write a same-directory exclusive staged
 file, flush, close, and atomically replace the output. On incomplete evidence,
 write no file. Never modify inputs.
+
+Reject unsafe static links/aliases and fail closed on detected namespace drift,
+using held handles and identities where supported. Do not claim an impossible
+atomic compare-inode-and-unlink guarantee on POSIX; require an exclusive-writer
+external directory instead. After all fallible summary commit and cleanup work
+succeeds, emit the fixed success notification with a complete-write loop. The
+summary remains authoritative if stdout transport subsequently fails, following
+the zero-byte/partial-write behavior above.
 
 Pass the already validated `response_index["execution_attestation"]` explicitly
 to `evaluate_benchmark(plan, cells, execution_attestation)`. Do not place the
@@ -715,7 +730,9 @@ git commit -m "feat: render simulation benchmark reports"
 
 Require the benchmark README to contain the three exact commands, 72-cell
 layout, fresh-session/offline/balanced-order rules, external-output boundary,
-exit codes, direction criteria, Tier 2 link, and no-human-claim language.
+exclusive-writer transaction requirement, summary-authoritative stdout failure
+behavior, exit codes, direction criteria, Tier 2 link, and no-human-claim
+language.
 
 Parse both Issue Forms as YAML and require GitHub Issue Form root keys
 `name,description,title,labels,body`; unique safe body IDs; only aggregate
