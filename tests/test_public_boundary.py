@@ -400,6 +400,127 @@ def test_scanner_preserves_public_recovery_allowlist(tmp_path):
     assert scan_repository(tmp_path) == []
 
 
+@pytest.mark.parametrize(
+    ("relative_path", "expected_rule"),
+    (
+        ("evals/benchmark/runs/run.json", "private-benchmark-artifact"),
+        ("evals/benchmark/results/report.md", "private-benchmark-artifact"),
+        (
+            "evals/benchmark/raw-responses/case.md",
+            "private-benchmark-artifact",
+        ),
+        (
+            "evals/benchmark/response-bundle.json",
+            "private-benchmark-artifact",
+        ),
+        (
+            "evals/benchmark/benchmark-plan.json",
+            "private-benchmark-artifact",
+        ),
+        (
+            "evals/benchmark/examples/result.json",
+            "private-benchmark-artifact",
+        ),
+        (
+            "evals/benchmark/condition-key.json",
+            "private-recovery-artifact",
+        ),
+        ("evals/benchmark/api-key.txt", "private-benchmark-artifact"),
+    ),
+)
+def test_scanner_rejects_private_benchmark_paths_before_file_access(
+    tmp_path,
+    monkeypatch,
+    relative_path,
+    expected_rule,
+):
+    """A private benchmark filename must be enough to reject it safely."""
+    marker = "SYNTHETIC-BENCHMARK-PRIVATE-MARKER"
+    path = tmp_path / relative_path
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(marker, encoding="utf-8")
+    original_stat = Path.stat
+    original_lstat = Path.lstat
+    original_read_text = Path.read_text
+    accesses = []
+
+    def observe_stat(self, *args, **kwargs):
+        if self == path:
+            accesses.append("stat")
+        return original_stat(self, *args, **kwargs)
+
+    def observe_lstat(self, *args, **kwargs):
+        if self == path:
+            accesses.append("lstat")
+        return original_lstat(self, *args, **kwargs)
+
+    def observe_read_text(self, *args, **kwargs):
+        if self == path:
+            accesses.append("read_text")
+        return original_read_text(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "stat", observe_stat)
+    monkeypatch.setattr(Path, "lstat", observe_lstat)
+    monkeypatch.setattr(Path, "read_text", observe_read_text)
+
+    findings = scan_repository(tmp_path)
+
+    assert [(item.path, item.rule) for item in findings] == [
+        (relative_path, expected_rule)
+    ]
+    assert marker not in findings[0].detail
+    assert accesses == []
+
+
+@pytest.mark.parametrize(
+    ("relative_path", "expected_rule"),
+    (
+        ("study-data/evals/benchmark/results/report.md", "private-study-data"),
+        (
+            "evals/effectiveness/recovery/results/report.md",
+            "private-recovery-artifact",
+        ),
+    ),
+)
+def test_scanner_keeps_study_and_recovery_precedence_for_benchmark_names(
+    tmp_path,
+    relative_path,
+    expected_rule,
+):
+    path = tmp_path / relative_path
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("synthetic boundary sentinel", encoding="utf-8")
+
+    findings = scan_repository(tmp_path)
+
+    assert [(item.path, item.rule) for item in findings] == [
+        (relative_path, expected_rule)
+    ]
+
+
+def test_scanner_allows_only_the_named_public_benchmark_contract_files(tmp_path):
+    public_paths = (
+        "evals/benchmark/README.md",
+        "evals/benchmark/released-skill-bindings.json",
+        "evals/benchmark/benchmark-plan-template.json",
+        "evals/benchmark/response-index-template.json",
+        "evals/benchmark/summary-schema.md",
+        "evals/benchmark/report-template.md",
+        "evals/benchmark/report-template.zh-TW.md",
+        "evals/benchmark/examples/synthetic-summary.json",
+        "evals/benchmark/examples/synthetic-report.md",
+        "evals/benchmark/examples/synthetic-report.zh-TW.md",
+        ".github/ISSUE_TEMPLATE/benchmark-result.yml",
+        ".github/ISSUE_TEMPLATE/usability-feedback.yml",
+    )
+    for relative_path in public_paths:
+        path = tmp_path / relative_path
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("synthetic public benchmark contract", encoding="utf-8")
+
+    assert scan_repository(tmp_path) == []
+
+
 def test_gitignore_keeps_study_governance_out_of_the_checkout():
     lines = (ROOT / ".gitignore").read_text(encoding="utf-8").splitlines()
     assert "study-governance/" in lines

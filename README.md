@@ -66,6 +66,7 @@ publish a Plugin.
 | Synthetic worked examples | [TEAE to SAS](examples/teae-to-sas-spec.md), [OMOP phenotype to SQL specification](examples/omop-phenotype-to-sql-spec.md), and [institutional mapping](examples/synthetic-institutional-mapping.md) |
 | Evidence shape and limitations | [Evidence output template](skills/clin-nav/references/evidence-output-template.md) and [architecture](docs/architecture.md) |
 | Product-effectiveness evaluation framework | [Effectiveness evaluation](evals/effectiveness/README.md) |
+| Provider-neutral synthetic model comparison | [Public simulation benchmark](evals/benchmark/README.md) |
 | Contribute and validate | [Contributing](CONTRIBUTING.md) |
 | Report a security concern | [Security](SECURITY.md) |
 | Prepare an approved release | [Release process](docs/release.md) |

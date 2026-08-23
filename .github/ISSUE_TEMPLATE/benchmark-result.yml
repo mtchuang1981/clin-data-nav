@@ -1,0 +1,134 @@
+name: Community benchmark result
+description: Report aggregate public simulation benchmark metadata without source material.
+title: "[Community benchmark] "
+labels:
+  - community-reported
+body:
+  - type: markdown
+    attributes:
+      value: >-
+        This is an unverified self-report. Issues never enter formal aggregates.
+        Keep populated benchmark files in approved storage outside the repository.
+  - type: input
+    id: repository_version
+    attributes:
+      label: Repository version or tag
+      description: Identify the public repository version used for the benchmark tooling.
+      placeholder: v0.6.0 candidate or an immutable tag
+    validations:
+      required: true
+  - type: dropdown
+    id: summary_schema_version
+    attributes:
+      label: Benchmark summary schema version
+      options:
+        - "1"
+    validations:
+      required: true
+  - type: input
+    id: plan_sha256
+    attributes:
+      label: Plan SHA-256
+      description: Enter only the 64-character lowercase digest.
+      placeholder: 64 lowercase hexadecimal characters
+    validations:
+      required: true
+  - type: input
+    id: aggregate_summary_sha256
+    attributes:
+      label: Aggregate summary SHA-256
+      description: Enter only the 64-character lowercase digest.
+      placeholder: 64 lowercase hexadecimal characters
+    validations:
+      required: true
+  - type: input
+    id: model_provider
+    attributes:
+      label: Model provider
+      description: Self-reported aggregate metadata from the frozen plan.
+      placeholder: Provider name
+    validations:
+      required: true
+  - type: input
+    id: model_id
+    attributes:
+      label: Model ID
+      description: Self-reported aggregate metadata from the frozen plan.
+      placeholder: Model identifier
+    validations:
+      required: true
+  - type: input
+    id: model_snapshot
+    attributes:
+      label: Model snapshot or version
+      description: Self-reported aggregate metadata from the frozen plan.
+      placeholder: Snapshot or version identifier
+    validations:
+      required: true
+  - type: dropdown
+    id: operating_system
+    attributes:
+      label: Operating system
+      options:
+        - Linux
+        - macOS
+        - Windows
+        - Other or mixed
+    validations:
+      required: true
+  - type: input
+    id: runner_version
+    attributes:
+      label: Runner name and version
+      description: Self-reported runner identity from the execution attestation.
+      placeholder: Runner name and version
+    validations:
+      required: true
+  - type: dropdown
+    id: status
+    attributes:
+      label: Aggregate status
+      options:
+        - benchmark-observed
+    validations:
+      required: true
+  - type: dropdown
+    id: direction
+    attributes:
+      label: Aggregate direction
+      options:
+        - positive-signal
+        - mixed-or-null
+        - negative-signal
+    validations:
+      required: true
+  - type: input
+    id: public_aggregate_report_url
+    attributes:
+      label: Optional public aggregate report URL
+      description: Link only to a safe aggregate report that is already public.
+      placeholder: https://example.org/public-aggregate-report
+    validations:
+      required: false
+  - type: markdown
+    attributes:
+      value: >-
+        **Sensitive-data warning:** Do not include patient data, private schema,
+        an internal document, condition key, task pack, nonce, API key, access
+        token, credential, or any other sensitive content below.
+  - type: textarea
+    id: problem_reproduction
+    attributes:
+      label: Aggregate-level problem or reproduction description
+      description: Describe only the aggregate-level issue and safe reproduction steps, in at most 1000 characters.
+      placeholder: Brief safe description using public aggregate metadata only
+    validations:
+      required: true
+  - type: checkboxes
+    id: acknowledgement
+    attributes:
+      label: Sensitive-content acknowledgement
+      options:
+        - label: I confirm this report contains no patient data, private schema, internal document, condition key, task pack, nonce, API key, access token, credential, or other sensitive content.
+    validations:
+      required: true

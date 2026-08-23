@@ -4047,6 +4047,205 @@ def test_effectiveness_navigation_and_architecture_preserve_public_boundary():
     assert "Do not place human data anywhere under the repository checkout." in contributing
 
 
+BENCHMARK_README_SECTIONS = (
+    "Purpose",
+    "Evidence boundary",
+    "Released Skill binding",
+    "Prepare plan",
+    "Run externally",
+    "Build response index",
+    "Evaluate",
+    "Render",
+    "Interpret direction",
+    "Optional independent review",
+    "Community feedback",
+    "Prohibited content",
+)
+BENCHMARK_COMMANDS = (
+    """python scripts/prepare_simulation_benchmark.py \\
+  --skill-ref v0.5.0 \\
+  --model-provider <provider> \\
+  --model-id <model> \\
+  --model-snapshot <snapshot> \\
+  --runner-name <runner> \\
+  --runner-version <runner-version> \\
+  --temperature <temperature> \\
+  --top-p <top-p> \\
+  --max-output-tokens <count> \\
+  --model-seed-policy <policy> \\
+  --base-system-prompt-sha256 <sha256> \\
+  --tool-policy-sha256 <sha256> \\
+  --repeats 3 \\
+  --seed 20260816 \\
+  --output <external-dir>/benchmark-plan.json""",
+    """python scripts/evaluate_simulation_benchmark.py \\
+  --plan <external-dir>/benchmark-plan.json \\
+  --response-index <external-dir>/response-index.json \\
+  --responses-dir <external-dir>/responses \\
+  --output-summary <external-dir>/benchmark-summary.json""",
+    """python scripts/render_simulation_benchmark.py \\
+  --summary <external-dir>/benchmark-summary.json \\
+  --english <external-dir>/benchmark-report.md \\
+  --traditional-chinese <external-dir>/benchmark-report.zh-TW.md""",
+)
+PROHIBITED_ISSUE_CATEGORIES = (
+    "patient data",
+    "private schema",
+    "internal document",
+    "condition key",
+    "task pack",
+    "nonce",
+    "api key",
+    "access token",
+    "credential",
+)
+
+
+def test_public_benchmark_readme_has_the_complete_run_and_claim_contract():
+    text = (ROOT / "evals/benchmark/README.md").read_text(encoding="utf-8")
+    headings = re.findall(r"^## (.+)$", text, flags=re.MULTILINE)
+
+    assert headings == list(BENCHMARK_README_SECTIONS)
+    for command in BENCHMARK_COMMANDS:
+        assert command in text
+    for marker in (
+        "12 cases x 2 conditions x 3 repeats = 72 response cells",
+        "fresh session",
+        "offline",
+        "balanced condition order",
+        "outside the repository checkout",
+        "single writer",
+        "authoritative result",
+        "stdout",
+        "Exit `0`",
+        "Exit `2`",
+        "Exit `3`",
+        "positive-signal",
+        "mixed-or-null",
+        "negative-signal",
+        "0.20",
+        "Tier 2",
+        "evals/effectiveness/README.md",
+        "not human-effective",
+        "not evaluation-green",
+        "No representative user",
+    ):
+        assert marker.casefold() in text.casefold()
+
+
+def test_root_and_eval_readmes_link_to_the_public_simulation_benchmark():
+    for relative_path in ("README.md", "README.zh-TW.md", "evals/README.md"):
+        text = (ROOT / relative_path).read_text(encoding="utf-8")
+        assert "evals/benchmark/README.md" in text or "benchmark/README.md" in text
+
+
+def _load_issue_form(relative_path: str) -> dict:
+    payload = yaml.safe_load((ROOT / relative_path).read_text(encoding="utf-8"))
+    assert isinstance(payload, dict)
+    return payload
+
+
+@pytest.mark.parametrize(
+    ("relative_path", "allowed_ids"),
+    (
+        (
+            ".github/ISSUE_TEMPLATE/benchmark-result.yml",
+            {
+                "repository_version",
+                "summary_schema_version",
+                "plan_sha256",
+                "aggregate_summary_sha256",
+                "model_provider",
+                "model_id",
+                "model_snapshot",
+                "operating_system",
+                "runner_version",
+                "status",
+                "direction",
+                "public_aggregate_report_url",
+                "problem_reproduction",
+                "acknowledgement",
+            },
+        ),
+        (
+            ".github/ISSUE_TEMPLATE/usability-feedback.yml",
+            {
+                "repository_version",
+                "installation_method",
+                "agent",
+                "operating_system",
+                "task_category",
+                "completion_outcome",
+                "problem_reproduction",
+                "acknowledgement",
+            },
+        ),
+    ),
+)
+def test_community_issue_forms_are_closed_aggregate_only_contracts(
+    relative_path,
+    allowed_ids,
+):
+    payload = _load_issue_form(relative_path)
+
+    assert set(payload) == {"name", "description", "title", "labels", "body"}
+    assert "community-reported" in payload["labels"]
+    assert isinstance(payload["body"], list)
+    ids = [item.get("id") for item in payload["body"] if "id" in item]
+    assert len(ids) == len(set(ids))
+    assert set(ids) == allowed_ids
+    assert all(re.fullmatch(r"[a-z][a-z0-9_-]*", item_id) for item_id in ids)
+
+    form_text = " ".join(str(payload).split())
+    assert "never enter formal aggregates" in form_text
+    textareas = [item for item in payload["body"] if item["type"] == "textarea"]
+    assert [item["id"] for item in textareas] == ["problem_reproduction"]
+    assert "1000 characters" in textareas[0]["attributes"]["description"]
+    textarea_index = payload["body"].index(textareas[0])
+    warning = payload["body"][textarea_index - 1]
+    assert warning["type"] == "markdown"
+    warning_text = warning["attributes"]["value"].casefold()
+    assert "do not include" in warning_text
+    for category in PROHIBITED_ISSUE_CATEGORIES:
+        assert category in warning_text
+
+    acknowledgement = next(
+        item for item in payload["body"] if item.get("id") == "acknowledgement"
+    )
+    assert acknowledgement["type"] == "checkboxes"
+    assert acknowledgement["validations"] == {"required": True}
+    acknowledgement_text = " ".join(
+        option["label"] for option in acknowledgement["attributes"]["options"]
+    ).casefold()
+    for category in PROHIBITED_ISSUE_CATEGORIES:
+        assert category in acknowledgement_text
+
+
+def test_benchmark_issue_form_does_not_request_raw_material_or_uploads():
+    payload = _load_issue_form(
+        ".github/ISSUE_TEMPLATE/benchmark-result.yml"
+    )
+    collected_fields = [
+        item
+        for item in payload["body"]
+        if item["type"] in {"input", "dropdown", "textarea"}
+    ]
+    field_prompts = " ".join(
+        str(item.get("attributes", {})) for item in collected_fields
+    ).casefold()
+
+    for forbidden_request in (
+        "raw answer",
+        "raw response",
+        "prompt text",
+        "provider log",
+        "task pack",
+        "attachment",
+        "upload",
+    ):
+        assert forbidden_request not in field_prompts
+
+
 EFFECTIVENESS_FRAMEWORK_EVIDENCE_SECTIONS = (
     "## Test-driven final-fix evidence",
     "## Official Python 3.11.9 runtime",

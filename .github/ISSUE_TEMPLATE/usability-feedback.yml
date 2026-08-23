@@ -1,0 +1,93 @@
+name: Community usability feedback
+description: Report aggregate installation or task-completion feedback without source material.
+title: "[Community usability] "
+labels:
+  - community-reported
+body:
+  - type: markdown
+    attributes:
+      value: >-
+        This is an unverified self-report. Issues never enter formal aggregates
+        and do not establish representative-user effectiveness.
+  - type: input
+    id: repository_version
+    attributes:
+      label: Repository version or tag
+      description: Identify the public version you used.
+      placeholder: Immutable tag or commit
+    validations:
+      required: true
+  - type: dropdown
+    id: installation_method
+    attributes:
+      label: Installation method
+      options:
+        - npx project installation
+        - Verified ZIP installation
+        - Local contributor checkout
+    validations:
+      required: true
+  - type: input
+    id: agent
+    attributes:
+      label: Agent and version
+      description: Identify only the public agent product and version.
+      placeholder: Agent name and version
+    validations:
+      required: true
+  - type: dropdown
+    id: operating_system
+    attributes:
+      label: Operating system
+      options:
+        - Linux
+        - macOS
+        - Windows
+        - Other or mixed
+    validations:
+      required: true
+  - type: dropdown
+    id: task_category
+    attributes:
+      label: Task category
+      options:
+        - Installation or update
+        - Quick explanation
+        - Evidence navigation
+        - Research design
+        - Implementation specification
+        - Repository benchmark tooling
+    validations:
+      required: true
+  - type: dropdown
+    id: completion_outcome
+    attributes:
+      label: Completion outcome
+      options:
+        - Completed without a problem
+        - Completed with a problem
+        - Not completed
+    validations:
+      required: true
+  - type: markdown
+    attributes:
+      value: >-
+        **Sensitive-data warning:** Do not include patient data, private schema,
+        an internal document, condition key, task pack, nonce, API key, access
+        token, credential, or any other sensitive content below.
+  - type: textarea
+    id: problem_reproduction
+    attributes:
+      label: Problem or reproduction description
+      description: Describe only the public workflow problem and safe reproduction steps, in at most 1000 characters.
+      placeholder: Brief safe description using synthetic or public context only
+    validations:
+      required: true
+  - type: checkboxes
+    id: acknowledgement
+    attributes:
+      label: Sensitive-content acknowledgement
+      options:
+        - label: I confirm this report contains no patient data, private schema, internal document, condition key, task pack, nonce, API key, access token, credential, or other sensitive content.
+    validations:
+      required: true

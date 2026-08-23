@@ -38,6 +38,57 @@ PUBLIC_RECOVERY_FILES = {
     "evals/effectiveness/recovery/recovery-template.json",
     "evals/effectiveness/recovery/examples/synthetic-recovery.json",
 }
+PUBLIC_BENCHMARK_FILES = {
+    ".github/ISSUE_TEMPLATE/benchmark-result.yml",
+    ".github/ISSUE_TEMPLATE/usability-feedback.yml",
+    "evals/benchmark/README.md",
+    "evals/benchmark/benchmark-plan-template.json",
+    "evals/benchmark/released-skill-bindings.json",
+    "evals/benchmark/report-template.md",
+    "evals/benchmark/report-template.zh-TW.md",
+    "evals/benchmark/response-index-template.json",
+    "evals/benchmark/summary-schema.md",
+    "evals/benchmark/examples/synthetic-report.md",
+    "evals/benchmark/examples/synthetic-report.zh-TW.md",
+    "evals/benchmark/examples/synthetic-summary.json",
+}
+PRIVATE_BENCHMARK_PARTS = {
+    "outputs",
+    "raw-response",
+    "raw-responses",
+    "raw_response",
+    "raw_responses",
+    "results",
+    "runs",
+}
+PRIVATE_BENCHMARK_BASENAMES = {
+    "index",
+    "indexes",
+    "output",
+    "outputs",
+    "plan",
+    "plans",
+    "result",
+    "results",
+    "run",
+    "runs",
+}
+PRIVATE_BENCHMARK_ARTIFACT_NAME = re.compile(
+    r"(?i)^(?:"
+    r"benchmark[-_]?(?:plans?|reports?|results?|summaries|summary)|"
+    r"response[-_]?(?:bundles?|indexes?|outputs?)|"
+    r"raw[-_]?responses?|"
+    r"provider[-_]?logs?|"
+    r"api[-_]?keys?|"
+    r"access[-_]?tokens?|"
+    r"credentials?|"
+    r"private[-_]?tasks?|"
+    r"human[-_]?study|"
+    r"participant[-_]?(?:data|inputs?|answers?|scores?)|"
+    r"patient[-_]?data|"
+    r"institutional[-_]?schema"
+    r")(?:[-_.].*)?$"
+)
 PRIVATE_RECOVERY_ARTIFACT_NAME = re.compile(
     r"(?i)^(?:"
     r"recovery[-_]?records?|"
@@ -148,6 +199,17 @@ def _is_private_recovery_path(relative_path: Path) -> bool:
     )
 
 
+def _is_private_benchmark_path(relative_path: Path) -> bool:
+    if relative_path.as_posix() in PUBLIC_BENCHMARK_FILES:
+        return False
+    lowercase_parts = tuple(part.casefold() for part in relative_path.parts)
+    return (
+        any(part in PRIVATE_BENCHMARK_PARTS for part in lowercase_parts)
+        or relative_path.stem.casefold() in PRIVATE_BENCHMARK_BASENAMES
+        or bool(PRIVATE_BENCHMARK_ARTIFACT_NAME.fullmatch(relative_path.name))
+    )
+
+
 def scan_repository(root: Path, max_text_bytes: int = 200_000) -> list[Finding]:
     """Return deterministic public-boundary findings below *root*."""
     findings: list[Finding] = []
@@ -210,6 +272,15 @@ def scan_repository(root: Path, max_text_bytes: int = 200_000) -> list[Finding]:
                         relative_path,
                         "private-recovery-artifact",
                         "only public recovery guidance and synthetic contracts are permitted",
+                    )
+                )
+                continue
+            if _is_private_benchmark_path(relative):
+                findings.append(
+                    Finding(
+                        relative_path,
+                        "private-benchmark-artifact",
+                        "real benchmark and sensitive run artifacts are not permitted",
                     )
                 )
                 continue
