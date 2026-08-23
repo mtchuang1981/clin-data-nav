@@ -555,6 +555,77 @@ def test_posix_summary_transaction_rejects_owner_identity_low32_collision(
         transaction.prepare(b"summary")
 
 
+def test_posix_summary_stage_dup_failure_retains_cleanup_ownership(
+    tmp_path, monkeypatch
+):
+    from scripts import evaluate_simulation_benchmark as benchmark
+
+    output = tmp_path / "benchmark-summary.json"
+    previous = b"previous-summary\n"
+    output.write_bytes(previous)
+    stage_name = f".{output.name}.stage-test.tmp"
+    stage_path = tmp_path / stage_name
+    real_open = os.open
+    opened: list[int] = []
+    deletion_requests: list[tuple[int, str]] = []
+
+    transaction = object.__new__(benchmark._SummaryTransaction)
+    transaction.output_name = output.name
+    transaction.parent_reference = 0
+    transaction.stage_name = stage_name
+    transaction.stage_owner = 0
+    transaction.backup_name = None
+    transaction.backup_owner = 0
+    transaction.committed = False
+
+    def open_stage(name, flags, mode=0o777, *, dir_fd=None):
+        assert name == stage_name
+        descriptor = real_open(stage_path, flags, mode)
+        opened.append(descriptor)
+        return descriptor
+
+    def fail_duplicate(descriptor):
+        assert descriptor == opened[0]
+        raise OSError("MARKER-POSIX-DUP-FAILURE")
+
+    def delete_owned_stage(owner, name):
+        assert owner == opened[0]
+        assert name == stage_name
+        os.fstat(owner)
+        deletion_requests.append((owner, name))
+
+    def close_owned_stage(owner):
+        assert deletion_requests == [(owner, stage_name)]
+        os.close(owner)
+        stage_path.unlink()
+
+    transaction._delete_owner = delete_owned_stage
+    monkeypatch.setattr(benchmark.os, "name", "posix")
+    monkeypatch.setattr(benchmark.os, "open", open_stage)
+    monkeypatch.setattr(benchmark.os, "dup", fail_duplicate)
+    monkeypatch.setattr(
+        benchmark, "_close_summary_stage_owner", close_owned_stage
+    )
+
+    try:
+        with pytest.raises(OSError, match="MARKER-POSIX-DUP-FAILURE"):
+            transaction._create_stage()
+        transaction.rollback()
+
+        assert output.read_bytes() == previous
+        assert not stage_path.exists()
+        assert not list(tmp_path.glob(f".{output.name}.backup-*.tmp"))
+        with pytest.raises(OSError):
+            os.fstat(opened[0])
+    finally:
+        if opened:
+            try:
+                os.close(opened[0])
+            except OSError:
+                pass
+        stage_path.unlink(missing_ok=True)
+
+
 def test_v050_registry_matches_rebuilt_annotated_tag(tmp_path):
     observed = resolve_released_skill_binding(ROOT, "v0.5.0", tmp_path)
     assert observed == V050_BINDING

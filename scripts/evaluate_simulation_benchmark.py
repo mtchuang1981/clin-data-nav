@@ -2250,14 +2250,13 @@ class _SummaryTransaction:
             except Exception:
                 _windows_close_handle(writer_handle)
                 raise
-        writer = os.open(
+        self.stage_owner = os.open(
             self.stage_name,
             os.O_WRONLY | os.O_CREAT | os.O_EXCL | OPEN_NOFOLLOW | OPEN_BINARY,
             0o600,
             dir_fd=self.parent_reference,
         )
-        self.stage_owner = os.dup(writer)
-        return writer
+        return os.dup(self.stage_owner)
 
     def prepare(self, payload: bytes) -> None:
         self._require_parent_current()
