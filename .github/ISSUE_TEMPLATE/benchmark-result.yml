@@ -14,7 +14,7 @@ body:
     attributes:
       label: Repository version or tag
       description: Identify the public repository version used for the benchmark tooling.
-      placeholder: v0.6.0 candidate or an immutable tag
+      placeholder: v0.6.0 or another immutable tag
     validations:
       required: true
   - type: dropdown

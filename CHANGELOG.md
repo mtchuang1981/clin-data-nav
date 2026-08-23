@@ -1,8 +1,8 @@
 # Changelog
 
-## 0.6.0 - Candidate
+## 0.6.0 - 2026-08-24
 
-### Candidate capabilities
+### Features
 
 - Add a provider-neutral public simulation benchmark that freezes all 12
   deterministic Eval cases across control and intervention conditions for
@@ -16,8 +16,7 @@
 
 ### Limitations
 
-- This is a `v0.6.0` candidate. No `v0.6.0` tag or GitHub Release exists, and
-  no real benchmark campaign or human pilot has been performed. Checked-in
+- No real benchmark campaign or human pilot has been performed. Checked-in
   benchmark results are synthetic contract examples only and do not establish
   usability, clinical validity, causal validity, patient benefit, or fitness
   for deployment.

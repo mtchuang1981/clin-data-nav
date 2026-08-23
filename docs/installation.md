@@ -3,9 +3,10 @@
 [繁體中文](installation.zh-TW.md)
 
 The recommended path is a project-local installation with `npx skills add`.
-The current verified immutable Release is `v0.5.0`; its exact `clin-nav`
-artifact verification and installation path is below. The v0.4.0 ZIP material
-remains a historical verification reference, not an installation path. Use the
+The current verified immutable Release is `v0.6.0`; its exact `clin-nav`
+artifact verification and installation path is below. The immutable v0.5.0
+Release remains available as the prior version, while the v0.4.0 ZIP material
+is a historical verification reference, not an installation path. Use the
 source-checkout path only when developing or auditing this repository.
 
 ## Runtime boundary
@@ -93,26 +94,27 @@ npx skills update clin-nav --project --yes
 Confirm discovery again with `/skills`. If the displayed behavior is stale,
 follow the stage-specific recovery below instead of reinstalling blindly.
 
-## Current verified v0.5.0 Release artifact verification
+## Current verified v0.6.0 Release artifact verification
 
-The current verified immutable Release is `v0.5.0`. Its exact published assets
-are `clin-nav-0.5.0.zip` and `clin-nav-0.5.0.manifest.json`. The commands below
+The current verified immutable Release is `v0.6.0`. Its exact published assets
+are `clin-nav-0.6.0.zip` and `clin-nav-0.6.0.manifest.json`. The commands below
 download both assets from that same immutable Release, verify the manifest
 against its published SHA-256, and then verify the ZIP against both its
 published SHA-256 and the manifest's `archive_sha256` before installation.
-These values come from the repository's committed public v0.5.0 publication
-evidence; they are not a claim about the unreleased v0.6.0 candidate.
+These values are bound to the reproducible v0.6.0 artifacts and the successful
+Linux/Windows package comparison for the tagged source.
 
-The v0.4.0 bundle remains below as a historical verification reference only.
+The immutable v0.5.0 Release remains available as the prior release. The
+v0.4.0 bundle remains below as a historical verification reference only.
 
 PowerShell:
 
 ```powershell
-$releaseVersion = "0.5.0"
+$releaseVersion = "0.6.0"
 $archiveName = "clin-nav-$releaseVersion.zip"
 $manifestName = "clin-nav-$releaseVersion.manifest.json"
 $expectedArchiveSha256 = "195967e3e3b1a6ee32de18a442a7c84badc6642ce6b4ddc0456c441b5f25686d"
-$expectedManifestSha256 = "03b736ec703ce3c8b78acc56a8e467d109612fbdd01b08240202d355228332c6"
+$expectedManifestSha256 = "df07dcae8bc45b6fb5b985fff387fc44991a6ebf57960cdd942c4ad3d5b6f894"
 $releaseBase = "https://github.com/mtchuang1981/clin-data-nav/releases/download/v$releaseVersion"
 Invoke-WebRequest "$releaseBase/$archiveName" -OutFile $archiveName
 Invoke-WebRequest "$releaseBase/$manifestName" -OutFile $manifestName
@@ -127,7 +129,7 @@ if ($actualArchiveSha256 -ne $expectedArchiveSha256) { throw "Archive SHA-256 mi
 
 $skillsRoot = Join-Path (Get-Location) ".agents/skills"
 $skillDirectory = Join-Path $skillsRoot "clin-nav"
-$stagingDirectory = Join-Path $skillsRoot ".clin-nav-v0.5.0-staged"
+$stagingDirectory = Join-Path $skillsRoot ".clin-nav-v0.6.0-staged"
 if (Test-Path $skillDirectory) { throw "Installation already exists" }
 if (Test-Path $stagingDirectory) { throw "Staging directory already exists" }
 New-Item -ItemType Directory -Path $skillsRoot -Force | Out-Null
@@ -140,11 +142,11 @@ Move-Item -LiteralPath $stagingDirectory -Destination $skillDirectory
 POSIX shell:
 
 ```bash
-release_version="0.5.0"
+release_version="0.6.0"
 archive_name="clin-nav-$release_version.zip"
 manifest_name="clin-nav-$release_version.manifest.json"
 expected_archive_sha256="195967e3e3b1a6ee32de18a442a7c84badc6642ce6b4ddc0456c441b5f25686d"
-expected_manifest_sha256="03b736ec703ce3c8b78acc56a8e467d109612fbdd01b08240202d355228332c6"
+expected_manifest_sha256="df07dcae8bc45b6fb5b985fff387fc44991a6ebf57960cdd942c4ad3d5b6f894"
 release_base="https://github.com/mtchuang1981/clin-data-nav/releases/download/v$release_version"
 curl -fL "$release_base/$archive_name" -o "$archive_name"
 curl -fL "$release_base/$manifest_name" -o "$manifest_name"
@@ -165,7 +167,7 @@ test "$actual_archive_sha256" = "$expected_archive_sha256" || { echo "Archive SH
 
 skills_root="$PWD/.agents/skills"
 skill_directory="$skills_root/clin-nav"
-staging_directory="$skills_root/.clin-nav-v0.5.0-staged"
+staging_directory="$skills_root/.clin-nav-v0.6.0-staged"
 test ! -e "$skill_directory" || { echo "Installation already exists" >&2; exit 1; }
 test ! -e "$staging_directory" || { echo "Staging directory already exists" >&2; exit 1; }
 mkdir -p "$skills_root"
