@@ -17,10 +17,18 @@ if __package__ in {None, ""}:
 
 try:
     from scripts.effectiveness_contract import ensure_external_path
-    from scripts.evaluate_simulation_benchmark import validate_benchmark_summary
+    from scripts.evaluate_simulation_benchmark import (
+        canonical_summary_bytes,
+        validate_benchmark_summary,
+    )
+    from scripts.prepare_simulation_benchmark import canonical_json_bytes
 except ModuleNotFoundError:  # Direct execution from the scripts directory.
     from effectiveness_contract import ensure_external_path
-    from evaluate_simulation_benchmark import validate_benchmark_summary
+    from evaluate_simulation_benchmark import (
+        canonical_summary_bytes,
+        validate_benchmark_summary,
+    )
+    from prepare_simulation_benchmark import canonical_json_bytes
 
 
 LANGUAGES = ("en", "zh-TW")
@@ -466,6 +474,37 @@ def _write_error() -> None:
         pass
 
 
+def _reject_duplicate_keys(pairs: list[tuple[str, object]]) -> dict:
+    parsed = {}
+    for key, value in pairs:
+        if key in parsed:
+            raise ValueError("duplicate benchmark summary key")
+        parsed[key] = value
+    return parsed
+
+
+def _reject_non_finite_constant(value: str) -> None:
+    raise ValueError("non-finite benchmark summary constant")
+
+
+def _load_canonical_summary(path: Path, *, allow_synthetic: bool) -> dict:
+    raw = path.read_bytes()
+    summary = json.loads(
+        raw.decode("utf-8"),
+        object_pairs_hook=_reject_duplicate_keys,
+        parse_constant=_reject_non_finite_constant,
+    )
+    if allow_synthetic:
+        if validate_benchmark_summary(summary, allow_synthetic=True):
+            raise ValueError("invalid synthetic benchmark summary")
+        canonical = canonical_json_bytes(summary)
+    else:
+        canonical = canonical_summary_bytes(summary)
+    if raw != canonical:
+        raise ValueError("non-canonical benchmark summary bytes")
+    return summary
+
+
 def main(argv: list[str] | None = None) -> int:
     try:
         args = _argument_parser().parse_args(argv)
@@ -477,7 +516,9 @@ def main(argv: list[str] | None = None) -> int:
             ensure_external_path(args.summary, ROOT)
             ensure_external_path(args.english, ROOT)
             ensure_external_path(args.traditional_chinese, ROOT)
-        summary = json.loads(args.summary.read_text(encoding="utf-8"))
+        summary = _load_canonical_summary(
+            args.summary, allow_synthetic=allow_synthetic
+        )
         english = render_report(summary, "en", allow_synthetic=allow_synthetic)
         chinese = render_report(summary, "zh-TW", allow_synthetic=allow_synthetic)
         if args.check:

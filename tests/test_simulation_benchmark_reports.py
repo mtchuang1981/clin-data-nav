@@ -633,6 +633,57 @@ def test_external_non_synthetic_summary_renders_without_example_label(tmp_path):
     assert "合成契約範例" not in chinese.read_text(encoding="utf-8")
 
 
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        lambda payload: b'{"status":"human-effective",' + payload[1:],
+        lambda payload: payload + b" ",
+        lambda payload: payload + b"\n",
+        lambda payload: payload.replace(b"\n", b"\r\n"),
+        lambda payload: payload.replace(b'"temperature":0.2', b'"temperature":NaN'),
+    ],
+    ids=(
+        "duplicate-root-status",
+        "trailing-space",
+        "trailing-newline",
+        "crlf",
+        "non-finite-constant",
+    ),
+)
+def test_external_summary_cli_rejects_noncanonical_bytes_without_writing(
+    tmp_path, mutation
+):
+    summary_path = tmp_path / "benchmark-summary.json"
+    english = tmp_path / "benchmark-report.md"
+    chinese = tmp_path / "benchmark-report.zh-TW.md"
+    summary = _load_summary()
+    summary["synthetic_example"] = False
+    summary_path.write_bytes(mutation(canonical_json_bytes(summary)))
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(RENDERER),
+            "--summary",
+            str(summary_path),
+            "--english",
+            str(english),
+            "--traditional-chinese",
+            str(chinese),
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 2
+    assert result.stdout == ""
+    assert result.stderr == "simulation benchmark report rendering failed\n"
+    assert "human-effective" not in result.stderr
+    assert not english.exists()
+    assert not chinese.exists()
+
+
 def test_unsafe_completion_time_cli_error_is_content_free_and_writes_nothing(
     tmp_path,
 ):
