@@ -181,6 +181,38 @@ def test_rendering_is_independent_of_json_object_insertion_order():
     ) == render_report(summary, "en", allow_synthetic=True)
 
 
+def test_integer_model_rates_render_with_fixed_six_decimal_precision():
+    summary = _load_summary()
+    summary["model"]["temperature"] = 0
+    summary["model"]["top_p"] = 1
+
+    assert validate_benchmark_summary(summary, allow_synthetic=True) == []
+    for language in ("en", "zh-TW"):
+        facts = _facts(render_report(summary, language, allow_synthetic=True))
+        assert facts["model.temperature"] == "0.000000"
+        assert facts["model.top_p"] == "1.000000"
+
+
+@pytest.mark.parametrize(
+    "completed_at",
+    (
+        "2026-08-16\n01:00:00+00:00",
+        "2026-08-16|01:00:00+00:00",
+    ),
+    ids=("newline-separator", "table-pipe-separator"),
+)
+def test_renderer_fails_closed_for_markdown_unsafe_valid_completion_time(
+    completed_at,
+):
+    summary = _load_summary()
+    summary["execution_attestation"]["completed_at"] = completed_at
+
+    assert validate_benchmark_summary(summary, allow_synthetic=True) == []
+    for language in ("en", "zh-TW"):
+        with pytest.raises(ValueError, match="Markdown-table safe"):
+            render_report(summary, language, allow_synthetic=True)
+
+
 def test_reports_include_fixed_limitations_without_overclaiming():
     summary = _load_summary()
     english = render_report(summary, "en", allow_synthetic=True)
@@ -599,3 +631,40 @@ def test_external_non_synthetic_summary_renders_without_example_label(tmp_path):
     assert result.stdout == result.stderr == ""
     assert "synthetic contract example" not in english.read_text(encoding="utf-8")
     assert "合成契約範例" not in chinese.read_text(encoding="utf-8")
+
+
+def test_unsafe_completion_time_cli_error_is_content_free_and_writes_nothing(
+    tmp_path,
+):
+    summary_path = tmp_path / "benchmark-summary.json"
+    english = tmp_path / "benchmark-report.md"
+    chinese = tmp_path / "benchmark-report.zh-TW.md"
+    summary = _load_summary()
+    summary["synthetic_example"] = False
+    summary["execution_attestation"]["completed_at"] = (
+        "2026-08-16|01:00:00+00:00"
+    )
+    summary_path.write_bytes(canonical_json_bytes(summary))
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(RENDERER),
+            "--summary",
+            str(summary_path),
+            "--english",
+            str(english),
+            "--traditional-chinese",
+            str(chinese),
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 2
+    assert result.stdout == ""
+    assert result.stderr == "simulation benchmark report rendering failed\n"
+    assert "2026-08-16" not in result.stderr
+    assert not english.exists()
+    assert not chinese.exists()

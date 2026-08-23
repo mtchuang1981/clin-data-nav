@@ -37,7 +37,15 @@ EXAMPLE_ENGLISH = (
 EXAMPLE_CHINESE = (
     ROOT / "evals/benchmark/examples/synthetic-report.zh-TW.md"
 ).resolve()
-def _display(value: object) -> str:
+
+
+def _display(key: str, value: object) -> str:
+    if isinstance(value, str) and any(
+        marker in value for marker in ("\r", "\n", "|")
+    ):
+        raise ValueError("report value must be Markdown-table safe")
+    if key in {"model.temperature", "model.top_p"}:
+        return f"{float(value):.6f}"
     if type(value) is float:
         return f"{value:.6f}"
     if type(value) is bool:
@@ -51,7 +59,7 @@ def _fact_table(rows: list[tuple[str, object]], language: str) -> list[str]:
     return [
         f"| {header} | {value_header} |",
         "|---|---|",
-        *[f"| `{key}` | {_display(value)} |" for key, value in rows],
+        *[f"| `{key}` | {_display(key, value)} |" for key, value in rows],
     ]
 
 

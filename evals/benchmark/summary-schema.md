@@ -54,8 +54,11 @@ nonnegative integer and not a boolean.
 `shared_configuration_unchanged`. `assertion_basis` is exactly
 `externally-asserted`; `completed_at` is a timezone-aware timestamp; model
 identities exactly repeat `model`; runner values are bounded identifiers; and
-each controlled boolean is literal `true`. These declarations are not
-provider verification.
+each controlled boolean is literal `true`. Although the summary validator
+accepts any single-character ISO date/time separator, the Markdown renderer
+fails closed when a displayed string contains CR, LF, or `|`; therefore a
+renderable `completed_at` uses a table-safe ISO separator such as `T`. These
+declarations are not provider verification.
 
 ## Aggregates and recomputation
 
