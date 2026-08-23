@@ -2850,84 +2850,122 @@ def test_stderr_transport_failure_never_escapes_the_cli_boundary(
     assert captured.err == ""
 
 
+@pytest.mark.skipif(os.name != "nt", reason="Windows raw HANDLE close contract")
 @pytest.mark.parametrize(
-    ("seam", "existing_output"),
+    "seam",
     [
-        ("_close_summary_backup_owner", True),
-        ("_close_summary_stage_owner", True),
-        ("_close_summary_parent_reference", True),
-        ("_close_summary_stage_owner", False),
-        ("_close_summary_parent_reference", False),
+        pytest.param("_close_summary_backup_owner", id="backup"),
+        pytest.param("_close_summary_stage_owner", id="stage"),
+        pytest.param("_close_summary_parent_reference", id="parent"),
     ],
 )
-def test_summary_close_failures_are_retried_after_namespace_success(
-    tmp_path, monkeypatch, capfd, seam, existing_output
+def test_windows_summary_close_after_effect_is_never_retried(
+    tmp_path, monkeypatch, capfd, seam
 ):
-    """Close retry is finalization and cannot misclassify a valid summary."""
+    """An ambiguous post-close failure must not touch a reused HANDLE value."""
     from scripts import evaluate_simulation_benchmark as benchmark
 
     bundle = _external_evaluation_bundle(tmp_path)
     output = bundle[5]
-    if existing_output:
-        output.write_bytes(b"previous-summary\n")
+    previous = b"previous-summary\n"
+    output.write_bytes(previous)
     before = _bundle_input_bytes(bundle)
-    original_close = getattr(benchmark, seam, None)
-    attempts = 0
+    original_close = getattr(benchmark, seam)
+    original_close_handle = benchmark._WIN_CLOSE_HANDLE
+    sentinel_reference = benchmark._windows_open_absolute(
+        tmp_path, list_directory=True
+    )
+    _, sentinel_identity, _ = benchmark._windows_handle_info(sentinel_reference)
+    watched_reference: int | None = None
+    watched_close_attempts = 0
+    unrelated_close_attempts = 0
+    seam_calls: list[int] = []
 
-    def fail_once(reference: int) -> None:
-        nonlocal attempts
-        attempts += 1
-        if attempts == 1:
-            raise OSError("MARKER-CLOSE-FAILURE")
-        assert original_close is not None
+    def record_low_level_close(handle) -> bool:
+        nonlocal watched_close_attempts, unrelated_close_attempts
+        value = benchmark._windows_handle_number(handle)
+        if value == watched_reference:
+            watched_close_attempts += 1
+            if watched_close_attempts > 1:
+                # Deterministically model the kernel reusing the released raw
+                # value for an unrelated live object before an unsafe retry.
+                unrelated_close_attempts += 1
+                return original_close_handle(
+                    benchmark.wintypes.HANDLE(sentinel_reference)
+                )
+        return original_close_handle(handle)
+
+    def close_then_raise(reference: int) -> None:
+        nonlocal watched_reference
+        if watched_reference is None:
+            watched_reference = reference
+        assert reference == watched_reference
+        seam_calls.append(reference)
         original_close(reference)
+        raise OSError("MARKER-CLOSE-AFTER-EFFECT")
 
-    monkeypatch.setattr(benchmark, seam, fail_once, raising=False)
+    monkeypatch.setattr(benchmark, "_WIN_CLOSE_HANDLE", record_low_level_close)
+    monkeypatch.setattr(benchmark, seam, close_then_raise)
 
-    result = benchmark.main(_evaluation_main_arguments(bundle))
-    captured = capfd.readouterr()
+    try:
+        result = benchmark.main(_evaluation_main_arguments(bundle))
+        captured = capfd.readouterr()
 
-    assert attempts == (2 if os.name == "nt" else 1)
-    assert result == 0
-    assert captured.out.encode() == EVALUATE_SUCCESS
-    assert captured.err == ""
-    summary_bytes = output.read_bytes()
-    summary = json.loads(summary_bytes)
-    assert summary_bytes == canonical_json_bytes(summary)
-    assert validate_benchmark_summary(summary) == []
-    assert _bundle_input_bytes(bundle) == before
-    assert not list(tmp_path.glob(f".{output.name}.*.tmp"))
+        assert watched_reference is not None
+        assert watched_reference != sentinel_reference
+        assert seam_calls == [watched_reference]
+        assert watched_close_attempts == 1
+        assert unrelated_close_attempts == 0
+        _, current_sentinel_identity, _ = benchmark._windows_handle_info(
+            sentinel_reference
+        )
+        assert current_sentinel_identity == sentinel_identity
+        assert result == 0
+        assert captured.out.encode() == EVALUATE_SUCCESS
+        assert captured.err == ""
+        summary_bytes = output.read_bytes()
+        summary = json.loads(summary_bytes)
+        assert summary_bytes == canonical_json_bytes(summary)
+        assert validate_benchmark_summary(summary) == []
+        assert summary_bytes != previous
+        assert _bundle_input_bytes(bundle) == before
+        assert not list(tmp_path.glob(f".{output.name}.*.tmp"))
+    finally:
+        try:
+            _, current_identity, _ = benchmark._windows_handle_info(
+                sentinel_reference
+            )
+        except ValueError:
+            pass
+        else:
+            if current_identity == sentinel_identity:
+                original_close_handle(
+                    benchmark.wintypes.HANDLE(sentinel_reference)
+                )
 
 
-def test_repeated_parent_close_failure_is_contained_after_summary_success(
-    tmp_path, monkeypatch, capfd
+def test_summary_close_failure_before_effect_is_contained_without_fallback(
+    monkeypatch,
 ):
-    """Exhausted close retries cannot reopen the namespace transaction."""
+    """A failed close seam gets one call and no second low-level fallback."""
     from scripts import evaluate_simulation_benchmark as benchmark
 
-    bundle = _external_evaluation_bundle(tmp_path)
-    output = bundle[5]
-    output.write_bytes(b"previous-summary\n")
-    attempts = 0
+    reference = 0x5A5A5A5A
+    operations: list[tuple[str, int]] = []
 
     def always_fail(reference: int) -> None:
-        nonlocal attempts
-        attempts += 1
+        operations.append(("wrapper", reference))
         raise OSError("MARKER-PERSISTENT-CLOSE-FAILURE")
 
     monkeypatch.setattr(
-        benchmark, "_close_summary_parent_reference", always_fail, raising=False
+        benchmark,
+        "_close_summary_reference",
+        lambda value: operations.append(("fallback", value)),
     )
 
-    result = benchmark.main(_evaluation_main_arguments(bundle))
-    captured = capfd.readouterr()
+    benchmark._SummaryTransaction._finalize_reference(reference, always_fail)
 
-    assert attempts == (2 if os.name == "nt" else 1)
-    assert result == 0
-    assert captured.out.encode() == EVALUATE_SUCCESS
-    assert captured.err == ""
-    assert validate_benchmark_summary(json.loads(output.read_bytes())) == []
-    assert not list(tmp_path.glob(f".{output.name}.*.tmp"))
+    assert operations == [("wrapper", reference)]
 
 
 def test_close_failures_during_precommit_rollback_do_not_mask_fixed_error(
@@ -2946,11 +2984,29 @@ def test_close_failures_during_precommit_rollback_do_not_mask_fixed_error(
         "_close_summary_stage_owner": 0,
         "_close_summary_parent_reference": 0,
     }
+    original_closes = {seam: getattr(benchmark, seam) for seam in attempts}
+    watched_references: set[int] = set()
+    raw_close_attempts: dict[int, int] = {}
+
+    if os.name == "nt":
+        original_close_handle = benchmark._WIN_CLOSE_HANDLE
+
+        def record_low_level_close(handle) -> bool:
+            value = benchmark._windows_handle_number(handle)
+            if value in watched_references:
+                raw_close_attempts[value] = raw_close_attempts.get(value, 0) + 1
+            return original_close_handle(handle)
+
+        monkeypatch.setattr(
+            benchmark, "_WIN_CLOSE_HANDLE", record_low_level_close
+        )
 
     def failing_close(seam: str):
         def fail(reference: int) -> None:
             attempts[seam] += 1
-            raise OSError("MARKER-ROLLBACK-CLOSE-FAILURE")
+            watched_references.add(reference)
+            original_closes[seam](reference)
+            raise OSError("MARKER-ROLLBACK-CLOSE-AFTER-EFFECT")
 
         return fail
 
@@ -2967,8 +3023,12 @@ def test_close_failures_during_precommit_rollback_do_not_mask_fixed_error(
     result = benchmark.main(_evaluation_main_arguments(bundle))
     captured = capfd.readouterr()
 
-    expected_attempts = 2 if os.name == "nt" else 1
-    assert attempts == {seam: expected_attempts for seam in attempts}
+    assert attempts == {seam: 1 for seam in attempts}
+    assert len(watched_references) == 3
+    if os.name == "nt":
+        assert raw_close_attempts == {
+            reference: 1 for reference in watched_references
+        }
     assert result == 2
     assert captured.out == ""
     assert captured.err == EVALUATE_ERROR.decode()

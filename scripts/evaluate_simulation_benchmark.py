@@ -2298,15 +2298,14 @@ class _SummaryTransaction:
 
     @staticmethod
     def _finalize_reference(reference: int, close_operation) -> None:
-        attempts = 2 if os.name == "nt" else 1
-        for _ in range(attempts):
-            try:
-                close_operation(reference)
-                return
-            except Exception:
-                pass
+        # A Windows close wrapper can raise after CloseHandle already released
+        # the object. Never retry or fall back on that raw numeric value: it may
+        # already name an unrelated reused handle. Namespace state is settled
+        # before this finalizer runs, so a possible process-lifetime leak until
+        # CLI exit is safer than a double-close. POSIX close state can likewise
+        # be indeterminate after failure, so it uses the same one-attempt edge.
         try:
-            _close_summary_reference(reference)
+            close_operation(reference)
         except Exception:
             pass
 
