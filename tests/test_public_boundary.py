@@ -272,8 +272,11 @@ def test_scanner_does_not_print_private_study_payload(tmp_path):
 
     finding = scan_repository(tmp_path)[0]
 
-    assert finding.detail == "human-study raw data is not permitted in the public project"
-    assert payload not in finding.detail
+    assert vars(finding) == {
+        "path": "study-data/answers.json",
+        "rule": "private-study-data",
+    }
+    assert payload not in str(finding)
 
 
 def test_scanner_does_not_read_or_print_governance_payload(tmp_path):
@@ -288,7 +291,7 @@ def test_scanner_does_not_read_or_print_governance_payload(tmp_path):
         "study-governance/readiness.json",
         "private-study-data",
     )
-    assert marker not in finding.detail
+    assert marker not in str(finding)
 
 
 @pytest.mark.parametrize(
@@ -313,7 +316,7 @@ def test_scanner_rejects_private_recovery_artifact_paths_without_content(
     assert [(item.path, item.rule) for item in findings] == [
         (relative_path, "private-recovery-artifact")
     ]
-    assert all(marker not in item.detail for item in findings)
+    assert all(marker not in str(item) for item in findings)
 
 
 def test_scanner_does_not_read_private_recovery_artifact(tmp_path, monkeypatch):
@@ -377,10 +380,11 @@ def test_scanner_globally_rejects_private_study_artifacts_before_file_access(
     assert [(item.path, item.rule) for item in findings] == [
         (relative_path, "private-recovery-artifact")
     ]
-    assert findings[0].detail == (
-        "only public recovery guidance and synthetic contracts are permitted"
-    )
-    assert marker not in findings[0].detail
+    assert vars(findings[0]) == {
+        "path": relative_path,
+        "rule": "private-recovery-artifact",
+    }
+    assert marker not in str(findings[0])
     assert accesses == []
 
 
@@ -401,37 +405,55 @@ def test_scanner_preserves_public_recovery_allowlist(tmp_path):
 
 
 @pytest.mark.parametrize(
-    ("relative_path", "expected_rule"),
+    ("relative_path", "expected_path", "expected_rule"),
     (
-        ("evals/benchmark/runs/run.json", "private-benchmark-artifact"),
-        ("evals/benchmark/results/report.md", "private-benchmark-artifact"),
         (
-            "evals/benchmark/raw-responses/case.md",
+            "evals/benchmark/runs/run.json",
+            "evals/benchmark/runs",
             "private-benchmark-artifact",
         ),
         (
+            "evals/benchmark/results/report.md",
+            "evals/benchmark/results",
+            "private-benchmark-artifact",
+        ),
+        (
+            "evals/benchmark/raw-responses/case.md",
+            "evals/benchmark/raw-responses",
+            "private-benchmark-artifact",
+        ),
+        (
+            "evals/benchmark/response-bundle.json",
             "evals/benchmark/response-bundle.json",
             "private-benchmark-artifact",
         ),
         (
             "evals/benchmark/benchmark-plan.json",
+            "evals/benchmark/benchmark-plan.json",
             "private-benchmark-artifact",
         ),
         (
+            "evals/benchmark/examples/result.json",
             "evals/benchmark/examples/result.json",
             "private-benchmark-artifact",
         ),
         (
             "evals/benchmark/condition-key.json",
+            "evals/benchmark/condition-key.json",
             "private-recovery-artifact",
         ),
-        ("evals/benchmark/api-key.txt", "private-benchmark-artifact"),
+        (
+            "evals/benchmark/api-key.txt",
+            "evals/benchmark/api-key.txt",
+            "private-benchmark-artifact",
+        ),
     ),
 )
 def test_scanner_rejects_private_benchmark_paths_before_file_access(
     tmp_path,
     monkeypatch,
     relative_path,
+    expected_path,
     expected_rule,
 ):
     """A private benchmark filename must be enough to reject it safely."""
@@ -466,9 +488,9 @@ def test_scanner_rejects_private_benchmark_paths_before_file_access(
     findings = scan_repository(tmp_path)
 
     assert [(item.path, item.rule) for item in findings] == [
-        (relative_path, expected_rule)
+        (expected_path, expected_rule)
     ]
-    assert marker not in findings[0].detail
+    assert marker not in str(findings[0])
     assert accesses == []
 
 
@@ -521,6 +543,168 @@ def test_scanner_allows_only_the_named_public_benchmark_contract_files(tmp_path)
     assert scan_repository(tmp_path) == []
 
 
+@pytest.mark.parametrize(
+    "relative_path",
+    (
+        "evals/benchmark/response-index.json",
+        "evals/benchmark/benchmark-run.json",
+        "evals/benchmark/token.txt",
+        "evals/benchmark/task-pack.json",
+        "evals/benchmark/examples/synthetic-result.json",
+        "evals/benchmark/unapproved-notes.md",
+        "evals/benchmark/unapproved-directory",
+    ),
+)
+def test_benchmark_tree_is_default_deny_before_any_path_probe(
+    tmp_path,
+    monkeypatch,
+    relative_path,
+):
+    target = tmp_path / relative_path
+    if target.suffix:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text("SYNTHETIC-OPAQUE-BENCHMARK-MARKER", encoding="utf-8")
+    else:
+        target.mkdir(parents=True)
+    original_stat = Path.stat
+    original_lstat = Path.lstat
+    original_read_text = Path.read_text
+    accesses = []
+
+    def observe_stat(self, *args, **kwargs):
+        if self == target:
+            accesses.append("stat")
+        return original_stat(self, *args, **kwargs)
+
+    def observe_lstat(self, *args, **kwargs):
+        if self == target:
+            accesses.append("lstat")
+        return original_lstat(self, *args, **kwargs)
+
+    def observe_read_text(self, *args, **kwargs):
+        if self == target:
+            accesses.append("read_text")
+        return original_read_text(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "stat", observe_stat)
+    monkeypatch.setattr(Path, "lstat", observe_lstat)
+    monkeypatch.setattr(Path, "read_text", observe_read_text)
+
+    findings = scan_repository(tmp_path)
+
+    assert [(item.path, item.rule) for item in findings] == [
+        (relative_path, "private-benchmark-artifact")
+    ]
+    assert accesses == []
+
+
+def test_benchmark_private_recovery_directory_keeps_precedence_and_is_pruned(
+    tmp_path,
+    monkeypatch,
+):
+    relative_path = "evals/benchmark/condition-key"
+    target = tmp_path / relative_path
+    target.mkdir(parents=True)
+    original_stat = Path.stat
+    original_lstat = Path.lstat
+    original_read_text = Path.read_text
+    accesses = []
+
+    def observe_stat(self, *args, **kwargs):
+        if self == target:
+            accesses.append("stat")
+        return original_stat(self, *args, **kwargs)
+
+    def observe_lstat(self, *args, **kwargs):
+        if self == target:
+            accesses.append("lstat")
+        return original_lstat(self, *args, **kwargs)
+
+    def observe_read_text(self, *args, **kwargs):
+        if self == target:
+            accesses.append("read_text")
+        return original_read_text(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "stat", observe_stat)
+    monkeypatch.setattr(Path, "lstat", observe_lstat)
+    monkeypatch.setattr(Path, "read_text", observe_read_text)
+
+    findings = scan_repository(tmp_path)
+
+    assert [(item.path, item.rule) for item in findings] == [
+        (relative_path, "private-recovery-artifact")
+    ]
+    assert accesses == []
+
+
+@pytest.mark.parametrize(
+    "relative_path",
+    (
+        "artifacts/Response.Index.JSON",
+        "artifacts/BENCHMARK_RUN.json",
+        "artifacts/benchmark.output.JSON",
+        "artifacts/benchmark_index.json",
+        "artifacts/RUN.JSON",
+        "artifacts/runs.json",
+        "artifacts/Result.JSON",
+        "artifacts/results.json",
+        "artifacts/RawResponses.json",
+        "artifacts/raw.responses.json",
+        "artifacts/raw responses.json",
+        "artifacts/TOKEN.txt",
+        "artifacts/task_pack.json",
+        "artifacts/PARTICIPANT.json",
+    ),
+)
+def test_global_benchmark_classifier_rejects_case_and_separator_variants_before_probe(
+    tmp_path,
+    monkeypatch,
+    relative_path,
+):
+    target = tmp_path / relative_path
+    target.parent.mkdir(parents=True)
+    target.write_text("SYNTHETIC-OPAQUE-GLOBAL-MARKER", encoding="utf-8")
+    original_stat = Path.stat
+    original_lstat = Path.lstat
+    original_read_text = Path.read_text
+    accesses = []
+
+    def observe_stat(self, *args, **kwargs):
+        if self == target:
+            accesses.append("stat")
+        return original_stat(self, *args, **kwargs)
+
+    def observe_lstat(self, *args, **kwargs):
+        if self == target:
+            accesses.append("lstat")
+        return original_lstat(self, *args, **kwargs)
+
+    def observe_read_text(self, *args, **kwargs):
+        if self == target:
+            accesses.append("read_text")
+        return original_read_text(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "stat", observe_stat)
+    monkeypatch.setattr(Path, "lstat", observe_lstat)
+    monkeypatch.setattr(Path, "read_text", observe_read_text)
+
+    findings = scan_repository(tmp_path)
+
+    assert [(item.path, item.rule) for item in findings] == [
+        (relative_path, "private-benchmark-artifact")
+    ]
+    assert accesses == []
+
+
+def test_findings_expose_only_normalized_path_and_rule_id(tmp_path):
+    path = tmp_path / "unsafe.pdf"
+    path.write_bytes(b"synthetic")
+
+    finding = scan_repository(tmp_path)[0]
+
+    assert vars(finding) == {"path": "unsafe.pdf", "rule": "pdf-file"}
+
+
 def test_gitignore_keeps_study_governance_out_of_the_checkout():
     lines = (ROOT / ".gitignore").read_text(encoding="utf-8").splitlines()
     assert "study-governance/" in lines
@@ -557,7 +741,7 @@ def test_cli_returns_nonzero_without_printing_matched_secret(tmp_path):
         check=False,
     )
     assert result.returncode == 1
-    assert "notes.md: possible-secret:" in result.stdout
+    assert result.stdout == "notes.md: possible-secret\n"
     assert secret not in result.stdout
 
 

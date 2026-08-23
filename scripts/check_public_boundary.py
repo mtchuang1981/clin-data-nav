@@ -14,7 +14,6 @@ import subprocess
 class Finding:
     path: str
     rule: str
-    detail: str
 
 
 class TrackedPathQueryError(RuntimeError):
@@ -52,14 +51,36 @@ PUBLIC_BENCHMARK_FILES = {
     "evals/benchmark/examples/synthetic-report.zh-TW.md",
     "evals/benchmark/examples/synthetic-summary.json",
 }
+BENCHMARK_ROOT = Path("evals/benchmark")
+PUBLIC_BENCHMARK_DIRECTORIES = {
+    BENCHMARK_ROOT,
+    BENCHMARK_ROOT / "examples",
+}
 PRIVATE_BENCHMARK_PARTS = {
+    "accesstoken",
+    "accesstokens",
+    "apikey",
+    "apikeys",
+    "credential",
+    "credentials",
+    "humanstudy",
+    "institutionalschema",
+    "output",
     "outputs",
-    "raw-response",
-    "raw-responses",
-    "raw_response",
-    "raw_responses",
+    "participant",
+    "participantdata",
+    "participants",
+    "patientdata",
+    "rawresponse",
+    "rawresponses",
+    "result",
     "results",
+    "run",
     "runs",
+    "taskpack",
+    "taskpacks",
+    "token",
+    "tokens",
 }
 PRIVATE_BENCHMARK_BASENAMES = {
     "index",
@@ -75,19 +96,21 @@ PRIVATE_BENCHMARK_BASENAMES = {
 }
 PRIVATE_BENCHMARK_ARTIFACT_NAME = re.compile(
     r"(?i)^(?:"
-    r"benchmark[-_]?(?:plans?|reports?|results?|summaries|summary)|"
-    r"response[-_]?(?:bundles?|indexes?|outputs?)|"
-    r"raw[-_]?responses?|"
-    r"provider[-_]?logs?|"
-    r"api[-_]?keys?|"
-    r"access[-_]?tokens?|"
+    r"benchmark[-_. ]?(?:plans?|reports?|results?|summar(?:y|ies)|runs?|outputs?|index(?:es)?)|"
+    r"response[-_. ]?(?:bundles?|index(?:es)?|outputs?)|"
+    r"raw[-_. ]?responses?|"
+    r"provider[-_. ]?logs?|"
+    r"api[-_. ]?keys?|"
+    r"access[-_. ]?tokens?|"
+    r"tokens?|"
     r"credentials?|"
-    r"private[-_]?tasks?|"
-    r"human[-_]?study|"
-    r"participant[-_]?(?:data|inputs?|answers?|scores?)|"
-    r"patient[-_]?data|"
-    r"institutional[-_]?schema"
-    r")(?:[-_.].*)?$"
+    r"private[-_. ]?tasks?|"
+    r"task[-_. ]?packs?|"
+    r"human[-_. ]?study|"
+    r"participants?(?:[-_. ]?(?:data|inputs?|answers?|scores?))?|"
+    r"patient[-_. ]?data|"
+    r"institutional[-_. ]?schema"
+    r")(?:[-_. ].*)?$"
 )
 PRIVATE_RECOVERY_ARTIFACT_NAME = re.compile(
     r"(?i)^(?:"
@@ -202,12 +225,29 @@ def _is_private_recovery_path(relative_path: Path) -> bool:
 def _is_private_benchmark_path(relative_path: Path) -> bool:
     if relative_path.as_posix() in PUBLIC_BENCHMARK_FILES:
         return False
+    if relative_path == BENCHMARK_ROOT or BENCHMARK_ROOT in relative_path.parents:
+        return relative_path not in PUBLIC_BENCHMARK_DIRECTORIES
     lowercase_parts = tuple(part.casefold() for part in relative_path.parts)
+    normalized_parts = tuple(
+        re.sub(r"[-_. ]+", "", part) for part in lowercase_parts
+    )
+    normalized_stem = re.sub(
+        r"[-_. ]+", "", relative_path.stem.casefold()
+    )
     return (
-        any(part in PRIVATE_BENCHMARK_PARTS for part in lowercase_parts)
-        or relative_path.stem.casefold() in PRIVATE_BENCHMARK_BASENAMES
+        any(part in PRIVATE_BENCHMARK_PARTS for part in normalized_parts)
+        or normalized_stem in PRIVATE_BENCHMARK_BASENAMES
         or bool(PRIVATE_BENCHMARK_ARTIFACT_NAME.fullmatch(relative_path.name))
     )
+
+
+def _is_private_benchmark_directory_path(relative_path: Path) -> bool:
+    if relative_path == BENCHMARK_ROOT or BENCHMARK_ROOT in relative_path.parents:
+        return relative_path not in PUBLIC_BENCHMARK_DIRECTORIES
+    normalized_parts = tuple(
+        re.sub(r"[-_. ]+", "", part.casefold()) for part in relative_path.parts
+    )
+    return any(part in PRIVATE_BENCHMARK_PARTS for part in normalized_parts)
 
 
 def scan_repository(root: Path, max_text_bytes: int = 200_000) -> list[Finding]:
@@ -221,7 +261,6 @@ def scan_repository(root: Path, max_text_bytes: int = 200_000) -> list[Finding]:
             Finding(
                 ".",
                 "tracked-path-query-failed",
-                "Git tracked paths could not be verified",
             )
         ]
 
@@ -235,18 +274,42 @@ def scan_repository(root: Path, max_text_bytes: int = 200_000) -> list[Finding]:
                     Finding(
                         relative_path,
                         "unrelated-local-tool-configuration",
-                        "local tool configuration is not permitted in the public project",
                     )
                 )
 
     for directory, child_directories, filenames in os.walk(root):
         directory_path = Path(directory)
-        child_directories[:] = sorted(
-            name
-            for name in child_directories
-            if name not in SKIP_DIRECTORIES
-            and (directory_path != root or name != ".worktrees")
-        )
+        retained_directories = []
+        for name in sorted(child_directories):
+            if name in SKIP_DIRECTORIES or (
+                directory_path == root and name == ".worktrees"
+            ):
+                continue
+            child_relative = (directory_path / name).relative_to(root)
+            if _is_private_study_path(child_relative):
+                retained_directories.append(name)
+                continue
+            if _is_private_recovery_path(child_relative):
+                if BENCHMARK_ROOT in child_relative.parents:
+                    findings.append(
+                        Finding(
+                            child_relative.as_posix(),
+                            "private-recovery-artifact",
+                        )
+                    )
+                    continue
+                retained_directories.append(name)
+                continue
+            if _is_private_benchmark_directory_path(child_relative):
+                findings.append(
+                    Finding(
+                        child_relative.as_posix(),
+                        "private-benchmark-artifact",
+                    )
+                )
+                continue
+            retained_directories.append(name)
+        child_directories[:] = retained_directories
         for filename in sorted(filenames):
             path = directory_path / filename
             relative = path.relative_to(root)
@@ -262,7 +325,6 @@ def scan_repository(root: Path, max_text_bytes: int = 200_000) -> list[Finding]:
                     Finding(
                         relative_path,
                         "private-study-data",
-                        "human-study raw data is not permitted in the public project",
                     )
                 )
                 continue
@@ -271,7 +333,6 @@ def scan_repository(root: Path, max_text_bytes: int = 200_000) -> list[Finding]:
                     Finding(
                         relative_path,
                         "private-recovery-artifact",
-                        "only public recovery guidance and synthetic contracts are permitted",
                     )
                 )
                 continue
@@ -280,7 +341,6 @@ def scan_repository(root: Path, max_text_bytes: int = 200_000) -> list[Finding]:
                     Finding(
                         relative_path,
                         "private-benchmark-artifact",
-                        "real benchmark and sensitive run artifacts are not permitted",
                     )
                 )
                 continue
@@ -291,7 +351,6 @@ def scan_repository(root: Path, max_text_bytes: int = 200_000) -> list[Finding]:
                     Finding(
                         relative_path,
                         "environment-file",
-                        "environment files are not permitted",
                     )
                 )
                 continue
@@ -304,13 +363,11 @@ def scan_repository(root: Path, max_text_bytes: int = 200_000) -> list[Finding]:
                     Finding(
                         relative_path,
                         "private-filename",
-                        "filename matches a private-material pattern",
                     )
                 )
 
             if path.suffix.lower() == ".pdf":
-                findings.append(
-                    Finding(relative_path, "pdf-file", "PDF files are not permitted"))
+                findings.append(Finding(relative_path, "pdf-file"))
                 continue
 
             if (
@@ -321,7 +378,6 @@ def scan_repository(root: Path, max_text_bytes: int = 200_000) -> list[Finding]:
                     Finding(
                         relative_path,
                         "data-artifact",
-                        "data artifacts require an explicit public allowlist entry",
                     )
                 )
                 continue
@@ -337,7 +393,6 @@ def scan_repository(root: Path, max_text_bytes: int = 200_000) -> list[Finding]:
                     Finding(
                         relative_path,
                         "large-text-file",
-                        f"text file exceeds the {max_text_bytes}-byte limit",
                     )
                 )
 
@@ -347,7 +402,6 @@ def scan_repository(root: Path, max_text_bytes: int = 200_000) -> list[Finding]:
                     Finding(
                         relative_path,
                         "possible-secret",
-                        "text matches a credential pattern",
                     )
                 )
 
@@ -366,7 +420,7 @@ def main(argv: list[str] | None = None) -> int:
 
     findings = scan_repository(args.root)
     for finding in findings:
-        print(f"{finding.path}: {finding.rule}: {finding.detail}")
+        print(f"{finding.path}: {finding.rule}")
     return 1 if findings else 0
 
 

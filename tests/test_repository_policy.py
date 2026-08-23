@@ -91,14 +91,10 @@ def test_public_boundary_rejects_tracked_local_tool_configuration(tmp_path):
 
     findings = scan_repository(repository)
 
-    assert [
-        (finding.path, finding.rule, finding.detail)
-        for finding in findings
-    ] == [
+    assert [(finding.path, finding.rule) for finding in findings] == [
         (
             ".baoyu-skills/baoyu-translate/EXTEND.md",
             "unrelated-local-tool-configuration",
-            "local tool configuration is not permitted in the public project",
         )
     ]
 
@@ -110,14 +106,10 @@ def test_public_boundary_fails_closed_when_tracked_path_query_fails(tmp_path):
 
     findings = scan_repository(repository)
 
-    assert [
-        (finding.path, finding.rule, finding.detail)
-        for finding in findings
-    ] == [
+    assert [(finding.path, finding.rule) for finding in findings] == [
         (
             ".",
             "tracked-path-query-failed",
-            "Git tracked paths could not be verified",
         )
     ]
 
@@ -131,14 +123,10 @@ def test_public_boundary_fails_closed_when_git_metadata_cannot_be_resolved(
 
     findings = scan_repository(repository)
 
-    assert [
-        (finding.path, finding.rule, finding.detail)
-        for finding in findings
-    ] == [
+    assert [(finding.path, finding.rule) for finding in findings] == [
         (
             ".",
             "tracked-path-query-failed",
-            "Git tracked paths could not be verified",
         )
     ]
 
@@ -160,9 +148,6 @@ def test_public_boundary_cli_hides_git_query_failure_details(tmp_path):
     )
 
     assert result.returncode == 1
-    assert result.stdout == (
-        ".: tracked-path-query-failed: "
-        "Git tracked paths could not be verified\n"
-    )
+    assert result.stdout == ".: tracked-path-query-failed\n"
     assert result.stderr == ""
     assert str(repository) not in result.stdout
