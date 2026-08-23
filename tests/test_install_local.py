@@ -8,7 +8,9 @@ from zipfile import ZipFile, ZipInfo
 import pytest
 
 import scripts.install_local as install_local_module
+from scripts.install_local import PACKAGE_VERSION as INSTALLER_VERSION
 from scripts.install_local import install_package, main
+from scripts.package_skill import PACKAGE_VERSION as PACKAGER_VERSION
 from scripts.package_skill import build_package
 
 
@@ -38,6 +40,11 @@ def _build_test_package(tmp_path: Path):
     skill.parent.mkdir()
     _write_minimal_skill(skill)
     return build_package(skill, tmp_path / "package")
+
+
+def test_candidate_installer_version_matches_the_candidate_packager():
+    assert INSTALLER_VERSION == "0.6.0"
+    assert PACKAGER_VERSION == "0.6.0"
 
 
 def _refresh_archive_hash(package) -> None:

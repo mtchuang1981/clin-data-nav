@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.6.0 - Candidate
+
+### Candidate capabilities
+
+- Add a provider-neutral public simulation benchmark that freezes all 12
+  deterministic Eval cases across control and intervention conditions for
+  three repeats, producing a complete 72-cell external run plan.
+- Bind the first normative campaign to the exact released `v0.5.0` Skill
+  bundle while keeping plans, response indexes, raw responses, provider logs,
+  and generated reports outside the repository.
+- Reuse the existing deterministic evaluator for paired aggregation and
+  bilingual reporting, and add structured community Issue Forms that remain
+  outside formal benchmark aggregates.
+
+### Limitations
+
+- This is a `v0.6.0` candidate. No `v0.6.0` tag or GitHub Release exists, and
+  no real benchmark campaign or human pilot has been performed. Checked-in
+  benchmark results are synthetic contract examples only and do not establish
+  usability, clinical validity, causal validity, patient benefit, or fitness
+  for deployment.
+
 ## 0.5.0 - 2026-08-16
 
 ### Changed

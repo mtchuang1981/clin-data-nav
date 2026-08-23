@@ -952,10 +952,10 @@ def test_release_workflow_is_manual_fail_closed_and_least_privilege():
     assert 'candidate-packages/Linux/$manifest' in build_runs[verify_index]
     assert 'cp "candidate-packages/Linux/$archive"' in build_runs[verify_index]
     assert 'cp "candidate-packages/Linux/$manifest"' in build_runs[verify_index]
-    assert 'test "$VERSION" = "0.5.0"' in build_runs[verify_index]
+    assert 'test "$VERSION" = "0.6.0"' in build_runs[verify_index]
     assert 'archive="clin-nav-$VERSION.zip"' in build_runs[verify_index]
     assert 'manifest="clin-nav-$VERSION.manifest.json"' in build_runs[verify_index]
-    assert 'notes="docs/releases/0.5.0.md"' in build_runs[verify_index]
+    assert 'notes="docs/releases/0.6.0.md"' in build_runs[verify_index]
     assert "python scripts/package_skill.py" not in build_rendered
     assert all("pip " not in command for command in build_runs)
     assert "dist/" not in build_rendered
@@ -1070,38 +1070,41 @@ def test_citation_and_license_metadata():
         (ROOT / "CITATION.cff").read_text(encoding="utf-8")
     )
     assert citation["title"] == "Clinical Data Research Navigator"
-    assert citation["version"] == "0.5.0"
-    assert citation["date-released"] == "2026-08-16"
+    assert citation["version"] == "0.6.0"
+    assert "date-released" not in citation
     assert citation["license"] == "Apache-2.0"
     assert "Apache License" in (ROOT / "LICENSE").read_text(encoding="utf-8")
 
 
-def test_release_version_is_synchronized_at_v050():
+def test_candidate_version_is_synchronized_at_v060_without_publication_date():
     project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
     citation = yaml.safe_load((ROOT / "CITATION.cff").read_text(encoding="utf-8"))
     changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
     changelog_zh_tw = (ROOT / "CHANGELOG.zh-TW.md").read_text(encoding="utf-8")
-    release_notes = (ROOT / "docs/releases/0.5.0.md").read_text(encoding="utf-8")
+    release_notes = (ROOT / "docs/releases/0.6.0.md").read_text(encoding="utf-8")
 
-    release_version = "0.5.0"
+    release_version = "0.6.0"
     release_surfaces = {
         "pyproject": project["project"]["version"],
         "citation": citation["version"],
         "packager": PACKAGER_VERSION,
-        "installer": INSTALLER_VERSION,
         "changelog": changelog.splitlines()[2]
         .removeprefix("## ")
         .split(" - ", 1)[0],
         "changelog-zh-TW": changelog_zh_tw.splitlines()[2]
         .removeprefix("## ")
         .split(" - ", 1)[0],
-        "release-notes": release_notes.splitlines()[0].rsplit("v", 1)[1],
+        "release-notes": release_notes.splitlines()[0]
+        .rsplit("v", 1)[1]
+        .split()[0],
     }
-    assert len(release_surfaces) == 7
+    assert len(release_surfaces) == 6
     assert set(release_surfaces.values()) == {release_version}
-    assert changelog.splitlines()[2] == "## 0.5.0 - 2026-08-16"
-    assert changelog_zh_tw.splitlines()[2] == "## 0.5.0 - 2026-08-16"
-    assert citation["date-released"] == "2026-08-16"
+    assert changelog.splitlines()[2] == "## 0.6.0 - Candidate"
+    assert changelog_zh_tw.splitlines()[2] == "## 0.6.0 - Candidate"
+    assert "date-released" not in citation
+    assert "## 0.5.0 - 2026-08-16" in changelog
+    assert "## 0.5.0 - 2026-08-16" in changelog_zh_tw
     assert "## 0.4.0 - 2026-08-10" in changelog
     assert "## 0.4.0 - 2026-08-10" in changelog_zh_tw
 
@@ -1110,12 +1113,69 @@ def test_release_version_is_synchronized_at_v050():
     assert "## 0.2.2 - 2026-07-29" in changelog_zh_tw
 
 
-def test_release_package_version_is_synchronized_at_v050():
+def test_candidate_package_and_installer_versions_are_synchronized_at_v060():
     project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
 
-    assert project["project"]["version"] == "0.5.0"
-    assert PACKAGER_VERSION == "0.5.0"
-    assert INSTALLER_VERSION == "0.5.0"
+    assert project["project"]["version"] == "0.6.0"
+    assert PACKAGER_VERSION == "0.6.0"
+    assert INSTALLER_VERSION == "0.6.0"
+
+
+def test_v060_candidate_notes_are_bilingual_and_truthful_about_external_evidence():
+    notes = (ROOT / "docs/releases/0.6.0.md").read_text(encoding="utf-8")
+    normalized = " ".join(notes.split())
+
+    assert notes.startswith("# Clinical Data Research Navigator v0.6.0 candidate\n")
+    for heading in (
+        "## English",
+        "### Candidate capabilities",
+        "### Evidence boundary",
+        "## 繁體中文",
+        "### 候選功能",
+        "### 證據界線",
+    ):
+        assert heading in notes
+    for contract in (
+        "provider-neutral public simulation benchmark",
+        "released v0.5.0 Skill bundle",
+        "outside the repository",
+        "existing deterministic evaluator",
+        "structured Issue Forms",
+        "There is no v0.6.0 tag or GitHub Release.",
+        "No real benchmark campaign or human pilot has been performed.",
+        "供應商中立的公開模擬基準",
+        "已發布的 v0.5.0 Skill 套件",
+        "儲存庫外部",
+        "既有的決定性評估器",
+        "結構化 Issue Forms",
+        "目前沒有 v0.6.0 tag 或 GitHub Release。",
+        "尚未執行真實基準活動或真人先導研究。",
+    ):
+        assert contract in normalized
+    for unsupported_claim in (
+        "v0.6.0 was released",
+        "v0.6.0 已發布",
+        "human-effective",
+        "evaluation-green",
+        "clinical validity",
+        "deployment-ready",
+    ):
+        assert unsupported_claim not in normalized
+
+
+def test_v060_candidate_preserves_v050_publication_and_security_history():
+    publication = (
+        ROOT / "docs/verification/2026-08-16-v0.5.0-publication.md"
+    ).read_text(encoding="utf-8")
+    release_notes = (ROOT / "docs/releases/0.5.0.md").read_text(encoding="utf-8")
+    security = (ROOT / "SECURITY.md").read_text(encoding="utf-8")
+
+    assert "- Published version: `v0.5.0`" in publication
+    assert "`clin-nav-0.5.0.zip`" in publication
+    assert "`clin-nav-0.5.0.manifest.json`" in publication
+    assert release_notes.startswith("# Clinical Data Research Navigator v0.5.0\n")
+    assert "`0.5.x` | Yes" in " ".join(security.split())
+    assert "`0.6.x` | Yes" not in " ".join(security.split())
 
 
 @pytest.mark.parametrize(
@@ -2616,7 +2676,7 @@ def test_installation_guides_use_the_current_chatgpt_upload_path_in_order():
         assert permission_note in text
 
 
-def test_source_checkout_uses_packager_output_and_refuses_an_existing_target(
+def test_candidate_source_checkout_uses_the_synchronized_installer(
     tmp_path,
 ):
     documents = (
@@ -2672,6 +2732,9 @@ def test_source_checkout_uses_packager_output_and_refuses_an_existing_target(
     archive_path, manifest_path = map(Path, output_paths)
     assert archive_path.is_file()
     assert manifest_path.is_file()
+    candidate_manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    assert archive_path.name == "clin-nav-0.6.0.zip"
+    assert candidate_manifest["version"] == "0.6.0"
 
     destination = tmp_path / "installed-skills"
     install_command = [
@@ -2821,7 +2884,7 @@ def test_citation_has_required_cff_1_2_schema_shape_and_author():
         )
 
 
-def test_citation_points_to_the_public_repository_with_the_release_date():
+def test_candidate_citation_points_to_public_repository_without_release_date():
     citation = yaml.safe_load(
         (ROOT / "CITATION.cff").read_text(encoding="utf-8")
     )
@@ -2829,7 +2892,7 @@ def test_citation_points_to_the_public_repository_with_the_release_date():
     repository_url = "https://github.com/mtchuang1981/clin-data-nav"
     assert citation["url"] == repository_url
     assert citation["repository-code"] == repository_url
-    assert citation["date-released"] == "2026-08-16"
+    assert "date-released" not in citation
 
 
 def test_security_policy_has_supported_versions_and_safe_confidential_reporting():
