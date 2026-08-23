@@ -2,9 +2,10 @@
 
 [English](installation.md)
 
-建議使用 `npx skills add`，把 Skill 安裝在要使用它的專案中。下方 v0.4.0
-ZIP 內容僅供歷史驗證參考，不是安裝方式；開發或稽核本儲存庫時，才使用
-原始碼簽出安裝。
+建議使用 `npx skills add`，把 Skill 安裝在要使用它的專案中。目前已驗證且
+不可變的 Release 是 `v0.5.0`；下方提供確切的 `clin-nav` 產物核對與安裝
+方式。v0.4.0 ZIP 內容仍僅供歷史驗證參考，不是安裝方式；開發或稽核本
+儲存庫時，才使用原始碼簽出安裝。
 
 ## 執行環境界線
 
@@ -83,10 +84,95 @@ npx skills update clin-nav --project --yes
 接著再用 `/skills` 確認。若顯示的行為仍是舊版，請依下方對應階段排解，
 不要直接重複安裝。
 
+## 目前已驗證的 v0.5.0 Release 產物核對
+
+目前已驗證且不可變的 Release 是 `v0.5.0`。確切的已發布產物為
+`clin-nav-0.5.0.zip` 與 `clin-nav-0.5.0.manifest.json`。下列指令會從同一個
+不可變 Release 下載兩個產物，先用已發布的 SHA-256 核對 manifest，再用
+已發布的 SHA-256 與 manifest 內的 `archive_sha256` 交叉核對 ZIP，通過後才
+安裝。這些值來自儲存庫已提交的公開 v0.5.0 發布證據，不代表尚未發布的
+v0.6.0 候選版本。
+
+v0.4.0 套件仍保留於下方，僅供歷史驗證參考。
+
+PowerShell：
+
+```powershell
+$releaseVersion = "0.5.0"
+$archiveName = "clin-nav-$releaseVersion.zip"
+$manifestName = "clin-nav-$releaseVersion.manifest.json"
+$expectedArchiveSha256 = "195967e3e3b1a6ee32de18a442a7c84badc6642ce6b4ddc0456c441b5f25686d"
+$expectedManifestSha256 = "03b736ec703ce3c8b78acc56a8e467d109612fbdd01b08240202d355228332c6"
+$releaseBase = "https://github.com/mtchuang1981/clin-data-nav/releases/download/v$releaseVersion"
+Invoke-WebRequest "$releaseBase/$archiveName" -OutFile $archiveName
+Invoke-WebRequest "$releaseBase/$manifestName" -OutFile $manifestName
+$actualManifestSha256 = (Get-FileHash $manifestName -Algorithm SHA256).Hash.ToLowerInvariant()
+if ($actualManifestSha256 -ne $expectedManifestSha256) { throw "Manifest SHA-256 mismatch" }
+$manifest = Get-Content $manifestName -Raw | ConvertFrom-Json
+if ($manifest.version -ne $releaseVersion) { throw "Manifest version mismatch" }
+if ($manifest.archive -ne $archiveName) { throw "Manifest archive mismatch" }
+if ($manifest.archive_sha256 -ne $expectedArchiveSha256) { throw "Manifest archive_sha256 mismatch" }
+$actualArchiveSha256 = (Get-FileHash $archiveName -Algorithm SHA256).Hash.ToLowerInvariant()
+if ($actualArchiveSha256 -ne $expectedArchiveSha256) { throw "Archive SHA-256 mismatch" }
+
+$skillsRoot = Join-Path (Get-Location) ".agents/skills"
+$skillDirectory = Join-Path $skillsRoot "clin-nav"
+$stagingDirectory = Join-Path $skillsRoot ".clin-nav-v0.5.0-staged"
+if (Test-Path $skillDirectory) { throw "Installation already exists" }
+if (Test-Path $stagingDirectory) { throw "Staging directory already exists" }
+New-Item -ItemType Directory -Path $skillsRoot -Force | Out-Null
+New-Item -ItemType Directory -Path $stagingDirectory | Out-Null
+Expand-Archive -LiteralPath $archiveName -DestinationPath $stagingDirectory
+if (-not (Test-Path (Join-Path $stagingDirectory "SKILL.md"))) { throw "SKILL.md missing" }
+Move-Item -LiteralPath $stagingDirectory -Destination $skillDirectory
+```
+
+POSIX shell：
+
+```bash
+release_version="0.5.0"
+archive_name="clin-nav-$release_version.zip"
+manifest_name="clin-nav-$release_version.manifest.json"
+expected_archive_sha256="195967e3e3b1a6ee32de18a442a7c84badc6642ce6b4ddc0456c441b5f25686d"
+expected_manifest_sha256="03b736ec703ce3c8b78acc56a8e467d109612fbdd01b08240202d355228332c6"
+release_base="https://github.com/mtchuang1981/clin-data-nav/releases/download/v$release_version"
+curl -fL "$release_base/$archive_name" -o "$archive_name"
+curl -fL "$release_base/$manifest_name" -o "$manifest_name"
+if command -v sha256sum >/dev/null 2>&1; then
+  actual_manifest_sha256="$(sha256sum "$manifest_name" | cut -d ' ' -f1)"
+  actual_archive_sha256="$(sha256sum "$archive_name" | cut -d ' ' -f1)"
+elif command -v shasum >/dev/null 2>&1; then
+  actual_manifest_sha256="$(shasum -a 256 "$manifest_name" | cut -d ' ' -f1)"
+  actual_archive_sha256="$(shasum -a 256 "$archive_name" | cut -d ' ' -f1)"
+else
+  echo "Install sha256sum or shasum to verify the assets." >&2
+  exit 1
+fi
+test "$actual_manifest_sha256" = "$expected_manifest_sha256" || { echo "Manifest SHA-256 mismatch" >&2; exit 1; }
+manifest_archive_sha256="$(grep -o '"archive_sha256":"[0-9a-f]\{64\}"' "$manifest_name" | cut -d '"' -f4)"
+test "$manifest_archive_sha256" = "$expected_archive_sha256" || { echo "Manifest archive_sha256 mismatch" >&2; exit 1; }
+test "$actual_archive_sha256" = "$expected_archive_sha256" || { echo "Archive SHA-256 mismatch" >&2; exit 1; }
+
+skills_root="$PWD/.agents/skills"
+skill_directory="$skills_root/clin-nav"
+staging_directory="$skills_root/.clin-nav-v0.5.0-staged"
+test ! -e "$skill_directory" || { echo "Installation already exists" >&2; exit 1; }
+test ! -e "$staging_directory" || { echo "Staging directory already exists" >&2; exit 1; }
+mkdir -p "$skills_root"
+mkdir "$staging_directory"
+unzip "$archive_name" -d "$staging_directory"
+test -f "$staging_directory/SKILL.md"
+mv "$staging_directory" "$skill_directory"
+```
+
+安裝後請確認 `.agents/skills/clin-nav/SKILL.md`，需要時重新啟動 Skill host，
+用 `/skills` 確認已找到 Skill，再叫用 `$clin-nav`。範例遇到既有安裝或 staging
+目錄時會拒絕繼續；請先檢查既有路徑，不要直接刪除或覆寫。
+
 ## 歷史 v0.4.0 Release 產物驗證（僅供參考）
 
-目前已驗證的 Release 是 `v0.4.0`。本節僅供歷史驗證參考，
-不是目前的安裝方式；其壓縮檔包含先前的 Skill ID，不相容於 `$clin-nav`。
+`v0.4.0` Release 先前已完成驗證。本節僅供歷史驗證參考，不是目前的安裝方式；
+其壓縮檔包含先前的 Skill ID，不相容於 `$clin-nav`。
 下列指令保留已發布
 產物的驗證事實：從同一個 Release 下載 ZIP 與 manifest，再用 `archive_sha256`
 核對 ZIP 的 SHA-256；指令不會解壓縮或安裝該 Skill。

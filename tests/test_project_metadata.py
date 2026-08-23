@@ -2549,28 +2549,64 @@ def test_installation_guides_preserve_quick_update_verified_and_source_paths():
         (
             (ROOT / "docs/installation.md").read_text(encoding="utf-8"),
             ENGLISH_ONBOARDING_CONTRACT,
-            "current verified Release is `v0.4.0`",
-            ("target version for the next release", "not yet a claim"),
+            "## Current verified v0.5.0 Release artifact verification",
+            "## Historical v0.4.0 Release artifact verification (reference only)",
+            "current verified immutable Release is `v0.5.0`",
+            "The v0.4.0 bundle remains below as a historical verification reference only.",
+            (
+                "current verified Release is `v0.4.0`",
+                "target version for the next release",
+                "not yet a claim",
+            ),
         ),
         (
             (ROOT / "docs/installation.zh-TW.md").read_text(encoding="utf-8"),
             TRADITIONAL_CHINESE_ONBOARDING_CONTRACT,
-            "目前已驗證的 Release 是 `v0.4.0`",
-            ("下一個 Release", "不表示"),
+            "## 目前已驗證的 v0.5.0 Release 產物核對",
+            "## 歷史 v0.4.0 Release 產物驗證（僅供參考）",
+            "目前已驗證且不可變的 Release 是 `v0.5.0`",
+            "v0.4.0 套件仍保留於下方，僅供歷史驗證參考。",
+            (
+                "目前已驗證的 Release 是 `v0.4.0`",
+                "下一個 Release",
+                "不表示",
+            ),
         ),
     )
 
-    for text, onboarding_contract, published_claim, stale_claims in documents:
+    for (
+        text,
+        onboarding_contract,
+        current_heading,
+        historical_heading,
+        published_claim,
+        historical_claim,
+        stale_claims,
+    ) in documents:
         _assert_readme_onboarding_contract(text, **onboarding_contract)
         normalized = " ".join(text.split())
         assert published_claim in normalized
+        assert historical_claim in normalized
         for stale_claim in stale_claims:
             assert stale_claim not in normalized
-        assert 'releaseVersion = "0.4.0"' in text
-        assert 'release_version="0.4.0"' in text
+        current = _markdown_section(text, current_heading, historical_heading)
+        assert 'releaseVersion = "0.5.0"' in current
+        assert 'release_version="0.5.0"' in current
+        assert "clin-nav-$releaseVersion.zip" in current
+        assert "clin-nav-$releaseVersion.manifest.json" in current
+        assert "clin-nav-$release_version.zip" in current
+        assert "clin-nav-$release_version.manifest.json" in current
+        assert (
+            "195967e3e3b1a6ee32de18a442a7c84badc6642ce6b4ddc0456c441b5f25686d"
+            in current
+        )
+        assert (
+            "03b736ec703ce3c8b78acc56a8e467d109612fbdd01b08240202d355228332c6"
+            in current
+        )
+        assert "archive_sha256" in current
         assert "$HOME/.agents/skills" in text
         assert "SHA-256" in text
-        assert "archive_sha256" in text
         assert "scripts/package_skill.py" in text
         assert "scripts/install_local.py" in text
         assert "--overwrite" in text

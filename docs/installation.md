@@ -3,9 +3,10 @@
 [繁體中文](installation.zh-TW.md)
 
 The recommended path is a project-local installation with `npx skills add`.
-The v0.4.0 ZIP material below is a historical verification reference, not an
-installation path. Use the source-checkout path only when developing or
-auditing this repository.
+The current verified immutable Release is `v0.5.0`; its exact `clin-nav`
+artifact verification and installation path is below. The v0.4.0 ZIP material
+remains a historical verification reference, not an installation path. Use the
+source-checkout path only when developing or auditing this repository.
 
 ## Runtime boundary
 
@@ -92,9 +93,96 @@ npx skills update clin-nav --project --yes
 Confirm discovery again with `/skills`. If the displayed behavior is stale,
 follow the stage-specific recovery below instead of reinstalling blindly.
 
+## Current verified v0.5.0 Release artifact verification
+
+The current verified immutable Release is `v0.5.0`. Its exact published assets
+are `clin-nav-0.5.0.zip` and `clin-nav-0.5.0.manifest.json`. The commands below
+download both assets from that same immutable Release, verify the manifest
+against its published SHA-256, and then verify the ZIP against both its
+published SHA-256 and the manifest's `archive_sha256` before installation.
+These values come from the repository's committed public v0.5.0 publication
+evidence; they are not a claim about the unreleased v0.6.0 candidate.
+
+The v0.4.0 bundle remains below as a historical verification reference only.
+
+PowerShell:
+
+```powershell
+$releaseVersion = "0.5.0"
+$archiveName = "clin-nav-$releaseVersion.zip"
+$manifestName = "clin-nav-$releaseVersion.manifest.json"
+$expectedArchiveSha256 = "195967e3e3b1a6ee32de18a442a7c84badc6642ce6b4ddc0456c441b5f25686d"
+$expectedManifestSha256 = "03b736ec703ce3c8b78acc56a8e467d109612fbdd01b08240202d355228332c6"
+$releaseBase = "https://github.com/mtchuang1981/clin-data-nav/releases/download/v$releaseVersion"
+Invoke-WebRequest "$releaseBase/$archiveName" -OutFile $archiveName
+Invoke-WebRequest "$releaseBase/$manifestName" -OutFile $manifestName
+$actualManifestSha256 = (Get-FileHash $manifestName -Algorithm SHA256).Hash.ToLowerInvariant()
+if ($actualManifestSha256 -ne $expectedManifestSha256) { throw "Manifest SHA-256 mismatch" }
+$manifest = Get-Content $manifestName -Raw | ConvertFrom-Json
+if ($manifest.version -ne $releaseVersion) { throw "Manifest version mismatch" }
+if ($manifest.archive -ne $archiveName) { throw "Manifest archive mismatch" }
+if ($manifest.archive_sha256 -ne $expectedArchiveSha256) { throw "Manifest archive_sha256 mismatch" }
+$actualArchiveSha256 = (Get-FileHash $archiveName -Algorithm SHA256).Hash.ToLowerInvariant()
+if ($actualArchiveSha256 -ne $expectedArchiveSha256) { throw "Archive SHA-256 mismatch" }
+
+$skillsRoot = Join-Path (Get-Location) ".agents/skills"
+$skillDirectory = Join-Path $skillsRoot "clin-nav"
+$stagingDirectory = Join-Path $skillsRoot ".clin-nav-v0.5.0-staged"
+if (Test-Path $skillDirectory) { throw "Installation already exists" }
+if (Test-Path $stagingDirectory) { throw "Staging directory already exists" }
+New-Item -ItemType Directory -Path $skillsRoot -Force | Out-Null
+New-Item -ItemType Directory -Path $stagingDirectory | Out-Null
+Expand-Archive -LiteralPath $archiveName -DestinationPath $stagingDirectory
+if (-not (Test-Path (Join-Path $stagingDirectory "SKILL.md"))) { throw "SKILL.md missing" }
+Move-Item -LiteralPath $stagingDirectory -Destination $skillDirectory
+```
+
+POSIX shell:
+
+```bash
+release_version="0.5.0"
+archive_name="clin-nav-$release_version.zip"
+manifest_name="clin-nav-$release_version.manifest.json"
+expected_archive_sha256="195967e3e3b1a6ee32de18a442a7c84badc6642ce6b4ddc0456c441b5f25686d"
+expected_manifest_sha256="03b736ec703ce3c8b78acc56a8e467d109612fbdd01b08240202d355228332c6"
+release_base="https://github.com/mtchuang1981/clin-data-nav/releases/download/v$release_version"
+curl -fL "$release_base/$archive_name" -o "$archive_name"
+curl -fL "$release_base/$manifest_name" -o "$manifest_name"
+if command -v sha256sum >/dev/null 2>&1; then
+  actual_manifest_sha256="$(sha256sum "$manifest_name" | cut -d ' ' -f1)"
+  actual_archive_sha256="$(sha256sum "$archive_name" | cut -d ' ' -f1)"
+elif command -v shasum >/dev/null 2>&1; then
+  actual_manifest_sha256="$(shasum -a 256 "$manifest_name" | cut -d ' ' -f1)"
+  actual_archive_sha256="$(shasum -a 256 "$archive_name" | cut -d ' ' -f1)"
+else
+  echo "Install sha256sum or shasum to verify the assets." >&2
+  exit 1
+fi
+test "$actual_manifest_sha256" = "$expected_manifest_sha256" || { echo "Manifest SHA-256 mismatch" >&2; exit 1; }
+manifest_archive_sha256="$(grep -o '"archive_sha256":"[0-9a-f]\{64\}"' "$manifest_name" | cut -d '"' -f4)"
+test "$manifest_archive_sha256" = "$expected_archive_sha256" || { echo "Manifest archive_sha256 mismatch" >&2; exit 1; }
+test "$actual_archive_sha256" = "$expected_archive_sha256" || { echo "Archive SHA-256 mismatch" >&2; exit 1; }
+
+skills_root="$PWD/.agents/skills"
+skill_directory="$skills_root/clin-nav"
+staging_directory="$skills_root/.clin-nav-v0.5.0-staged"
+test ! -e "$skill_directory" || { echo "Installation already exists" >&2; exit 1; }
+test ! -e "$staging_directory" || { echo "Staging directory already exists" >&2; exit 1; }
+mkdir -p "$skills_root"
+mkdir "$staging_directory"
+unzip "$archive_name" -d "$staging_directory"
+test -f "$staging_directory/SKILL.md"
+mv "$staging_directory" "$skill_directory"
+```
+
+After installation, confirm `.agents/skills/clin-nav/SKILL.md`, restart the
+Skill host if needed, use `/skills` to confirm discovery, and invoke
+`$clin-nav`. The examples refuse an existing install or staging directory;
+inspect an existing path instead of deleting or overwriting it blindly.
+
 ## Historical v0.4.0 Release artifact verification (reference only)
 
-The current verified Release is `v0.4.0`. This section is a historical
+The `v0.4.0` Release was previously verified. This section is a historical
 verification reference only, not a current installation path. Its archive
 contains the previous Skill ID and is not compatible with `$clin-nav`.
 The commands preserve the published asset facts by downloading the ZIP and
