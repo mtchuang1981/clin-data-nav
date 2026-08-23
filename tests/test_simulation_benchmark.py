@@ -962,7 +962,7 @@ def test_prepare_cli_rejects_a_symlinked_or_reparse_output_parent(tmp_path):
     assert completed.stderr == PREP_ERROR
     assert not (target / "benchmark-plan.json").exists()
     if redirected.exists():
-        redirected.rmdir()
+        _remove_directory_reparse(redirected)
 
 
 def test_prepare_cli_rejects_a_symlinked_final_output_without_changing_its_target(tmp_path):
@@ -2519,6 +2519,7 @@ def test_evaluate_cli_rejects_output_aliases_without_modifying_inputs(
     if alias_kind == "spelling":
         output = plan_path
     elif alias_kind == "resolution":
+        (plan_path.parent / "unused").mkdir()
         output = plan_path.parent / "unused" / ".." / plan_path.name
     elif alias_kind == "symlink":
         output = tmp_path / "summary-link.json"
@@ -2677,7 +2678,14 @@ def test_detected_stage_drift_before_commit_is_rejected_and_rolled_back(
     assert output.read_bytes() == previous
     assert _bundle_input_bytes(bundle) == before
     assert injected["stage"].read_bytes() == b"MARKER-REPLACEMENT-STAGE\n"
-    assert not injected["stolen"].exists()
+    if os.name == "nt":
+        assert not injected["stolen"].exists()
+    else:
+        # POSIX cannot safely unlink a name that a concurrent writer moved
+        # without an atomic compare-inode-and-unlink primitive. Under the
+        # documented single-writer boundary, fail closed and do not scan for
+        # the held inode, which could delete an unrelated hardlink.
+        assert injected["stolen"].exists()
 
 
 @pytest.mark.skipif(os.name == "nt", reason="POSIX dir-fd cleanup contract")
