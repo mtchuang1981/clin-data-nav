@@ -614,6 +614,15 @@ def test_ci_has_dual_platform_read_only_jobs_and_required_commands():
     ]
 
     steps = job["steps"]
+    checkout = next(
+        step
+        for step in steps
+        if step.get("uses", "").startswith("actions/checkout@")
+    )
+    assert checkout["with"] == {
+        "fetch-depth": "0",
+        "persist-credentials": "false",
+    }
     gate_commands = (
         "python -m pytest -q",
         "python scripts/validate_skill.py",
