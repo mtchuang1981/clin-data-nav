@@ -575,11 +575,29 @@ def _windows_stat_identity(file_stat: os.stat_result) -> tuple[int, bytes]:
 
 
 def _windows_identities_match(
-    stat_identity: tuple[int, bytes], handle_identity: tuple[int, bytes]
+    stat_identity: object, handle_identity: object
 ) -> bool:
     """Compare Python stat identity with the native Windows handle identity."""
+    if (
+        type(stat_identity) is not tuple
+        or len(stat_identity) != 2
+        or type(handle_identity) is not tuple
+        or len(handle_identity) != 2
+    ):
+        return False
     stat_volume, stat_file_id = stat_identity
     handle_volume, handle_file_id = handle_identity
+    if (
+        type(stat_volume) is not int
+        or not 0 <= stat_volume <= 0xFFFFFFFFFFFFFFFF
+        or type(handle_volume) is not int
+        or not 0 <= handle_volume <= 0xFFFFFFFFFFFFFFFF
+        or type(stat_file_id) is not bytes
+        or len(stat_file_id) != 16
+        or type(handle_file_id) is not bytes
+        or len(handle_file_id) != 16
+    ):
+        return False
     if stat_file_id != handle_file_id:
         return False
     if 0 <= stat_volume <= 0xFFFFFFFF:
@@ -2253,12 +2271,17 @@ class _SummaryTransaction:
                 expected_identity = _windows_stat_identity(self.output_stat)
             else:
                 expected_identity = _identity(self.output_stat)
-            if not _windows_identities_match(expected_identity, current_output):
+            if (
+                os.name == "nt"
+                and not _windows_identities_match(expected_identity, current_output)
+            ) or (os.name != "nt" and current_output != expected_identity):
                 raise ValueError("output identity changed")
             self.backup_owner = self._open_existing_owner(self.output_name)
-            if not _windows_identities_match(
-                expected_identity, self._owner_identity(self.backup_owner)
-            ):
+            owner_identity = self._owner_identity(self.backup_owner)
+            if (
+                os.name == "nt"
+                and not _windows_identities_match(expected_identity, owner_identity)
+            ) or (os.name != "nt" and owner_identity != expected_identity):
                 raise ValueError("output identity changed")
             self.backup_name = self._unique_name("backup")
             self._rename_owned(

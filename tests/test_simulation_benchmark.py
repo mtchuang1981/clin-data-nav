@@ -453,6 +453,108 @@ def test_windows_identity_requires_full_volume_match_when_stat_is_64_bit():
     assert not benchmark._windows_identities_match(stat_identity, handle_identity)
 
 
+@pytest.mark.parametrize(
+    ("stat_identity", "handle_identity"),
+    [
+        (None, (1, b"a" * 16)),
+        ((1,), (1, b"a" * 16)),
+        ((1, b"a" * 16, b"extra"), (1, b"a" * 16)),
+        ([1, b"a" * 16], (1, b"a" * 16)),
+        ((True, b"a" * 16), (1, b"a" * 16)),
+        ((1.0, b"a" * 16), (1, b"a" * 16)),
+        ((-1, b"a" * 16), (1, b"a" * 16)),
+        ((1 << 64, b"a" * 16), (1, b"a" * 16)),
+        ((1, bytearray(b"a" * 16)), (1, b"a" * 16)),
+        ((1, b"a" * 15), (1, b"a" * 16)),
+        ((1, b"a" * 17), (1, b"a" * 16)),
+        ((1, b"a" * 16), None),
+        ((1, b"a" * 16), (False, b"a" * 16)),
+        ((1, b"a" * 16), (1.0, b"a" * 16)),
+        ((1, b"a" * 16), (-1, b"a" * 16)),
+        ((1, b"a" * 16), (1 << 64, b"a" * 16)),
+        ((1, b"a" * 16), (1, bytearray(b"a" * 16))),
+        ((1, b"a" * 16), (1, b"a" * 15)),
+        ((1, b"a" * 16), (1, b"a" * 17)),
+    ],
+)
+def test_windows_identity_comparison_fails_closed_for_invalid_shapes_and_domains(
+    stat_identity, handle_identity
+):
+    from scripts import evaluate_simulation_benchmark as benchmark
+
+    assert not benchmark._windows_identities_match(stat_identity, handle_identity)
+
+
+def test_windows_identity_comparison_preserves_uint32_and_uint64_boundaries():
+    from scripts import evaluate_simulation_benchmark as benchmark
+
+    file_id = b"a" * 16
+
+    assert benchmark._windows_identities_match(
+        (0xFFFFFFFF, file_id), (0x12345678FFFFFFFF, file_id)
+    )
+    assert benchmark._windows_identities_match(
+        (0x100000000, file_id), (0x100000000, file_id)
+    )
+    assert not benchmark._windows_identities_match(
+        (0x100000000, file_id), (0x200000000, file_id)
+    )
+
+
+def test_windows_identity_comparison_rejects_file_id_mismatch():
+    from scripts import evaluate_simulation_benchmark as benchmark
+
+    assert not benchmark._windows_identities_match(
+        (1, b"a" * 16), (1, b"b" * 16)
+    )
+
+
+def _posix_collision_transaction(monkeypatch, *, collision_at: str):
+    from scripts import evaluate_simulation_benchmark as benchmark
+
+    expected = (1, 22)
+    collision = ((1 << 32) | 1, 22)
+    transaction = object.__new__(benchmark._SummaryTransaction)
+    transaction.output_stat = object()
+    transaction.output_name = "summary.json"
+    transaction.backup_owner = 0
+    transaction.backup_name = None
+    transaction.stage_name = None
+    transaction.stage_owner = 0
+    transaction._require_parent_current = lambda: None
+    transaction._entry_identity = lambda name: (
+        collision if collision_at == "current" else expected
+    )
+    transaction._open_existing_owner = lambda name: 123
+    transaction._owner_identity = lambda owner: (
+        collision if collision_at == "owner" else expected
+    )
+    transaction._unique_name = lambda label: (_ for _ in ()).throw(
+        AssertionError("POSIX identity collision was accepted")
+    )
+    monkeypatch.setattr(benchmark.os, "name", "posix")
+    monkeypatch.setattr(benchmark, "_identity", lambda value: expected)
+    return transaction
+
+
+def test_posix_summary_transaction_rejects_current_identity_low32_collision(
+    monkeypatch,
+):
+    transaction = _posix_collision_transaction(monkeypatch, collision_at="current")
+
+    with pytest.raises(ValueError, match="output identity changed"):
+        transaction.prepare(b"summary")
+
+
+def test_posix_summary_transaction_rejects_owner_identity_low32_collision(
+    monkeypatch,
+):
+    transaction = _posix_collision_transaction(monkeypatch, collision_at="owner")
+
+    with pytest.raises(ValueError, match="output identity changed"):
+        transaction.prepare(b"summary")
+
+
 def test_v050_registry_matches_rebuilt_annotated_tag(tmp_path):
     observed = resolve_released_skill_binding(ROOT, "v0.5.0", tmp_path)
     assert observed == V050_BINDING
