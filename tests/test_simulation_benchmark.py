@@ -423,6 +423,36 @@ def _assert_live_unique_descriptors_at_injection(descriptors, expected_count):
     assert len(observed_stats) == expected_count
 
 
+def test_windows_identity_accepts_python311_truncated_volume_with_same_file_id():
+    from scripts import evaluate_simulation_benchmark as benchmark
+
+    file_id = bytes.fromhex("ddee1000000008000000000000000000")
+    stat_identity = (0x4460B1D4, file_id)
+    handle_identity = (0xF84460EF4460B1D4, file_id)
+
+    assert benchmark._windows_identities_match(stat_identity, handle_identity)
+
+
+def test_windows_identity_rejects_different_truncated_volume():
+    from scripts import evaluate_simulation_benchmark as benchmark
+
+    file_id = bytes.fromhex("ddee1000000008000000000000000000")
+    stat_identity = (0x4460B1D5, file_id)
+    handle_identity = (0xF84460EF4460B1D4, file_id)
+
+    assert not benchmark._windows_identities_match(stat_identity, handle_identity)
+
+
+def test_windows_identity_requires_full_volume_match_when_stat_is_64_bit():
+    from scripts import evaluate_simulation_benchmark as benchmark
+
+    file_id = bytes.fromhex("ddee1000000008000000000000000000")
+    stat_identity = (0xE74460EF4460B1D4, file_id)
+    handle_identity = (0xF84460EF4460B1D4, file_id)
+
+    assert not benchmark._windows_identities_match(stat_identity, handle_identity)
+
+
 def test_v050_registry_matches_rebuilt_annotated_tag(tmp_path):
     observed = resolve_released_skill_binding(ROOT, "v0.5.0", tmp_path)
     assert observed == V050_BINDING

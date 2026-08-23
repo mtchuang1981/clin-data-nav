@@ -574,6 +574,19 @@ def _windows_stat_identity(file_stat: os.stat_result) -> tuple[int, bytes]:
     return file_stat.st_dev, identifier
 
 
+def _windows_identities_match(
+    stat_identity: tuple[int, bytes], handle_identity: tuple[int, bytes]
+) -> bool:
+    """Compare Python stat identity with the native Windows handle identity."""
+    stat_volume, stat_file_id = stat_identity
+    handle_volume, handle_file_id = handle_identity
+    if stat_file_id != handle_file_id:
+        return False
+    if 0 <= stat_volume <= 0xFFFFFFFF:
+        return stat_volume == (handle_volume & 0xFFFFFFFF)
+    return stat_volume == handle_volume
+
+
 def _windows_open_absolute(path: Path, *, list_directory: bool) -> int:
     desired_access = _WIN_FILE_READ_ATTRIBUTES | _WIN_SYNCHRONIZE
     if list_directory:
@@ -598,7 +611,9 @@ def _windows_open_root(root: Path) -> int:
         if (
             attributes & _WIN_FILE_ATTRIBUTE_REPARSE_POINT
             or not attributes & _WIN_FILE_ATTRIBUTE_DIRECTORY
-            or identity != _windows_stat_identity(expected)
+            or not _windows_identities_match(
+                _windows_stat_identity(expected), identity
+            )
         ):
             raise ValueError
     except BaseException:
@@ -2092,7 +2107,9 @@ class _SummaryTransaction:
                 self.parent_path, list_directory=True
             )
             _, parent_identity, _ = _windows_handle_info(self.parent_reference)
-            if parent_identity != _windows_stat_identity(parent_stat):
+            if not _windows_identities_match(
+                _windows_stat_identity(parent_stat), parent_identity
+            ):
                 self.close()
                 raise ValueError("output parent identity changed")
         else:
@@ -2110,8 +2127,12 @@ class _SummaryTransaction:
         if os.name == "nt":
             _, held_identity, _ = _windows_handle_info(self.parent_reference)
             if (
-                held_identity != _windows_stat_identity(self.parent_stat)
-                or _windows_stat_identity(current) != held_identity
+                not _windows_identities_match(
+                    _windows_stat_identity(self.parent_stat), held_identity
+                )
+                or not _windows_identities_match(
+                    _windows_stat_identity(current), held_identity
+                )
             ):
                 raise ValueError("output parent changed")
         elif (
@@ -2232,10 +2253,12 @@ class _SummaryTransaction:
                 expected_identity = _windows_stat_identity(self.output_stat)
             else:
                 expected_identity = _identity(self.output_stat)
-            if current_output != expected_identity:
+            if not _windows_identities_match(expected_identity, current_output):
                 raise ValueError("output identity changed")
             self.backup_owner = self._open_existing_owner(self.output_name)
-            if self._owner_identity(self.backup_owner) != expected_identity:
+            if not _windows_identities_match(
+                expected_identity, self._owner_identity(self.backup_owner)
+            ):
                 raise ValueError("output identity changed")
             self.backup_name = self._unique_name("backup")
             self._rename_owned(
