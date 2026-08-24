@@ -878,6 +878,12 @@ def test_release_workflow_is_manual_fail_closed_and_least_privilege():
         assert checkout["with"]["ref"] == (
             "${{ needs.preflight.outputs.commit }}"
         )
+    validate_checkout = next(
+        step
+        for step in validate_job["steps"]
+        if step.get("uses", "").startswith("actions/checkout@")
+    )
+    assert validate_checkout["with"]["fetch-depth"] == "0"
 
     validate_steps = validate_job["steps"]
     validate_runs = [step["run"] for step in validate_steps if "run" in step]
