@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.7.0 - Candidate
+
+### Changed
+
+- Route mixed-cue requests by their primary deliverable so literature,
+  provenance, public-profile, phenotype, and optional causal-handoff requests
+  select the intended response depth even when they mention code or
+  optimization.
+- Add positive completion slots for every response depth so required evidence,
+  design, safety, and execution-boundary fields are stated explicitly.
+
+### Evaluation
+
+- Treat only headings reserved by another response depth as cross-depth
+  violations; useful auxiliary headings remain allowed.
+- Accept tested semantic equivalents and safe negated boundaries while still
+  rejecting affirmative causal-validation and complete-SAP delivery claims.
+
+### Limitations
+
+- This candidate has not completed a new immutable 72-cell campaign or a human
+  pilot. The prior normative campaign remains `mixed-or-null`; development
+  preflight results do not establish human effectiveness, clinical validity,
+  or deployment fitness.
+
 ## 0.6.0 - 2026-08-24
 
 ### Features

@@ -237,16 +237,16 @@ def test_git_environment_filter_keeps_safe_directory_config_and_removes_redirect
     assert captured["GIT_CONFIG_VALUE_0"] == "*"
 
 
-def test_v060_candidate_packager_output_passes_release_artifact_verification(tmp_path):
+def test_v070_candidate_packager_output_passes_release_artifact_verification(tmp_path):
     package = build_package(
         Path("skills/clin-nav"),
         tmp_path / "dist",
     )
 
     manifest = json.loads(package.manifest.read_text(encoding="utf-8"))
-    assert package.archive.name == "clin-nav-0.6.0.zip"
-    assert package.manifest.name == "clin-nav-0.6.0.manifest.json"
-    assert manifest["version"] == "0.6.0"
+    assert package.archive.name == "clin-nav-0.7.0.zip"
+    assert package.manifest.name == "clin-nav-0.7.0.manifest.json"
+    assert manifest["version"] == "0.7.0"
     assert manifest["archive"] == package.archive.name
     verify_release_artifacts(package.archive, package.manifest)
 

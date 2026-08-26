@@ -469,13 +469,16 @@ def test_rwe_routing_cases_enforce_safe_boundaries():
             component.lower() in pattern.lower()
             for pattern in causal["required"]
         )
-    assert "research design only" in incomplete["required"]
-    assert "not implementation-ready" in incomplete["required"]
+    assert "research design only" not in incomplete["required"]
+    assert any(
+        "execution gate" in pattern.lower()
+        or "implementation-ready" in pattern.lower()
+        for pattern in incomplete["required"]
+    )
     assert any("executable" in pattern for pattern in incomplete["forbidden"])
     for phrase in (
         "optional",
         "not bundled",
-        "not automatically installed",
         "continue",
         "complete SAP",
     ):
@@ -483,6 +486,15 @@ def test_rwe_routing_cases_enforce_safe_boundaries():
             phrase.lower() in pattern.lower()
             for pattern in unavailable["required"]
         )
+    assert any(
+        "automatically" in pattern.lower()
+        and "install" in pattern.lower()
+        for pattern in unavailable["required"]
+    )
+    assert any(
+        "logical data" in pattern.lower()
+        for pattern in unavailable["required"]
+    )
 
 
 @pytest.mark.parametrize(

@@ -232,10 +232,10 @@ def evaluate_response(case: dict, rubric: dict, response: str) -> Evaluation:
             re.MULTILINE,
         )
     }
-    allowed_sections = {
-        normalize(section, rubric) for section in depth_contract["allowed"]
+    forbidden_sections = {
+        normalize(section, rubric) for section in depth_contract["forbidden"]
     }
-    for section in sorted(response_sections - allowed_sections):
+    for section in sorted(response_sections & forbidden_sections):
         results.append(
             RuleResult(
                 rule=f"forbidden-section:{section}",

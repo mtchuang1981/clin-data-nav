@@ -13,10 +13,10 @@ has a checked-in baseline response and forward response.
 | `stale-codingbook` | implementation specification | 20 FAIL | 140 PASS |
 | `cdisc-variable-definition` | evidence navigation | 10 FAIL | 130 PASS |
 | `omop-phenotype` | research design | 0 FAIL | 140 PASS |
-| `tmucrd-public-profile` | evidence navigation | 30 FAIL | 130 PASS |
+| `tmucrd-public-profile` | evidence navigation | 40 FAIL | 130 PASS |
 | `descriptive-rwd-no-tte` | research design | 0 FAIL | 170 PASS |
 | `causal-rwd-tte-handoff` | research design | 10 FAIL | 230 PASS |
-| `causal-rwd-incomplete-readiness` | research design | 0 FAIL | 180 PASS |
+| `causal-rwd-incomplete-readiness` | research design | 10 FAIL | 170 PASS |
 | `build-rwe-sap-unavailable` | research design | 20 FAIL | 200 PASS |
 
 > These keyword fixtures test repository behavior contracts, not clinical validity or real-world effectiveness.

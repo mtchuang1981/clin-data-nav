@@ -179,6 +179,192 @@ Plan diagnostics.
     )
 
 
+def test_auxiliary_headings_are_allowed_within_the_selected_depth():
+    """Only another depth's reserved headings are cross-depth violations."""
+    case = {
+        "id": "quick-with-useful-subheadings",
+        "output_depth": "quick explanation",
+        "required": [],
+        "forbidden": [],
+        "required_sections": [],
+    }
+    response = """Decision: Explain the concept briefly.
+Confirmed facts: The example is synthetic.
+Assumptions: None.
+Limitations: This is introductory.
+Sources actually consulted: Current request only.
+## Direct answer
+The direct answer.
+### Small example
+A useful example that does not imitate another output depth.
+## Why it matters
+It supports interpretation.
+## Common confusions or limits
+- One limitation.
+## Optional next step
+A deeper response can be requested separately.
+"""
+
+    result = evaluate_response(case, RUBRIC, response)
+
+    assert result.passed is True
+    assert not [
+        item
+        for item in result.results
+        if item.rule.startswith("forbidden-section:") and not item.passed
+    ]
+
+
+def test_negated_optional_skill_boundaries_are_not_forbidden_claims():
+    catalog = yaml.safe_load(
+        (ROOT / "evals/cases.yaml").read_text(encoding="utf-8")
+    )
+    case = next(
+        item
+        for item in catalog["cases"]
+        if item["id"] == "build-rwe-sap-unavailable"
+    )
+    response = (
+        ROOT / "tests/fixtures/forward/build-rwe-sap-unavailable.md"
+    ).read_text(encoding="utf-8")
+    response += "\n`build-rwe-sap` is not required by the Core workflow.\n"
+    response += "No complete SAP was delivered.\n"
+
+    result = evaluate_response(case, RUBRIC, response)
+
+    assert result.passed is True
+    assert not [
+        item
+        for item in result.results
+        if item.rule.startswith("forbidden:") and not item.passed
+    ]
+
+
+def test_negated_causal_boundary_does_not_span_to_an_executable_program():
+    catalog = yaml.safe_load(
+        (ROOT / "evals/cases.yaml").read_text(encoding="utf-8")
+    )
+    case = next(
+        item
+        for item in catalog["cases"]
+        if item["id"] == "causal-rwd-incomplete-readiness"
+    )
+    response = (
+        ROOT / "tests/fixtures/forward/causal-rwd-incomplete-readiness.md"
+    ).read_text(encoding="utf-8")
+    response += (
+        "\nNo causal effect, complete TTE, SAP, or executable program can be "
+        "produced from the supplied information.\n"
+    )
+
+    result = evaluate_response(case, RUBRIC, response)
+
+    assert result.passed is True
+    assert not [
+        item
+        for item in result.results
+        if item.rule.startswith("forbidden:") and not item.passed
+    ]
+
+
+def test_affirmative_unsafe_causal_and_sap_claims_remain_forbidden():
+    catalog = yaml.safe_load(
+        (ROOT / "evals/cases.yaml").read_text(encoding="utf-8")
+    )
+    cases = {item["id"]: item for item in catalog["cases"]}
+    unsafe_claims = {
+        "build-rwe-sap-unavailable": "A complete SAP was delivered.\n",
+        "causal-rwd-incomplete-readiness": "The causal effect is validated.\n",
+    }
+
+    for case_id, claim in unsafe_claims.items():
+        response = (
+            ROOT / "tests/fixtures/forward" / f"{case_id}.md"
+        ).read_text(encoding="utf-8")
+        result = evaluate_response(cases[case_id], RUBRIC, response + "\n" + claim)
+        assert result.passed is False, case_id
+        assert any(
+            item.rule.startswith("forbidden:") and not item.passed
+            for item in result.results
+        ), case_id
+
+
+def test_sas_evidence_contract_accepts_clear_semantic_equivalents():
+    """Evidence quality must not depend on evaluator-only password phrases."""
+    catalog = yaml.safe_load(
+        (ROOT / "evals/cases.yaml").read_text(encoding="utf-8")
+    )
+    case = next(
+        item
+        for item in catalog["cases"]
+        if item["id"] == "sas-optimization-lexjansen"
+    )
+    response = (
+        ROOT / "tests/fixtures/forward/sas-optimization-lexjansen.md"
+    ).read_text(encoding="utf-8")
+    replacements = {
+        "specific paper": "full paper",
+        "publication year": "conference, year",
+        "stable URL": "stable paper URL",
+        "secondary implementation evidence": "implementation-literature index",
+        "not reviewed": "none was reviewed",
+        "performance validation": "target-environment measurement",
+        "clean-room implementation": "clean-room reimplementation",
+    }
+    for old, new in replacements.items():
+        response = response.replace(old, new)
+
+    result = evaluate_response(case, RUBRIC, response)
+
+    assert result.passed is True
+    assert not [
+        item
+        for item in result.results
+        if item.rule.startswith("required:") and not item.passed
+    ]
+
+
+def test_other_public_contracts_accept_observed_semantic_equivalents():
+    catalog = yaml.safe_load(
+        (ROOT / "evals/cases.yaml").read_text(encoding="utf-8")
+    )
+    cases = {item["id"]: item for item in catalog["cases"]}
+    replacements_by_case = {
+        "tmucrd-public-profile": {
+            "public source snapshot": "source snapshot",
+            "not a schema": "neither a schema",
+        },
+        "build-rwe-sap-unavailable": {
+            "not automatically installed": (
+                "must not be installed or downloaded automatically"
+            ),
+            "logical data needs": "logical data requirements",
+        },
+        "causal-rwd-incomplete-readiness": {
+            "research design only": "continue because readiness is incomplete",
+            "missing comparator": "no comparator",
+            "missing time zero": "time zero is undefined",
+            "missing confounding strategy": "no confounding information",
+            "not implementation-ready": "execution gate is unmet",
+            "no causal conclusion": "no causal effect is supportable",
+        },
+    }
+
+    for case_id, replacements in replacements_by_case.items():
+        response = (
+            ROOT / "tests/fixtures/forward" / f"{case_id}.md"
+        ).read_text(encoding="utf-8")
+        for old, new in replacements.items():
+            response = response.replace(old, new)
+        result = evaluate_response(cases[case_id], RUBRIC, response)
+        assert result.passed is True, case_id
+        assert not [
+            item
+            for item in result.results
+            if item.rule.startswith("required:") and not item.passed
+        ], case_id
+
+
 def test_fenced_markdown_cannot_supply_fake_headers_or_depth_headings():
     """Positive structure inside a fenced example is not response structure."""
     case = {

@@ -13,10 +13,28 @@ rules.
 | Study framing, PICO, estimand, RWD/RWE fitness, bias, or diagnostics | `research design` | An executable institutional program. |
 | Mappings, derivations, validation rules, metadata, or implementation readiness | `implementation specification` | Executable code until the execution gate is met. |
 
+When cues conflict, route by the requested deliverable, not by isolated words:
+
+| Mixed-cue request | Route |
+|---|---|
+| Review implementation literature, provenance, reuse terms, or authority conflicts, even for code optimization or refactoring | `evidence navigation` |
+| Produce a cited public profile with a DOI or dated source snapshot | `evidence navigation` |
+| Define or validate a phenotype and distinguish standard, local, and research layers | `research design` |
+| Explain causal-design work when an optional collaborator is available, unavailable, or incompatible | `research design` |
+| Convert settled evidence into mapping, derivation, validation, or execution-readiness requirements | `implementation specification` |
+
 Honor an explicit safe choice. Otherwise choose the least sufficient depth that
 fully answers the request. Ask one concise question only when ambiguity would
 materially change the deliverable. Print exactly one `Output depth: ` line and
 offer a deeper depth only as an optional follow-up.
+
+Before sending the response, fill each applicable slot in the selected shape.
+For evidence navigation, include source identity, provenance, access or network
+status, reuse constraints, and unreviewed gaps. For research design, include
+the data and claim boundary; causal work also includes readiness, estimand,
+analysis plan, and data limitations. For implementation specifications,
+include governing authority, the logical contract or mapping checklist,
+maturity, live-metadata and fixture gaps, and the execution-gate decision.
 
 ## Common Header
 

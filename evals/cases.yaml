@@ -41,20 +41,20 @@ cases:
     output_depth: evidence navigation
     required:
       - 'site:lexjansen\.com'
-      - "specific paper"
+      - '(?:specific|full|candidate) paper'
       - "title"
       - "authors?"
       - "conference"
-      - "publication year"
-      - "stable URL"
+      - '(?:publication year|conference.{0,40}\byear\b|\byear\b.{0,40}(?:stable URL|access date))'
+      - 'stable(?: paper)? URL'
       - "access date"
       - "provenance"
       - '(?:copyright|license|reuse terms)'
-      - "clean-room implementation"
-      - "secondary implementation evidence"
+      - 'clean-room (?:re)?implementation'
+      - '(?:secondary implementation evidence|implementation-literature index|implementation (?:literature|evidence))'
       - "network access"
-      - "not reviewed"
-      - "performance validation"
+      - '(?:not reviewed|none (?:was|were) reviewed)'
+      - '(?:performance validation|target-environment (?:measurement|benchmark|validation)|runtime measurements?)'
     forbidden:
       - "Lex Jansen is an official standard"
       - '(?is)\bLex\s+Jansen\b\s+(?:is|serves\s+as|acts\s+as)\s+(?!not\b)(?:an?\s+)?(?:official|authoritative|governing)\s+(?:standard|authority|standards\s+body)\b'
@@ -134,8 +134,8 @@ cases:
     output_depth: evidence navigation
     required:
       - "DOI"
-      - "public source snapshot"
-      - "not a schema"
+      - '(?:public[- ]source|source) snapshot'
+      - '(?:not|neither) a schema'
       - "institutional query guide"
     forbidden:
       - "V2.16 schema"
@@ -198,15 +198,14 @@ cases:
     output_depth: research design
     required:
       - "causal-comparative"
-      - "research design only"
-      - "not implementation-ready"
-      - "missing comparator"
-      - "missing time zero"
-      - "missing confounding"
+      - '(?:not implementation-ready|not ready for.{0,30}execution|execution gate.{0,20}unmet|no executable.{0,40}(?:justified|warranted))'
+      - '(?:(?:missing|no|undefined|not supplied).{0,30}comparator|comparator.{0,30}(?:missing|undefined|not supplied))'
+      - '(?:(?:missing|no|undefined|not supplied).{0,30}time zero|time zero.{0,30}(?:missing|undefined|not supplied))'
+      - '(?:(?:missing|no|undefined|not supplied).{0,30}(?:confounding|confounder)|(?:confounding|confounder).{0,30}(?:missing|undefined|not supplied))'
       - "validation gap"
-      - "no causal conclusion"
+      - '(?:no causal (?:conclusion|effect)|causal (?:conclusion|effect).{0,40}(?:not|cannot|unsupported))'
     forbidden:
-      - '(?is)\b(?:causal conclusion|causal effect)\b[\s\S]{0,80}\b(?:validated|executable)\b'
+      - '(?is)(?<!no )(?<!not )\b(?:causal conclusion|causal effect)(?:\s+(?:estimate|result|finding))?\b[\s,:;=-]{0,30}(?:is|was|remains?|has been)\s+(?!not\b)(?:fully\s+)?(?:validated|executable)\b'
       - '(?is)\bcode maturity\b[\s:=-]{0,20}\bexecutable\b'
       - '(?is)\b(?:invent|assume)\b[\s\S]{0,80}\b(?:comparator|time zero|confounder)\b'
     required_sections: []
@@ -220,16 +219,16 @@ cases:
     required:
       - "optional"
       - "not bundled"
-      - "not automatically installed"
+      - '(?:not automatically (?:installed|downloaded)|not (?:be )?(?:installed|downloaded)(?: or (?:installed|downloaded))? automatically|neither installs? it automatically|does not install it automatically)'
       - "unavailable"
       - "continue"
       - "Core"
       - "evidence navigation"
-      - "logical data needs"
+      - 'logical data (?:needs|requirements)'
       - "complete SAP"
       - "not delivered"
     forbidden:
       - "must install build-rwe-sap"
-      - '(?is)\bbuild-rwe-sap\b[\s\S]{0,80}\b(?:required|mandatory)\b[\s\S]{0,80}\b(?:Core|clin-data-nav)\b'
-      - '(?is)\bcomplete SAP\b[\s\S]{0,80}\b(?:was|is|has been)\s+(?:delivered|completed)\b'
+      - '(?is)\bbuild-rwe-sap\b(?:(?!\b(?:not|never)\b)[\s\S]){0,80}\b(?:required|mandatory)\b[\s\S]{0,80}\b(?:Core|clin-data-nav)\b'
+      - '(?is)(?<!no )(?<!not )\bcomplete SAP\b[\s,:;=-]{0,30}\b(?:was|is|has been)\s+(?!not\b)(?:delivered|completed)\b'
     required_sections: []

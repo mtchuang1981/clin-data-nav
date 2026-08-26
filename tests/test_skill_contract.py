@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -40,6 +41,46 @@ def test_skill_selects_one_safe_least_sufficient_output_depth():
     assert "least sufficient depth" in text
     assert "materially change the deliverable" in text
     assert "exactly one `Output depth: ` line" in text
+
+
+def test_skill_routes_observed_ambiguous_requests_by_primary_deliverable():
+    """Code words must not override source, profile, phenotype, or handoff intent."""
+    text = (SKILL / "SKILL.md").read_text(encoding="utf-8").lower()
+
+    expected_routes = (
+        ("implementation literature", "evidence navigation"),
+        ("doi or dated public snapshot", "evidence navigation"),
+        ("standard, local, and research phenotype", "research design"),
+        ("optional collaborator availability", "research design"),
+    )
+    for trigger, depth in expected_routes:
+        line = next(line for line in text.splitlines() if trigger in line)
+        assert f"`{depth}`" in line
+
+    assert re.search(r"primary deliverable\s+takes precedence", text)
+    assert re.search(r"mentions code, optimization, or\s+implementation", text)
+
+
+def test_skill_has_positive_completion_slots_for_every_output_depth():
+    """Observed omissions need explicit slots, not a growing prohibition list."""
+    text = (SKILL / "SKILL.md").read_text(encoding="utf-8")
+    completion = text.split("## Complete the Selected Shape", 1)[1].split(
+        "## Classify the Question", 1
+    )[0]
+
+    for depth in OUTPUT_DEPTHS:
+        assert f"`{depth}`" in completion
+    for required_slot in (
+        "expand named acronyms",
+        "source identity and provenance",
+        "network or access status",
+        "RWD/RWE claim boundary",
+        "analysis plan and data limitations",
+        "optional-collaborator status",
+        "governing authority",
+        "live-metadata and fixture gaps",
+    ):
+        assert required_slot in completion
 
 
 def test_output_depth_reference_has_all_shapes_and_learning_paths():

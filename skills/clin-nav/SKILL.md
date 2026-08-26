@@ -33,6 +33,19 @@ Before specialized routing, choose exactly one response depth:
 | Study framing, PICO, estimand, RWD/RWE, or bias question | `research design` | Common header, design route, design fields and time anchors, data suitability and claim boundary, bias and validation gaps, and analysis or diagnostics. |
 | Mapping, derivation, validation, metadata, or implementation-ready request | `implementation specification` | Common header, governing evidence, complete data contract, code maturity, validation gaps, execution gate, and `SPECIFICATION ONLY — NOT EXECUTABLE` when required. |
 
+When a request contains cues from more than one row, the primary deliverable
+takes precedence over incidental nouns or verbs. Apply this routing before
+drafting; it still applies when the request mentions code, optimization, or
+implementation:
+
+| Primary deliverable | Output depth |
+|---|---|
+| Review, search, or compare sources, standards, implementation literature, provenance, reuse terms, or authority conflicts | `evidence navigation` |
+| Create a public profile with citations, a DOI or dated public snapshot, and a non-schema boundary | `evidence navigation` |
+| Design or validate a phenotype, including standard, local, and research phenotype distinctions | `research design` |
+| Resolve optional collaborator availability, compatibility, handoff, or unavailable-path behavior for a causal question | `research design` |
+| Translate settled evidence into a logical mapping, derivation, validation, or executable-readiness contract | `implementation specification` |
+
 Offer a deeper depth as an optional next step; do not silently combine depths.
 Start every response with a compact common header containing `Decision:`,
 `Confirmed facts:`, `Assumptions:`, `Limitations:`, and
@@ -40,6 +53,19 @@ Start every response with a compact common header containing `Decision:`,
 `Current request only` when no external source was consulted.
 Read `references/output-depths-and-learning-paths.md` for the decision table,
 detailed shapes, and beginner learning paths.
+
+## Complete the Selected Shape
+
+Fill every slot below that applies to the request. State requested deliverables
+and boundaries explicitly instead of relying on a nearby synonym or an
+unlabelled paragraph:
+
+| Depth | Completion slots |
+|---|---|
+| `quick explanation` | Give the direct answer, expand named acronyms, explain why it matters, and state one or two confusions or limits. |
+| `evidence navigation` | Define the search scope; give the authority order; record source identity and provenance, access date where relevant, network or access status, reuse constraints, and unreviewed or validation gaps. |
+| `research design` | State the primary intent, design fields and time anchors, data suitability and the RWD/RWE claim boundary, bias gaps, and planned analysis or diagnostics. For causal work, include readiness, estimand, analysis plan and data limitations. For a downstream handoff, include optional-collaborator status and what was not delivered. |
+| `implementation specification` | Identify the governing authority, complete the logical data contract or mapping checklist, assign one maturity label, list live-metadata and fixture gaps, and state the execution-gate decision. |
 
 ## Classify the Question
 
