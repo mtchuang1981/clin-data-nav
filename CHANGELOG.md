@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.7.0 - Candidate
+## 0.7.0 - 2026-08-26
 
 ### Changed
 
@@ -20,7 +20,7 @@
 
 ### Limitations
 
-- This candidate has not completed a new immutable 72-cell campaign or a human
+- This release has not completed a new immutable 72-cell campaign or a human
   pilot. The prior normative campaign remains `mixed-or-null`; development
   preflight results do not establish human effectiveness, clinical validity,
   or deployment fitness.

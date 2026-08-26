@@ -1086,12 +1086,12 @@ def test_citation_and_license_metadata():
     )
     assert citation["title"] == "Clinical Data Research Navigator"
     assert citation["version"] == "0.7.0"
-    assert "date-released" not in citation
+    assert citation["date-released"] == "2026-08-26"
     assert citation["license"] == "Apache-2.0"
     assert "Apache License" in (ROOT / "LICENSE").read_text(encoding="utf-8")
 
 
-def test_candidate_version_is_synchronized_at_v070_without_publication_date():
+def test_release_version_is_synchronized_at_v070_with_publication_date():
     project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
     citation = yaml.safe_load((ROOT / "CITATION.cff").read_text(encoding="utf-8"))
     changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
@@ -1115,9 +1115,9 @@ def test_candidate_version_is_synchronized_at_v070_without_publication_date():
     }
     assert len(release_surfaces) == 6
     assert set(release_surfaces.values()) == {release_version}
-    assert changelog.splitlines()[2] == "## 0.7.0 - Candidate"
-    assert changelog_zh_tw.splitlines()[2] == "## 0.7.0 - Candidate"
-    assert "date-released" not in citation
+    assert changelog.splitlines()[2] == "## 0.7.0 - 2026-08-26"
+    assert changelog_zh_tw.splitlines()[2] == "## 0.7.0 - 2026-08-26"
+    assert citation["date-released"] == "2026-08-26"
     assert "## 0.6.0 - 2026-08-24" in changelog
     assert "## 0.6.0 - 2026-08-24" in changelog_zh_tw
     assert "## 0.5.0 - 2026-08-16" in changelog
@@ -1130,7 +1130,7 @@ def test_candidate_version_is_synchronized_at_v070_without_publication_date():
     assert "## 0.2.2 - 2026-07-29" in changelog_zh_tw
 
 
-def test_candidate_package_and_installer_versions_are_synchronized_at_v070():
+def test_release_package_and_installer_versions_are_synchronized_at_v070():
     project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
 
     assert project["project"]["version"] == "0.7.0"
@@ -1178,17 +1178,17 @@ def test_v060_release_notes_are_bilingual_and_truthful_about_external_evidence()
         assert unsupported_claim not in normalized
 
 
-def test_v070_candidate_notes_are_bilingual_and_bound_effectiveness_claims():
+def test_v070_release_notes_are_bilingual_and_bound_effectiveness_claims():
     notes = (ROOT / "docs/releases/0.7.0.md").read_text(encoding="utf-8")
     normalized = " ".join(notes.split())
 
-    assert notes.startswith("# Clinical Data Research Navigator v0.7.0 candidate\n")
+    assert notes.startswith("# Clinical Data Research Navigator v0.7.0\n")
     for heading in (
         "## English",
-        "### Candidate improvements",
+        "### Release improvements",
         "### Evidence boundary",
         "## 繁體中文",
-        "### 候選改善",
+        "### 發布改善",
         "### 證據界線",
     ):
         assert heading in notes
@@ -1196,18 +1196,18 @@ def test_v070_candidate_notes_are_bilingual_and_bound_effectiveness_claims():
         "primary deliverable",
         "cross-depth headings",
         "semantic equivalents",
-        "latest immutable published Release remains v0.6.0",
+        "v0.7.0 local installer, packager, ZIP, and manifest are synchronized",
         "mixed-or-null",
+        "post-release v0.7.0 campaign remains pending",
         "主要交付物",
         "跨深度標題",
         "語意等價",
-        "最新的不可變正式發布仍是 v0.6.0",
+        "v0.7.0 的本機安裝程式、封裝程式、ZIP 與 manifest 已同步",
         "混合或無明顯差異",
+        "發布後的 v0.7.0 活動仍待執行",
     ):
         assert contract in normalized
     for unsupported_claim in (
-        "v0.7.0 was released",
-        "v0.7.0 已發布",
         "human-effective",
         "evaluation-green",
         "clinical validity",
@@ -1216,7 +1216,7 @@ def test_v070_candidate_notes_are_bilingual_and_bound_effectiveness_claims():
         assert unsupported_claim not in normalized
 
 
-def test_v060_release_preserves_v050_publication_history_and_advances_security():
+def test_v070_release_preserves_v050_publication_history_and_advances_security():
     publication = (
         ROOT / "docs/verification/2026-08-16-v0.5.0-publication.md"
     ).read_text(encoding="utf-8")
@@ -1227,9 +1227,9 @@ def test_v060_release_preserves_v050_publication_history_and_advances_security()
     assert "`clin-nav-0.5.0.zip`" in publication
     assert "`clin-nav-0.5.0.manifest.json`" in publication
     assert release_notes.startswith("# Clinical Data Research Navigator v0.5.0\n")
-    assert "`0.6.x` | Yes" in " ".join(security.split())
-    assert "`< 0.6` | No" in " ".join(security.split())
-    assert "`0.5.x` | Yes" not in " ".join(security.split())
+    assert "`0.7.x` | Yes" in " ".join(security.split())
+    assert "`< 0.7` | No" in " ".join(security.split())
+    assert "`0.6.x` | Yes" not in " ".join(security.split())
 
 
 @pytest.mark.parametrize(
@@ -2603,9 +2603,9 @@ def test_installation_guides_preserve_quick_update_verified_and_source_paths():
         (
             (ROOT / "docs/installation.md").read_text(encoding="utf-8"),
             ENGLISH_ONBOARDING_CONTRACT,
-            "## Current verified v0.6.0 Release artifact verification",
+            "## Current verified v0.7.0 Release artifact verification",
             "## Historical v0.4.0 Release artifact verification (reference only)",
-            "current verified immutable Release is `v0.6.0`",
+            "current verified immutable Release is `v0.7.0`",
             "The v0.4.0 bundle remains below as a historical verification reference only.",
             (
                 "current verified Release is `v0.4.0`",
@@ -2616,9 +2616,9 @@ def test_installation_guides_preserve_quick_update_verified_and_source_paths():
         (
             (ROOT / "docs/installation.zh-TW.md").read_text(encoding="utf-8"),
             TRADITIONAL_CHINESE_ONBOARDING_CONTRACT,
-            "## 目前已驗證的 v0.6.0 Release 產物核對",
+            "## 目前已驗證的 v0.7.0 Release 產物核對",
             "## 歷史 v0.4.0 Release 產物驗證（僅供參考）",
-            "目前已驗證且不可變的 Release 是 `v0.6.0`",
+            "目前已驗證且不可變的 Release 是 `v0.7.0`",
             "v0.4.0 套件則保留於下方，僅供歷史驗證參考。",
             (
                 "目前已驗證的 Release 是 `v0.4.0`",
@@ -2644,18 +2644,18 @@ def test_installation_guides_preserve_quick_update_verified_and_source_paths():
         for stale_claim in stale_claims:
             assert stale_claim not in normalized
         current = _markdown_section(text, current_heading, historical_heading)
-        assert 'releaseVersion = "0.6.0"' in current
-        assert 'release_version="0.6.0"' in current
+        assert 'releaseVersion = "0.7.0"' in current
+        assert 'release_version="0.7.0"' in current
         assert "clin-nav-$releaseVersion.zip" in current
         assert "clin-nav-$releaseVersion.manifest.json" in current
         assert "clin-nav-$release_version.zip" in current
         assert "clin-nav-$release_version.manifest.json" in current
         assert (
-            "195967e3e3b1a6ee32de18a442a7c84badc6642ce6b4ddc0456c441b5f25686d"
+            "b9b85db5bf91692ce8128b40031638576e659ad17c06861538f34c3661758325"
             in current
         )
         assert (
-            "df07dcae8bc45b6fb5b985fff387fc44991a6ebf57960cdd942c4ad3d5b6f894"
+            "cd09af03eda8b16eb9a3173c52e6e80527227128232638041e03ed5a71ea9120"
             in current
         )
         assert "archive_sha256" in current
@@ -2974,7 +2974,7 @@ def test_citation_has_required_cff_1_2_schema_shape_and_author():
         )
 
 
-def test_candidate_citation_points_to_public_repository_without_release_date():
+def test_release_citation_points_to_public_repository_with_release_date():
     citation = yaml.safe_load(
         (ROOT / "CITATION.cff").read_text(encoding="utf-8")
     )
@@ -2982,7 +2982,7 @@ def test_candidate_citation_points_to_public_repository_without_release_date():
     repository_url = "https://github.com/mtchuang1981/clin-data-nav"
     assert citation["url"] == repository_url
     assert citation["repository-code"] == repository_url
-    assert "date-released" not in citation
+    assert citation["date-released"] == "2026-08-26"
 
 
 def test_security_policy_has_supported_versions_and_safe_confidential_reporting():
@@ -2990,8 +2990,8 @@ def test_security_policy_has_supported_versions_and_safe_confidential_reporting(
     normalized = " ".join(security.split())
 
     assert "| Version | Supported |" in security
-    assert "`0.6.x` | Yes" in normalized
-    assert "`< 0.6` | No" in normalized
+    assert "`0.7.x` | Yes" in normalized
+    assert "`< 0.7` | No" in normalized
     assert "`0.4.x` | Yes" not in normalized
     assert "`0.3.x` | Yes" not in normalized
     assert "`0.2.x` | Yes" not in normalized
@@ -3002,7 +3002,7 @@ def test_security_policy_has_supported_versions_and_safe_confidential_reporting(
     ):
         assert prohibited_public_material in normalized
     assert "public issue" in normalized
-    assert "As of 2026-08-24, that line is `0.6.x`." in normalized
+    assert "As of 2026-08-26, that line is `0.7.x`." in normalized
     assert "On 2026-08-09 (Asia/Taipei)" in normalized
     assert "private vulnerability reporting is enabled" in normalized
     assert "security/advisories/new" in normalized
@@ -4399,7 +4399,7 @@ def test_benchmark_issue_form_does_not_request_raw_material_or_uploads():
         assert forbidden_request not in field_prompts
 
 
-def test_benchmark_issue_form_points_to_the_published_v060_tag():
+def test_benchmark_issue_form_points_to_the_published_v070_tag():
     payload = _load_issue_form(
         ".github/ISSUE_TEMPLATE/benchmark-result.yml"
     )
@@ -4410,7 +4410,7 @@ def test_benchmark_issue_form_points_to_the_published_v060_tag():
     )
 
     assert repository_version["attributes"]["placeholder"] == (
-        "v0.6.0 or another immutable tag"
+        "v0.7.0 or another immutable tag"
     )
 
 

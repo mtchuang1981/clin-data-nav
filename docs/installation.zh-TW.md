@@ -3,8 +3,8 @@
 [English](installation.md)
 
 建議使用 `npx skills add`，把 Skill 安裝在要使用它的專案中。目前已驗證且
-不可變的 Release 是 `v0.6.0`；下方提供確切的 `clin-nav` 產物核對與安裝
-方式。不可變的 v0.5.0 Release 仍可作為前一版本取得；v0.4.0 ZIP 內容則僅
+不可變的 Release 是 `v0.7.0`；下方提供確切的 `clin-nav` 產物核對與安裝
+方式。不可變的 v0.6.0 Release 仍可作為前一版本取得；v0.4.0 ZIP 內容則僅
 供歷史驗證參考，不是安裝方式。開發或稽核本儲存庫時，才使用原始碼簽出安裝。
 
 ## 執行環境界線
@@ -84,26 +84,26 @@ npx skills update clin-nav --project --yes
 接著再用 `/skills` 確認。若顯示的行為仍是舊版，請依下方對應階段排解，
 不要直接重複安裝。
 
-## 目前已驗證的 v0.6.0 Release 產物核對
+## 目前已驗證的 v0.7.0 Release 產物核對
 
-目前已驗證且不可變的 Release 是 `v0.6.0`。確切的已發布產物為
-`clin-nav-0.6.0.zip` 與 `clin-nav-0.6.0.manifest.json`。下列指令會從同一個
+目前已驗證且不可變的 Release 是 `v0.7.0`。確切的已發布產物為
+`clin-nav-0.7.0.zip` 與 `clin-nav-0.7.0.manifest.json`。下列指令會從同一個
 不可變 Release 下載兩個產物，先用已發布的 SHA-256 核對 manifest，再用
 已發布的 SHA-256 與 manifest 內的 `archive_sha256` 交叉核對 ZIP，通過後才
-安裝。這些值綁定可重現的 v0.6.0 產物，以及 tagged source 通過的
+安裝。這些值綁定可重現的 v0.7.0 產物，以及 tagged source 通過的
 Linux／Windows 套件比對結果。
 
-不可變的 v0.5.0 Release 仍可作為前一版本取得。
+不可變的 v0.6.0 Release 仍可作為前一版本取得。
 v0.4.0 套件則保留於下方，僅供歷史驗證參考。
 
 PowerShell：
 
 ```powershell
-$releaseVersion = "0.6.0"
+$releaseVersion = "0.7.0"
 $archiveName = "clin-nav-$releaseVersion.zip"
 $manifestName = "clin-nav-$releaseVersion.manifest.json"
-$expectedArchiveSha256 = "195967e3e3b1a6ee32de18a442a7c84badc6642ce6b4ddc0456c441b5f25686d"
-$expectedManifestSha256 = "df07dcae8bc45b6fb5b985fff387fc44991a6ebf57960cdd942c4ad3d5b6f894"
+$expectedArchiveSha256 = "b9b85db5bf91692ce8128b40031638576e659ad17c06861538f34c3661758325"
+$expectedManifestSha256 = "cd09af03eda8b16eb9a3173c52e6e80527227128232638041e03ed5a71ea9120"
 $releaseBase = "https://github.com/mtchuang1981/clin-data-nav/releases/download/v$releaseVersion"
 Invoke-WebRequest "$releaseBase/$archiveName" -OutFile $archiveName
 Invoke-WebRequest "$releaseBase/$manifestName" -OutFile $manifestName
@@ -118,7 +118,7 @@ if ($actualArchiveSha256 -ne $expectedArchiveSha256) { throw "Archive SHA-256 mi
 
 $skillsRoot = Join-Path (Get-Location) ".agents/skills"
 $skillDirectory = Join-Path $skillsRoot "clin-nav"
-$stagingDirectory = Join-Path $skillsRoot ".clin-nav-v0.6.0-staged"
+$stagingDirectory = Join-Path $skillsRoot ".clin-nav-v0.7.0-staged"
 if (Test-Path $skillDirectory) { throw "Installation already exists" }
 if (Test-Path $stagingDirectory) { throw "Staging directory already exists" }
 New-Item -ItemType Directory -Path $skillsRoot -Force | Out-Null
@@ -131,11 +131,11 @@ Move-Item -LiteralPath $stagingDirectory -Destination $skillDirectory
 POSIX shell：
 
 ```bash
-release_version="0.6.0"
+release_version="0.7.0"
 archive_name="clin-nav-$release_version.zip"
 manifest_name="clin-nav-$release_version.manifest.json"
-expected_archive_sha256="195967e3e3b1a6ee32de18a442a7c84badc6642ce6b4ddc0456c441b5f25686d"
-expected_manifest_sha256="df07dcae8bc45b6fb5b985fff387fc44991a6ebf57960cdd942c4ad3d5b6f894"
+expected_archive_sha256="b9b85db5bf91692ce8128b40031638576e659ad17c06861538f34c3661758325"
+expected_manifest_sha256="cd09af03eda8b16eb9a3173c52e6e80527227128232638041e03ed5a71ea9120"
 release_base="https://github.com/mtchuang1981/clin-data-nav/releases/download/v$release_version"
 curl -fL "$release_base/$archive_name" -o "$archive_name"
 curl -fL "$release_base/$manifest_name" -o "$manifest_name"
@@ -156,7 +156,7 @@ test "$actual_archive_sha256" = "$expected_archive_sha256" || { echo "Archive SH
 
 skills_root="$PWD/.agents/skills"
 skill_directory="$skills_root/clin-nav"
-staging_directory="$skills_root/.clin-nav-v0.6.0-staged"
+staging_directory="$skills_root/.clin-nav-v0.7.0-staged"
 test ! -e "$skill_directory" || { echo "Installation already exists" >&2; exit 1; }
 test ! -e "$staging_directory" || { echo "Staging directory already exists" >&2; exit 1; }
 mkdir -p "$skills_root"
