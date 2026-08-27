@@ -594,7 +594,7 @@ def test_dependabot_version_updates_are_bounded_and_reviewable():
     assert "versioning-strategy" not in by_ecosystem["github-actions"]
 
 
-def test_ci_has_dual_platform_read_only_jobs_and_required_commands():
+def test_ci_has_manual_retry_dual_platform_read_only_jobs_and_required_commands():
     workflow_path = ROOT / ".github/workflows/validate.yml"
     workflow = yaml.load(
         workflow_path.read_text(encoding="utf-8"),
@@ -604,6 +604,7 @@ def test_ci_has_dual_platform_read_only_jobs_and_required_commands():
 
     assert workflow["permissions"] == {"contents": "read"}
     assert workflow["on"] == {
+        "workflow_dispatch": "",
         "pull_request": "",
         "push": {"branches": ["main"]},
     }
@@ -1086,7 +1087,7 @@ def test_citation_and_license_metadata():
     )
     assert citation["title"] == "Clinical Data Research Navigator"
     assert citation["version"] == "0.7.0"
-    assert citation["date-released"] == "2026-08-26"
+    assert citation["date-released"] == "2026-08-27"
     assert citation["license"] == "Apache-2.0"
     assert "Apache License" in (ROOT / "LICENSE").read_text(encoding="utf-8")
 
@@ -1115,9 +1116,9 @@ def test_release_version_is_synchronized_at_v070_with_publication_date():
     }
     assert len(release_surfaces) == 6
     assert set(release_surfaces.values()) == {release_version}
-    assert changelog.splitlines()[2] == "## 0.7.0 - 2026-08-26"
-    assert changelog_zh_tw.splitlines()[2] == "## 0.7.0 - 2026-08-26"
-    assert citation["date-released"] == "2026-08-26"
+    assert changelog.splitlines()[2] == "## 0.7.0 - 2026-08-27"
+    assert changelog_zh_tw.splitlines()[2] == "## 0.7.0 - 2026-08-27"
+    assert citation["date-released"] == "2026-08-27"
     assert "## 0.6.0 - 2026-08-24" in changelog
     assert "## 0.6.0 - 2026-08-24" in changelog_zh_tw
     assert "## 0.5.0 - 2026-08-16" in changelog
@@ -2982,7 +2983,7 @@ def test_release_citation_points_to_public_repository_with_release_date():
     repository_url = "https://github.com/mtchuang1981/clin-data-nav"
     assert citation["url"] == repository_url
     assert citation["repository-code"] == repository_url
-    assert citation["date-released"] == "2026-08-26"
+    assert citation["date-released"] == "2026-08-27"
 
 
 def test_security_policy_has_supported_versions_and_safe_confidential_reporting():
@@ -3002,7 +3003,7 @@ def test_security_policy_has_supported_versions_and_safe_confidential_reporting(
     ):
         assert prohibited_public_material in normalized
     assert "public issue" in normalized
-    assert "As of 2026-08-26, that line is `0.7.x`." in normalized
+    assert "As of 2026-08-27, that line is `0.7.x`." in normalized
     assert "On 2026-08-09 (Asia/Taipei)" in normalized
     assert "private vulnerability reporting is enabled" in normalized
     assert "security/advisories/new" in normalized

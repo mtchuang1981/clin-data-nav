@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-The newest published release line receives security fixes. As of 2026-08-26,
+The newest published release line receives security fixes. As of 2026-08-27,
 that line is `0.7.x`.
 
 | Version | Supported |
