@@ -2403,6 +2403,95 @@ def test_v050_publication_report_records_exact_public_evidence():
     _assert_v050_publication_evidence_contract(report)
 
 
+def test_v070_publication_report_records_exact_public_evidence():
+    report = (
+        ROOT / "docs/verification/2026-08-27-v0.7.0-publication.md"
+    ).read_text(encoding="utf-8")
+    normalized = " ".join(report.split())
+
+    for fact in (
+        "This is a post-publication record; this evidence commit is not part "
+        "of the immutable v0.7.0 source tree.",
+        "The public download contained exactly the two expected assets.",
+        "The downloaded bytes matched the local reproducible build and the "
+        "GitHub server digests.",
+        "The temporary download directory was deleted after verification.",
+        "The annotated tag was not moved or replaced.",
+        "The GitHub Release and its assets were not edited after publication.",
+        "No human pilot was conducted as part of this release.",
+        "External repository settings were not re-evaluated by this "
+        "publication check.",
+    ):
+        assert normalized.count(fact) == 1
+
+    identity = _evidence_subsection(
+        report,
+        "## Immutable publication identity",
+        "## Public workflows and Release",
+    )
+    assert _evidence_table_rows(identity) == (
+        (
+            "Main release commit",
+            "`141538a8e08ea4af5fc4e528e4eacd991ae825f4`",
+        ),
+        (
+            "Annotated tag object",
+            "`2b867a1bdfec445de52d7252bae50249673b3105`",
+        ),
+        (
+            "Peeled tag commit",
+            "`141538a8e08ea4af5fc4e528e4eacd991ae825f4`",
+        ),
+        ("Release ID", "`377515474`"),
+    )
+
+    workflows = _evidence_subsection(
+        report,
+        "## Public workflows and Release",
+        "## Public assets",
+    )
+    assert _evidence_table_rows(workflows) == (
+        (
+            "Main validation",
+            "`https://github.com/mtchuang1981/clin-data-nav/actions/runs/33030083825`",
+        ),
+        (
+            "CodeQL",
+            "`https://github.com/mtchuang1981/clin-data-nav/actions/runs/33030083546`",
+        ),
+        (
+            "Guarded Release",
+            "`https://github.com/mtchuang1981/clin-data-nav/actions/runs/33030371338`",
+        ),
+        (
+            "Public Release",
+            "`https://github.com/mtchuang1981/clin-data-nav/releases/tag/v0.7.0`",
+        ),
+    )
+
+    assets = _evidence_subsection(
+        report,
+        "## Public assets",
+        "## Manifest and ZIP inspection",
+    )
+    assert _evidence_table_rows(assets) == (
+        (
+            "ZIP",
+            "`531582834`",
+            "`clin-nav-0.7.0.zip`",
+            "`19587`",
+            "`sha256:b9b85db5bf91692ce8128b40031638576e659ad17c06861538f34c3661758325`",
+        ),
+        (
+            "Manifest",
+            "`531582835`",
+            "`clin-nav-0.7.0.manifest.json`",
+            "`1217`",
+            "`sha256:cd09af03eda8b16eb9a3173c52e6e80527227128232638041e03ed5a71ea9120`",
+        ),
+    )
+
+
 def test_release_process_requires_a_committed_post_release_evidence_report():
     process = " ".join(
         (ROOT / "docs/release.md").read_text(encoding="utf-8").split()
