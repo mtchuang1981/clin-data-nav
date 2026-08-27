@@ -53,12 +53,29 @@ V050_BINDING = {
     "tag_object": "77c1e1ea140fab8343b178bae63d9c6fc740ccd7",
     "version": "0.5.0",
 }
+V070_BINDING = {
+    "archive": "clin-nav-0.7.0.zip",
+    "archive_sha256": "b9b85db5bf91692ce8128b40031638576e659ad17c06861538f34c3661758325",
+    "commit": "141538a8e08ea4af5fc4e528e4eacd991ae825f4",
+    "manifest": "clin-nav-0.7.0.manifest.json",
+    "manifest_sha256": "cd09af03eda8b16eb9a3173c52e6e80527227128232638041e03ed5a71ea9120",
+    "member_set_sha256": "8a8dbc5e74abf03a31d9d8d0ff05958736519651cf9aa128ffed64b356f5c50e",
+    "tag": "v0.7.0",
+    "tag_object": "2b867a1bdfec445de52d7252bae50249673b3105",
+    "version": "0.7.0",
+}
 
 
-def valid_plan(tmp_path: Path, *, repeats: int = 3, seed: int = 20260816) -> dict:
+def valid_plan(
+    tmp_path: Path,
+    *,
+    repeats: int = 3,
+    seed: int = 20260816,
+    skill_ref: str = "v0.5.0",
+) -> dict:
     return build_benchmark_plan(
         root=ROOT,
-        skill_ref="v0.5.0",
+        skill_ref=skill_ref,
         temporary_root=tmp_path,
         model_provider="synthetic-provider",
         model_id="synthetic-model",
@@ -631,11 +648,28 @@ def test_v050_registry_matches_rebuilt_annotated_tag(tmp_path):
     assert observed == V050_BINDING
 
 
+def test_v070_registry_matches_rebuilt_annotated_tag(tmp_path):
+    """A wrong v0.7.0 publication identity must prevent campaign preparation."""
+    observed = resolve_released_skill_binding(ROOT, "v0.7.0", tmp_path)
+    assert observed == V070_BINDING
+
+
 def test_registry_is_closed_canonical_public_binding():
     payload = load_released_skill_bindings(REGISTRY)
     assert set(payload) == {"schema_version", "releases"}
-    assert payload == {"schema_version": "1", "releases": [V050_BINDING]}
+    assert payload == {
+        "schema_version": "1",
+        "releases": [V050_BINDING, V070_BINDING],
+    }
     assert REGISTRY.read_bytes() == canonical_json_bytes(payload)
+
+
+def test_v070_plan_derives_benchmark_id_from_the_bound_release(tmp_path):
+    """Reusing the v0.5.0 ID would mislabel a valid v0.7.0 campaign."""
+    plan = valid_plan(tmp_path, skill_ref="v0.7.0")
+
+    assert plan["benchmark_id"] == "public-simulation-v0-7-0"
+    assert validate_benchmark_plan(plan) == []
 
 
 @pytest.mark.parametrize(

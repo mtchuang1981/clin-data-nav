@@ -29,9 +29,11 @@ process continuously replacing POSIX directory entries.
 
 ## Released Skill binding
 
-The first normative campaign evaluates the released `clin-nav` `v0.5.0`
-bundle, not the unreleased benchmark implementation. Preparation resolves the
-local annotated tag, rebuilds the deterministic package, and compares it with
+The first normative campaign evaluated the released `clin-nav` `v0.5.0`
+bundle. The current post-release campaign is bound to `v0.7.0`; it remains
+pending until all 72 externally run cells have been collected and evaluated.
+Preparation resolves the selected local annotated tag, rebuilds the
+deterministic package, and compares it with
 [`released-skill-bindings.json`](released-skill-bindings.json). A local tag by
 itself is insufficient, and preparation performs no network call.
 
@@ -42,7 +44,7 @@ self-reported model and runner metadata; never supply a secret or credential.
 
 ```bash
 python scripts/prepare_simulation_benchmark.py \
-  --skill-ref v0.5.0 \
+  --skill-ref v0.7.0 \
   --model-provider <provider> \
   --model-id <model> \
   --model-snapshot <snapshot> \

@@ -76,7 +76,6 @@ GIT_OBJECT = re.compile(r"^[0-9a-f]{40}$")
 SAFE_IDENTIFIER = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
 SAFE_BENCHMARK_ID = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 SAFE_TAG = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._/-]*$")
-BENCHMARK_ID = "public-simulation-v0-5-0"
 CLI_ERROR = b"simulation benchmark preparation failed\n"
 SUCCESS_STATUS = {
     "cell_count": 72,
@@ -94,6 +93,18 @@ V050_BINDING = {
     "tag_object": "77c1e1ea140fab8343b178bae63d9c6fc740ccd7",
     "version": "0.5.0",
 }
+V070_BINDING = {
+    "archive": "clin-nav-0.7.0.zip",
+    "archive_sha256": "b9b85db5bf91692ce8128b40031638576e659ad17c06861538f34c3661758325",
+    "commit": "141538a8e08ea4af5fc4e528e4eacd991ae825f4",
+    "manifest": "clin-nav-0.7.0.manifest.json",
+    "manifest_sha256": "cd09af03eda8b16eb9a3173c52e6e80527227128232638041e03ed5a71ea9120",
+    "member_set_sha256": "8a8dbc5e74abf03a31d9d8d0ff05958736519651cf9aa128ffed64b356f5c50e",
+    "tag": "v0.7.0",
+    "tag_object": "2b867a1bdfec445de52d7252bae50249673b3105",
+    "version": "0.7.0",
+}
+RELEASED_BINDINGS = (V050_BINDING, V070_BINDING)
 
 
 def canonical_json_bytes(value: object) -> bytes:
@@ -151,6 +162,10 @@ def _valid_binding(binding: object) -> bool:
     )
 
 
+def _benchmark_id_for_binding(binding: dict) -> str:
+    return f"public-simulation-v{binding['version'].replace('.', '-')}"
+
+
 def load_released_skill_bindings(path: Path) -> dict:
     """Load the closed, canonical public registry without accepting aliases."""
     try:
@@ -162,9 +177,8 @@ def load_released_skill_bindings(path: Path) -> dict:
     if payload["schema_version"] != "1" or not isinstance(payload["releases"], list):
         raise ValueError("invalid released Skill registry")
     if (
-        len(payload["releases"]) != 1
-        or not _valid_binding(payload["releases"][0])
-        or payload["releases"][0] != V050_BINDING
+        any(not _valid_binding(binding) for binding in payload["releases"])
+        or payload["releases"] != list(RELEASED_BINDINGS)
     ):
         raise ValueError("invalid released Skill registry")
     if path.read_bytes() != canonical_json_bytes(payload):
@@ -304,9 +318,10 @@ def build_benchmark_plan(
     root = root.resolve()
     case_ids, catalog_sha256, rubric_sha256 = _catalog_contract(root)
     created_at = created_at or datetime.now(timezone.utc).isoformat()
+    skill_binding = resolve_released_skill_binding(root, skill_ref, temporary_root)
     plan = {
         "assignment_seed": seed,
-        "benchmark_id": BENCHMARK_ID,
+        "benchmark_id": _benchmark_id_for_binding(skill_binding),
         "case_ids": case_ids,
         "catalog_sha256": catalog_sha256,
         "cells": list(balanced_cells(tuple(case_ids), repeats, seed)),
@@ -335,7 +350,7 @@ def build_benchmark_plan(
             "network_policy": "offline",
             "tool_policy_sha256": tool_policy_sha256,
         },
-        "skill": resolve_released_skill_binding(root, skill_ref, temporary_root),
+        "skill": skill_binding,
     }
     errors = validate_benchmark_plan(plan)
     if errors:
@@ -366,7 +381,10 @@ def validate_benchmark_plan(payload: object) -> list[str]:
     assert isinstance(payload, dict)
     if payload["schema_version"] != "1" or payload["plan_format_version"] != "1":
         errors.append("plan: unsupported schema version")
-    if payload["benchmark_id"] != BENCHMARK_ID:
+    if (
+        not isinstance(payload["benchmark_id"], str)
+        or SAFE_BENCHMARK_ID.fullmatch(payload["benchmark_id"]) is None
+    ):
         errors.append("plan: invalid benchmark ID")
     if not isinstance(payload["repeats"], int) or isinstance(payload["repeats"], bool) or payload["repeats"] != 3:
         errors.append("plan: repeats must be exactly 3")
@@ -398,6 +416,8 @@ def validate_benchmark_plan(payload: object) -> list[str]:
         else:
             if skill not in registry["releases"]:
                 errors.append("skill: binding is not a closed public release")
+            elif payload["benchmark_id"] != _benchmark_id_for_binding(skill):
+                errors.append("plan: invalid benchmark ID")
 
     model = payload["model"]
     _exact_keys(model, MODEL_KEYS, "model", errors)

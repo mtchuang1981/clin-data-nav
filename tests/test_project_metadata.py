@@ -4306,7 +4306,7 @@ BENCHMARK_README_SECTIONS = (
 )
 BENCHMARK_COMMANDS = (
     """python scripts/prepare_simulation_benchmark.py \\
-  --skill-ref v0.5.0 \\
+  --skill-ref v0.7.0 \\
   --model-provider <provider> \\
   --model-id <model> \\
   --model-snapshot <snapshot> \\
