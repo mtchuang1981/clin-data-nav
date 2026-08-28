@@ -38,14 +38,17 @@ After approval:
 2. Require the exact commit's Ubuntu and Windows `validate` matrix jobs to
    succeed with no skipped verification step.
 3. Create an annotated `vX.Y.Z` tag at that commit and push only that new tag.
-4. Manually dispatch `.github/workflows/release.yml` with the annotated tag.
-   Read-only jobs revalidate the tag on Ubuntu and Windows, build and verify
-   the ZIP and manifest, and upload a short-lived bundle containing those
-   files, static Release notes, and transit checksums. The final writer job
-   receives no source checkout or Python environment: it downloads that exact
-   artifact ID, verifies the checksums, rechecks the remote annotated tag
-   object and peeled commit, refuses an existing Release, and only then creates
-   the Release.
+4. Manually dispatch `.github/workflows/release.yml` from `main` with the
+   annotated tag. Every job that executes repository code checks out only the
+   dispatch event's immutable `github.sha`; the supplied tag selects no source
+   code and is used only for verification and publication identity. Read-only
+   jobs require that tag to peel to the checked-out commit, then revalidate on
+   Ubuntu and Windows, build and verify the ZIP and manifest, and upload a
+   short-lived bundle containing those files, static Release notes, and transit
+   checksums. The final writer job receives no source checkout or Python
+   environment: it downloads that exact artifact ID, verifies the checksums,
+   rechecks the remote annotated tag object and peeled commit, refuses an
+   existing Release, and only then creates the Release.
 5. Confirm the public Release points to the intended tag and contains exactly
    `clin-nav-X.Y.Z.zip` and `clin-nav-X.Y.Z.manifest.json`.
 6. Download both assets and independently confirm the ZIP SHA-256 equals

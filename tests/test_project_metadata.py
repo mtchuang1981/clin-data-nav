@@ -836,9 +836,11 @@ def test_release_workflow_is_manual_fail_closed_and_least_privilege():
         "build",
         "publish",
     }
+    assert workflow["jobs"]["preflight"]["if"] == (
+        "${{ github.ref == 'refs/heads/main' }}"
+    )
     assert set(workflow["jobs"]["preflight"]["outputs"]) == {
         "version",
-        "commit",
         "tag_object",
     }
     assert workflow["jobs"]["validate"]["needs"] == "preflight"
@@ -870,15 +872,7 @@ def test_release_workflow_is_manual_fail_closed_and_least_privilege():
             if step.get("uses", "").startswith("actions/checkout@")
         )
         assert checkout["with"]["persist-credentials"] == "false"
-    for job_name in ("validate", "build"):
-        checkout = next(
-            step
-            for step in workflow["jobs"][job_name]["steps"]
-            if step.get("uses", "").startswith("actions/checkout@")
-        )
-        assert checkout["with"]["ref"] == (
-            "${{ needs.preflight.outputs.commit }}"
-        )
+        assert checkout["with"]["ref"] == "${{ github.sha }}"
     validate_checkout = next(
         step
         for step in validate_job["steps"]
@@ -910,10 +904,7 @@ def test_release_workflow_is_manual_fail_closed_and_least_privilege():
         if step.get("run") == candidate_build
     )
     assert validate_upload["with"] == {
-        "name": (
-            "package-${{ runner.os }}-"
-            "${{ needs.preflight.outputs.commit }}"
-        ),
+        "name": "package-${{ runner.os }}-${{ github.sha }}",
         "path": "dist/*.zip\ndist/*.manifest.json\n",
         "if-no-files-found": "error",
         "retention-days": "1",
@@ -936,15 +927,11 @@ def test_release_workflow_is_manual_fail_closed_and_least_privilege():
     ]
     assert downloads == [
         {
-            "name": (
-                "package-Linux-${{ needs.preflight.outputs.commit }}"
-            ),
+            "name": "package-Linux-${{ github.sha }}",
             "path": "candidate-packages/Linux",
         },
         {
-            "name": (
-                "package-Windows-${{ needs.preflight.outputs.commit }}"
-            ),
+            "name": "package-Windows-${{ github.sha }}",
             "path": "candidate-packages/Windows",
         },
     ]
@@ -1035,6 +1022,7 @@ def test_release_workflow_is_manual_fail_closed_and_least_privilege():
     assert "CHECKSUM_SHA256" in verify_step["env"]
     assert "gh release create" not in verify_step["run"]
     assert release_step["env"]["GH_TOKEN"] == "${{ github.token }}"
+    assert release_step["env"]["VERIFIED_COMMIT"] == "${{ github.sha }}"
     assert (
         'archive="release-bundle/clin-nav-$VERSION.zip"'
         in release_step["run"]
@@ -1061,11 +1049,13 @@ def test_release_workflow_is_manual_fail_closed_and_least_privilege():
     ) < release_step["run"].index("gh release create")
     assert rendered.count("GH_TOKEN:") == 1
     assert rendered.count("contents: write") == 1
+    assert "${{ needs.preflight.outputs.commit }}" not in rendered
     assert "python scripts/verify_release.py ref" in rendered
     assert "python scripts/verify_release.py artifacts" in rendered
     assert "python scripts/package_skill.py" in rendered
     assert 'git rev-parse "$TAG^{tag}"' in rendered
     assert 'git rev-parse "$TAG^{commit}"' in rendered
+    assert 'test "$commit" = "$GITHUB_SHA"' in rendered
     assert "git ls-remote" in rendered
     assert "VERIFIED_TAG_OBJECT" in rendered
     assert "VERIFIED_COMMIT" in rendered
