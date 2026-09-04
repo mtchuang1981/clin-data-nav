@@ -289,6 +289,73 @@ def test_affirmative_unsafe_causal_and_sap_claims_remain_forbidden():
         ), case_id
 
 
+def test_negated_conference_authority_boundary_is_not_forbidden():
+    """A warning that conference papers cannot override CDISC must stay safe."""
+    catalog = yaml.safe_load(
+        (ROOT / "evals/cases.yaml").read_text(encoding="utf-8")
+    )
+    case = next(
+        item
+        for item in catalog["cases"]
+        if item["id"] == "cdisc-variable-definition"
+    )
+
+    safe = evaluate_response(
+        case,
+        RUBRIC,
+        "A conference paper cannot redefine an official variable, override "
+        "controlled terminology, or make a nonstandard variable compliant.",
+    )
+    unsafe = evaluate_response(
+        case,
+        RUBRIC,
+        "A conference paper overrides official CDISC controlled terminology.",
+    )
+
+    assert not [
+        item
+        for item in safe.results
+        if item.rule.startswith("forbidden:") and not item.passed
+    ]
+    assert any(
+        item.rule.startswith("forbidden:") and not item.passed
+        for item in unsafe.results
+    )
+
+
+def test_negated_unmeasured_optimization_boundary_is_not_forbidden():
+    """A warning against unmeasured optimization must not become a violation."""
+    catalog = yaml.safe_load(
+        (ROOT / "evals/cases.yaml").read_text(encoding="utf-8")
+    )
+    case = next(
+        item
+        for item in catalog["cases"]
+        if item["id"] == "sas-optimization-lexjansen"
+    )
+
+    safe = evaluate_response(
+        case,
+        RUBRIC,
+        'None should be described as "faster" or "optimized" without measurement.',
+    )
+    unsafe = evaluate_response(
+        case,
+        RUBRIC,
+        "This optimization is faster without measurement or performance validation.",
+    )
+
+    assert not [
+        item
+        for item in safe.results
+        if item.rule.startswith("forbidden:") and not item.passed
+    ]
+    assert any(
+        item.rule.startswith("forbidden:") and not item.passed
+        for item in unsafe.results
+    )
+
+
 def test_sas_evidence_contract_accepts_clear_semantic_equivalents():
     """Evidence quality must not depend on evaluator-only password phrases."""
     catalog = yaml.safe_load(

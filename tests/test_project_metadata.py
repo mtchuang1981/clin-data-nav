@@ -1189,13 +1189,16 @@ def test_v070_release_notes_are_bilingual_and_bound_effectiveness_claims():
         "semantic equivalents",
         "v0.7.0 local installer, packager, ZIP, and manifest are synchronized",
         "mixed-or-null",
-        "post-release v0.7.0 campaign remains pending",
+        "At publication, the post-release v0.7.0 campaign remained pending",
+        "completed on 2026-09-04",
+        "2026-09-04-v0.7.0-simulation-benchmark.md",
         "主要交付物",
         "跨深度標題",
         "語意等價",
         "v0.7.0 的本機安裝程式、封裝程式、ZIP 與 manifest 已同步",
         "混合或無明顯差異",
-        "發布後的 v0.7.0 活動仍待執行",
+        "發布當時，發布後的 v0.7.0 活動仍待執行",
+        "已於 2026-09-04 完成",
     ):
         assert contract in normalized
     for unsupported_claim in (
@@ -4362,8 +4365,40 @@ def test_public_benchmark_readme_has_the_complete_run_and_claim_contract():
         "not human-effective",
         "not evaluation-green",
         "No representative user",
+        "completed on 2026-09-04",
+        "2026-09-04-v0.7.0-simulation-benchmark.md",
+        "ad369fd1d4048d066d30597e0d7a7a8b61a34d9c76c16cfbdb739f2bd46310d9",
     ):
         assert marker.casefold() in text.casefold()
+
+
+def test_v070_simulation_verification_is_aggregate_only_and_claim_bounded():
+    evidence = (
+        ROOT / "docs/verification/2026-09-04-v0.7.0-simulation-benchmark.md"
+    ).read_text(encoding="utf-8")
+    normalized = " ".join(evidence.split())
+
+    for marker in (
+        "benchmark-observed",
+        "mixed-or-null",
+        "72",
+        "10",
+        "0.277778",
+        "011944b1f2c8522501ca14420158772d9da678c8ede89c163bea57d8173ab128",
+        "ad369fd1d4048d066d30597e0d7a7a8b61a34d9c76c16cfbdb739f2bd46310d9",
+        "externally asserted",
+        "deterministic contract",
+        "false positive",
+        "No raw response",
+    ):
+        assert marker.casefold() in normalized.casefold()
+    for unsupported_claim in (
+        "human-effective",
+        "evaluation-green",
+        "clinically valid",
+        "deployment-ready",
+    ):
+        assert unsupported_claim not in normalized
 
 
 def test_root_and_eval_readmes_link_to_the_public_simulation_benchmark():

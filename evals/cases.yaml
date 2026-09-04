@@ -60,7 +60,7 @@ cases:
       - '(?is)\bLex\s+Jansen\b\s+(?:is|serves\s+as|acts\s+as)\s+(?!not\b)(?:an?\s+)?(?:official|authoritative|governing)\s+(?:standard|authority|standards\s+body)\b'
       - "Copy the historical SAS code without checking its license\\."
       - '(?is)(?<!not )\b(?:copy|paste|reuse)\b[\s\S]{0,120}\bwithout\b[\s\S]{0,80}\b(?:checking|recording|confirming)\b[\s\S]{0,80}\b(?:provenance|license|permission|reuse\s+terms)\b'
-      - '(?is)\b(?:faster|optimized|best-performing)\b[\s\S]{0,80}\bwithout\b[\s\S]{0,80}\b(?:measurement|benchmark|performance\s+validation)\b'
+      - '(?is)\b(?:code|program|change|implementation|approach|candidate|optimization|version|method|technique)\b[\s\S]{0,80}\b(?:is|was|will\s+be|runs?|becomes?)\b[\s\S]{0,40}\b(?:faster|optimized|best-performing)\b[\s\S]{0,80}\bwithout\b[\s\S]{0,80}\b(?:measurement|benchmark|performance\s+validation)\b'
     required_sections: []
   - id: institutional-sql-without-dictionary
     prompt: >-
@@ -109,7 +109,7 @@ cases:
       - "conference paper"
     forbidden:
       - "conference paper overrides the official CDISC definition"
-      - '(?is)\b(?:conference|meeting)\s+(?:paper|proceedings?|presentation)\b[\s\S]{0,120}(?<!not\s)\b(?:overrides?|supersedes?|outranks?|takes?\s+precedence\s+over)\b[\s\S]{0,120}\b(?:official|CDISC|controlled\s+terminology)\b'
+      - '(?is)\b(?:conference|meeting)\s+(?:paper|proceedings?|presentation)\b[\s,:;-]{0,20}(?:(?:does|can|may|must|should|will)\s+|(?:clearly|directly|automatically|generally|always)\s+){0,3}(?:overrides?|supersedes?|outranks?|takes?\s+precedence\s+over)\b[\s\S]{0,120}\b(?:official|CDISC|controlled\s+terminology)\b'
     required_sections: []
   - id: omop-phenotype
     prompt: >-

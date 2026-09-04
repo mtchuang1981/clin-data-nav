@@ -30,8 +30,14 @@ process continuously replacing POSIX directory entries.
 ## Released Skill binding
 
 The first normative campaign evaluated the released `clin-nav` `v0.5.0`
-bundle. The current post-release campaign is bound to `v0.7.0`; it remains
-pending until all 72 externally run cells have been collected and evaluated.
+bundle. The post-release campaign bound to `v0.7.0` completed on 2026-09-04
+with all 72 externally run cells. Its canonical result is
+`benchmark-observed` with direction `mixed-or-null`; the summary SHA-256 is
+`ad369fd1d4048d066d30597e0d7a7a8b61a34d9c76c16cfbdb739f2bd46310d9`.
+See the aggregate-only
+[verification record](../../docs/verification/2026-09-04-v0.7.0-simulation-benchmark.md).
+The frozen result remains authoritative and is not retroactively relabeled by
+later evaluator refinements.
 Preparation resolves the selected local annotated tag, rebuilds the
 deterministic package, and compares it with
 [`released-skill-bindings.json`](released-skill-bindings.json). A local tag by
