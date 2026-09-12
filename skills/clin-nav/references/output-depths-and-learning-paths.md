@@ -25,8 +25,10 @@ When cues conflict, route by the requested deliverable, not by isolated words:
 
 Honor an explicit safe choice. Otherwise choose the least sufficient depth that
 fully answers the request. Ask one concise question only when ambiguity would
-materially change the deliverable. Print exactly one `Output depth: ` line and
-offer a deeper depth only as an optional follow-up.
+materially change the deliverable. For `quick explanation`, keep the selected
+depth internal and use natural short prose unless the user requests a format.
+For every formal depth, print exactly one `Output depth: ` line. Offer a deeper
+depth only as an optional follow-up.
 
 Before sending the response, fill each applicable slot in the selected shape.
 For evidence navigation, include source identity, provenance, access or network
@@ -36,9 +38,10 @@ analysis plan, and data limitations. For implementation specifications,
 include governing authority, the logical contract or mapping checklist,
 maturity, live-metadata and fixture gaps, and the execution-gate decision.
 
-## Common Header
+## Common Header for Formal Deliverables
 
-Use this compact header before the mode-specific sections:
+Use this compact header before the mode-specific sections for evidence
+navigation, research design, and implementation specification:
 
 ```text
 Output depth: [one approved depth]
@@ -53,22 +56,11 @@ Never list a planned, suggested, or merely discovered source as consulted.
 
 ## Quick Explanation
 
-Required shape:
-
-```text
-## Direct answer
-[plain-language definition or comparison]
-
-## Why it matters
-[brief contextual relevance]
-
-## Common confusions or limits
-- [one common confusion or limit]
-- [optional second confusion or limit]
-```
-
-Use for a beginner definition or comparison. Keep the answer direct and short;
-do not add an Evidence table, Data contract, Code maturity, research plan, or
+Use natural short prose for a beginner definition or comparison. Give the
+direct answer, expand named acronyms, explain why it matters in context, and
+include one or two material confusions or limits. Do not print the output-depth
+label, common header, or fixed headings unless the user requests that format.
+Do not add an Evidence table, Data contract, Code maturity, research plan, or
 implementation mapping.
 
 ## Evidence Navigation

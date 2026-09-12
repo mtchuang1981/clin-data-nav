@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.7.1 - 2026-09-09
+
+### Changed
+
+- Return quick explanations as concise natural prose without a fixed output-depth
+  header or mandatory section headings.
+- Keep evidence navigation, research design, and implementation specification on
+  their existing structured contracts, including completion conditions and
+  execution boundaries.
+- Express unknown institutional mappings as natural-language requirements marked
+  for confirmation rather than SQL-shaped or physical-schema placeholders.
+
+### Evaluation
+
+- In the frozen ZIP comparison, the candidate passed all 18 quick-format cells
+  and reduced paired median visible length by 47.46% without an observed safety
+  violation.
+- Preserve the automated `candidate-not-supported` result. Human review classified
+  three formal-response misses as wording false negatives but did not rewrite the
+  frozen scores or claim general model improvement.
+
+### Limitations
+
+- Results apply only to the fixed synthetic prompts, model, CLI, and run conditions.
+  They do not establish human effectiveness, clinical validity, or deployment
+  fitness.
+
 ## 0.7.0 - 2026-08-27
 
 ### Changed

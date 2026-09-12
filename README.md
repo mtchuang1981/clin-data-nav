@@ -23,10 +23,10 @@ Enter this prompt in Codex:
 $clin-nav What is ADaM, why does it matter, and what does it not prove about source-data quality?
 ```
 
-Expected first line: `Output depth: quick explanation`
+Expected shape: a short natural-language answer without a fixed header.
 
 - A direct plain-language definition and why ADaM matters in context.
-- One or two common confusions or limits, followed by a short governing-source list.
+- One or two material confusions or limits; cite only sources actually consulted.
 
 ## Choose an output depth
 

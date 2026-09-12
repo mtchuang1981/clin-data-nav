@@ -955,10 +955,10 @@ def test_release_workflow_is_manual_fail_closed_and_least_privilege():
     assert 'candidate-packages/Linux/$manifest' in build_runs[verify_index]
     assert 'cp "candidate-packages/Linux/$archive"' in build_runs[verify_index]
     assert 'cp "candidate-packages/Linux/$manifest"' in build_runs[verify_index]
-    assert 'test "$VERSION" = "0.7.0"' in build_runs[verify_index]
+    assert 'test "$VERSION" = "0.7.1"' in build_runs[verify_index]
     assert 'archive="clin-nav-$VERSION.zip"' in build_runs[verify_index]
     assert 'manifest="clin-nav-$VERSION.manifest.json"' in build_runs[verify_index]
-    assert 'notes="docs/releases/0.7.0.md"' in build_runs[verify_index]
+    assert 'notes="docs/releases/0.7.1.md"' in build_runs[verify_index]
     assert "python scripts/package_skill.py" not in build_rendered
     assert all("pip " not in command for command in build_runs)
     assert "dist/" not in build_rendered
@@ -1076,20 +1076,20 @@ def test_citation_and_license_metadata():
         (ROOT / "CITATION.cff").read_text(encoding="utf-8")
     )
     assert citation["title"] == "Clinical Data Research Navigator"
-    assert citation["version"] == "0.7.0"
-    assert citation["date-released"] == "2026-08-27"
+    assert citation["version"] == "0.7.1"
+    assert citation["date-released"] == "2026-09-09"
     assert citation["license"] == "Apache-2.0"
     assert "Apache License" in (ROOT / "LICENSE").read_text(encoding="utf-8")
 
 
-def test_release_version_is_synchronized_at_v070_with_publication_date():
+def test_release_version_is_synchronized_at_v071_with_candidate_date():
     project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
     citation = yaml.safe_load((ROOT / "CITATION.cff").read_text(encoding="utf-8"))
     changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
     changelog_zh_tw = (ROOT / "CHANGELOG.zh-TW.md").read_text(encoding="utf-8")
-    release_notes = (ROOT / "docs/releases/0.7.0.md").read_text(encoding="utf-8")
+    release_notes = (ROOT / "docs/releases/0.7.1.md").read_text(encoding="utf-8")
 
-    release_version = "0.7.0"
+    release_version = "0.7.1"
     release_surfaces = {
         "pyproject": project["project"]["version"],
         "citation": citation["version"],
@@ -1106,9 +1106,11 @@ def test_release_version_is_synchronized_at_v070_with_publication_date():
     }
     assert len(release_surfaces) == 6
     assert set(release_surfaces.values()) == {release_version}
-    assert changelog.splitlines()[2] == "## 0.7.0 - 2026-08-27"
-    assert changelog_zh_tw.splitlines()[2] == "## 0.7.0 - 2026-08-27"
-    assert citation["date-released"] == "2026-08-27"
+    assert changelog.splitlines()[2] == "## 0.7.1 - 2026-09-09"
+    assert changelog_zh_tw.splitlines()[2] == "## 0.7.1 - 2026-09-09"
+    assert citation["date-released"] == "2026-09-09"
+    assert "## 0.7.0 - 2026-08-27" in changelog
+    assert "## 0.7.0 - 2026-08-27" in changelog_zh_tw
     assert "## 0.6.0 - 2026-08-24" in changelog
     assert "## 0.6.0 - 2026-08-24" in changelog_zh_tw
     assert "## 0.5.0 - 2026-08-16" in changelog
@@ -1121,12 +1123,12 @@ def test_release_version_is_synchronized_at_v070_with_publication_date():
     assert "## 0.2.2 - 2026-07-29" in changelog_zh_tw
 
 
-def test_release_package_and_installer_versions_are_synchronized_at_v070():
+def test_release_package_and_installer_versions_are_synchronized_at_v071():
     project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
 
-    assert project["project"]["version"] == "0.7.0"
-    assert PACKAGER_VERSION == "0.7.0"
-    assert INSTALLER_VERSION == "0.7.0"
+    assert project["project"]["version"] == "0.7.1"
+    assert PACKAGER_VERSION == "0.7.1"
+    assert INSTALLER_VERSION == "0.7.1"
 
 
 def test_v060_release_notes_are_bilingual_and_truthful_about_external_evidence():
@@ -1208,6 +1210,73 @@ def test_v070_release_notes_are_bilingual_and_bound_effectiveness_claims():
         "deployment-ready",
     ):
         assert unsupported_claim not in normalized
+
+
+def test_v071_release_notes_are_bilingual_and_preserve_the_frozen_evaluation():
+    notes = (ROOT / "docs/releases/0.7.1.md").read_text(encoding="utf-8")
+    normalized = " ".join(notes.split())
+
+    assert notes.startswith("# Clinical Data Research Navigator v0.7.1\n")
+    for heading in (
+        "## English",
+        "### Output-contract change",
+        "### Evaluation boundary",
+        "## 繁體中文",
+        "### 輸出契約變更",
+        "### 評估界線",
+    ):
+        assert heading in notes
+    for contract in (
+        "Quick explanations use concise natural prose without a fixed header",
+        "Formal evidence, research-design, and implementation contracts remain structured",
+        "18/18 candidate quick-format cells",
+        "47.46%",
+        "candidate-not-supported",
+        "three formal-response wording false negatives",
+        "did not rewrite the frozen automated scores",
+        "快速說明改用不含固定表頭的精簡自然語句",
+        "正式的證據、研究設計與實作契約仍保留結構化格式",
+        "三筆正式回覆的用詞假陰性",
+        "未改寫已凍結的自動分數",
+        "verification/2026-09-09-v0.7.1-output-contract-candidate.md",
+    ):
+        assert contract in normalized
+    for unsupported_claim in (
+        "human-effective",
+        "clinical validity established",
+        "deployment-ready",
+    ):
+        assert unsupported_claim not in normalized
+
+
+def test_v071_candidate_verification_record_is_aggregate_only_and_auditable():
+    record = (
+        ROOT
+        / "docs/verification/2026-09-09-v0.7.1-output-contract-candidate.md"
+    ).read_text(encoding="utf-8")
+    normalized = " ".join(record.split())
+
+    for contract in (
+        "Candidate ZIP SHA-256",
+        "cf65573c96279988c9084eda5f3f6b3a64ec1db691a04f9b885491991689c0ca",
+        "Quick-format pass",
+        "18/18",
+        "Median paired visible-character reduction",
+        "47.46%",
+        "Frozen automated result",
+        "candidate-not-supported",
+        "Human review",
+        "three formal-response wording false negatives",
+        "Automated scores were not changed",
+        "dc82faef183cc1ad07556a0dd219d75e5f1bf0fdc9df3ceb5c3d453ac7443a8f",
+        "4b0e16c10dad7c7bb042f1bf98e662ae3e6170aa76bf8f582d3c4eaf20cca686",
+        "40972e4dbfb1718e5229a5637ddad5b6f9b15717c6f2b84c924cb7aa5ae1310f",
+        "181/181",
+        "Raw responses, provider logs, plans, indexes, and human-review worksheets remain outside the repository",
+    ):
+        assert contract in normalized
+    assert "E:\\" not in record
+    assert "answer text" not in record.lower()
 
 
 def test_v070_release_preserves_v050_publication_history_and_advances_security():
@@ -2614,19 +2683,19 @@ def test_readmes_put_a_real_first_success_path_in_the_first_30_nonblank_lines():
         (
             "README.md",
             "$clin-nav What is ADaM",
-            "Expected first line: `Output depth: quick explanation`",
+            "Expected shape: a short natural-language answer without a fixed header.",
             (
                 "- A direct plain-language definition and why ADaM matters in context.",
-                "- One or two common confusions or limits, followed by a short governing-source list.",
+                "- One or two material confusions or limits; cite only sources actually consulted.",
             ),
         ),
         (
             "README.zh-TW.md",
             "$clin-nav ADaM 是什麼",
-            "預期第一行：`Output depth: quick explanation`",
+            "預期形式：不使用固定表頭的精簡自然語句。",
             (
                 "- 直接用白話定義 ADaM，並說明它在此情境的重要性。",
-                "- 列出一至兩項常見混淆或限制，再附上精簡的主導來源清單。",
+                "- 提醒一至兩項重要混淆或限制；只引用實際查閱的來源。",
             ),
         ),
     )
@@ -2655,7 +2724,7 @@ def test_readme_first_success_guard_rejects_a_missing_expected_summary_line():
         _assert_first_success_order(
             mutated,
             prompt="$clin-nav What is ADaM",
-            marker="Expected first line: `Output depth: quick explanation`",
+            marker="Expected shape: a short natural-language answer without a fixed header.",
             summary_lines=summary_lines,
         )
 
@@ -2906,8 +2975,8 @@ def test_candidate_source_checkout_uses_the_synchronized_installer(
     assert archive_path.is_file()
     assert manifest_path.is_file()
     candidate_manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    assert archive_path.name == "clin-nav-0.7.0.zip"
-    assert candidate_manifest["version"] == "0.7.0"
+    assert archive_path.name == "clin-nav-0.7.1.zip"
+    assert candidate_manifest["version"] == "0.7.1"
 
     destination = tmp_path / "installed-skills"
     install_command = [
@@ -3065,7 +3134,7 @@ def test_release_citation_points_to_public_repository_with_release_date():
     repository_url = "https://github.com/mtchuang1981/clin-data-nav"
     assert citation["url"] == repository_url
     assert citation["repository-code"] == repository_url
-    assert citation["date-released"] == "2026-08-27"
+    assert citation["date-released"] == "2026-09-09"
 
 
 def test_security_policy_has_supported_versions_and_safe_confidential_reporting():

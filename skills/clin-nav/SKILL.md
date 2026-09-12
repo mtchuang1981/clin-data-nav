@@ -23,12 +23,14 @@ Before specialized routing, choose exactly one response depth:
 3. Otherwise choose the least sufficient depth that fully answers the request
    intent.
 4. Ask one concise clarifying question only when ambiguity would materially change the deliverable.
-5. Print exactly one `Output depth: ` line, completed by one of these labels,
-   then follow that depth's shape:
+5. For `quick explanation`, keep the depth choice internal and answer in short,
+   natural prose unless the user requests a format. For every formal depth,
+   print exactly one `Output depth: ` line completed by its label, then follow
+   that depth's shape:
 
 | Request intent | Output-depth label | Required shape |
 |---|---|---|
-| Definition, comparison, or beginner question | `quick explanation` | Common header, direct answer, why it matters, and one or two common confusions or limits. |
+| Definition, comparison, or beginner question | `quick explanation` | Natural short prose with the direct answer, why it matters, and one or two material confusions or limits; no fixed header or headings by default. |
 | Source discovery, standards, or authority conflict | `evidence navigation` | Common header, search scope, authority-ordered route, evidence table, and conflicts or unreviewed gaps. |
 | Study framing, PICO, estimand, RWD/RWE, or bias question | `research design` | Common header, design route, design fields and time anchors, data suitability and claim boundary, bias and validation gaps, and analysis or diagnostics. |
 | Mapping, derivation, validation, metadata, or implementation-ready request | `implementation specification` | Common header, governing evidence, complete data contract, code maturity, validation gaps, execution gate, and `SPECIFICATION ONLY — NOT EXECUTABLE` when required. |
@@ -47,7 +49,7 @@ implementation:
 | Translate settled evidence into a logical mapping, derivation, validation, or executable-readiness contract | `implementation specification` |
 
 Offer a deeper depth as an optional next step; do not silently combine depths.
-Start every response with a compact common header containing `Decision:`,
+Start every formal response with a compact common header containing `Decision:`,
 `Confirmed facts:`, `Assumptions:`, `Limitations:`, and
 `Sources actually consulted:`. Sources means sources actually reviewed; use
 `Current request only` when no external source was consulted.
@@ -62,7 +64,7 @@ unlabelled paragraph:
 
 | Depth | Completion slots |
 |---|---|
-| `quick explanation` | Give the direct answer, expand named acronyms, explain why it matters, and state one or two confusions or limits. |
+| `quick explanation` | In natural prose, give the direct answer, expand named acronyms, explain why it matters, and state one or two material confusions or limits. Do not print the depth label, common header, or fixed headings unless requested. |
 | `evidence navigation` | Define the search scope; give the authority order; record source identity and provenance, access date where relevant, network or access status, reuse constraints, and unreviewed or validation gaps. |
 | `research design` | State the primary intent, design fields and time anchors, data suitability and the RWD/RWE claim boundary, bias gaps, and planned analysis or diagnostics. For causal work, include readiness, estimand, analysis plan and data limitations. For a downstream handoff, include optional-collaborator status and what was not delivered. |
 | `implementation specification` | Identify the governing authority, complete the logical data contract or mapping checklist, assign one maturity label, list live-metadata and fixture gaps, and state the execution-gate decision. |

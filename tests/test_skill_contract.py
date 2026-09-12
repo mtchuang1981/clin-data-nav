@@ -1,7 +1,6 @@
 from pathlib import Path
 import re
 
-
 ROOT = Path(__file__).resolve().parents[1]
 SKILL = ROOT / "skills/clin-nav"
 OUTPUT_DEPTHS = {
@@ -103,12 +102,13 @@ def test_quick_shape_stays_light_and_implementation_shape_is_complete():
     quick_shape = text.split("## Quick Explanation", 1)[1].split(
         "## Evidence Navigation", 1
     )[0].lower()
-    quick_required_shape = quick_shape.split("```text", 1)[1].split("```", 1)[0]
     implementation_shape = text.split(
         "## Implementation Specification", 1
     )[1].lower()
 
-    assert "data contract" not in quick_required_shape
+    assert "natural short prose" in quick_shape
+    assert "fixed headings" in quick_shape
+    assert "```text" not in quick_shape
     for required in (
         "governing artifact",
         "grain",
@@ -123,7 +123,7 @@ def test_quick_shape_stays_light_and_implementation_shape_is_complete():
 
 
 def test_depth_templates_share_the_approved_header_and_distinct_mode_contracts():
-    """Removing a header field or mixing implementation sections into quick must fail."""
+    """Formal header fields and the distinct depth contracts must remain explicit."""
     template = (
         SKILL / "references/evidence-output-template.md"
     ).read_text(encoding="utf-8")
@@ -139,10 +139,11 @@ def test_depth_templates_share_the_approved_header_and_distinct_mode_contracts()
         quick = text.split("## Quick Explanation", 1)[1].split(
             "## Evidence Navigation", 1
         )[0]
-        quick_required = quick.split("```text", 1)[1].split("```", 1)[0]
-        assert "Common confusions or limits" in quick_required
+        assert "natural" in quick.lower()
+        assert "fixed header" in quick.lower() or "common header" in quick.lower()
+        assert "```text" not in quick
         for forbidden in ("Evidence table", "Data contract", "Code maturity"):
-            assert forbidden not in quick_required
+            assert f"## {forbidden}" not in quick
 
         evidence = text.split("## Evidence Navigation", 1)[1].split(
             "## Research Design", 1
@@ -178,6 +179,39 @@ def test_depth_templates_share_the_approved_header_and_distinct_mode_contracts()
             "Execution gate",
         ):
             assert required in implementation
+
+
+def test_quick_defaults_to_natural_prose_while_formal_contracts_keep_the_header():
+    """Quick simplification must not weaken the three formal deliverables."""
+    skill = (SKILL / "SKILL.md").read_text(encoding="utf-8")
+    template = (
+        SKILL / "references/evidence-output-template.md"
+    ).read_text(encoding="utf-8")
+
+    assert "keep the depth choice internal" in skill
+    assert "Common header" not in next(
+        line for line in skill.splitlines() if "`quick explanation`" in line
+    )
+    assert "## Common Header for Formal Deliverables" in template
+
+    quick = template.split("## Quick Explanation", 1)[1].split(
+        "## Evidence Navigation", 1
+    )[0]
+    assert "```text" not in quick
+    assert "Output depth:" not in quick
+    assert "## Direct answer" not in quick
+
+    formal = template.split("## Evidence Navigation", 1)[0]
+    assert "Output depth: [one approved depth]" in formal
+    for field in COMMON_HEADER_FIELDS:
+        assert field in formal
+
+    for section in (
+        "## Evidence Navigation",
+        "## Research Design",
+        "## Implementation Specification",
+    ):
+        assert section in template
 
 
 def test_build_rwe_sap_is_optional():

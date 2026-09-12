@@ -4,9 +4,10 @@ Use exactly one template. The selected depth changes the response shape, not
 authority, provenance, public/private-boundary, or execution-gate rules. Do
 not list a source unless it was actually consulted.
 
-## Common Header
+## Common Header for Formal Deliverables
 
-Keep this header compact and complete at every depth:
+Keep this header compact and complete for evidence navigation, research design,
+and implementation specification:
 
 ```text
 Output depth: [one approved depth]
@@ -19,20 +20,11 @@ Sources actually consulted: [reviewed sources, or "Current request only"]
 
 ## Quick Explanation
 
-```text
-## Direct answer
-[plain-language definition or comparison]
-
-## Why it matters
-[brief relevance to the user's context]
-
-## Common confusions or limits
-- [one common confusion or limit]
-- [optional second confusion or limit]
-```
-
-Keep this response short. Do not add an Evidence table, Data contract, or Code
-maturity section unless the user asks for a deeper output.
+Write a short natural-language answer without a fixed header or headings. Give
+the direct definition or comparison, why it matters in context, and one or two
+material confusions or limits. Expand named acronyms. Cite only sources actually
+consulted, and do not add an Evidence table, Data contract, or Code maturity
+section unless the user asks for a deeper output.
 
 ## Evidence Navigation
 
