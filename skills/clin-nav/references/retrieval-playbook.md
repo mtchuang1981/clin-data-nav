@@ -93,6 +93,13 @@ Use a stable source link, identifier, or owner-approved document reference.
 Write `unknown` rather than guessing. Mark a statement as inference when the
 source supports the premises but not the exact claim.
 
+When a machine-auditable record is requested, use the closed JSON schema in
+`evidence-ledger.md`. Do not translate `unknown` into an invented date, version,
+review status, or evidence location. The JSON contract uses `null` for unknown
+dates and versions and keeps source review state separate from claim support.
+It also uses `null` for an unknown stable identifier; never manufacture a
+source identifier merely to satisfy the record shape.
+
 ## Reconcile conflicts
 
 For each conflict:

@@ -65,6 +65,7 @@ publish a Plugin.
 | Guided progression | [Learning paths](docs/learning-paths.md) |
 | Synthetic worked examples | [TEAE to SAS](examples/teae-to-sas-spec.md), [OMOP phenotype to SQL specification](examples/omop-phenotype-to-sql-spec.md), and [institutional mapping](examples/synthetic-institutional-mapping.md) |
 | Evidence shape and limitations | [Evidence output template](skills/clin-nav/references/evidence-output-template.md) and [architecture](docs/architecture.md) |
+| Machine-auditable source review | [Evidence ledger contract](skills/clin-nav/references/evidence-ledger.md) and offline checker |
 | Product-effectiveness evaluation framework | [Effectiveness evaluation](evals/effectiveness/README.md) |
 | Provider-neutral synthetic model comparison | [Public simulation benchmark](evals/benchmark/README.md) |
 | Contribute and validate | [Contributing](CONTRIBUTING.md) |

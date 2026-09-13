@@ -1,0 +1,34 @@
+{
+  "schema_version": "1",
+  "ledger_id": "synthetic-rwd-review",
+  "prepared_on": "2026-09-10",
+  "sources": [
+    {
+      "source_id": "source-official-1",
+      "title": "Synthetic official guidance",
+      "stable_identifier": "urn:example:official-guidance",
+      "authority_level": "official",
+      "publication_date": "2026-01-15",
+      "version_or_snapshot": "synthetic-v1",
+      "review_status": "reviewed",
+      "reviewed_on": "2026-09-09",
+      "review_due_on": "2027-03-09",
+      "applicability": "Synthetic public RWD example only.",
+      "limitations": "Not institutional metadata."
+    }
+  ],
+  "claims": [
+    {
+      "claim_id": "claim-rwd-definition",
+      "claim": "Synthetic definition claim.",
+      "claim_type": "external-fact",
+      "source_ids": [
+        "source-official-1"
+      ],
+      "evidence_location": "Synthetic section 1",
+      "support_status": "direct-support",
+      "applicability": "Terminology explanation only.",
+      "limitations": "Does not establish local data fitness."
+    }
+  ]
+}

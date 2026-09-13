@@ -38,7 +38,13 @@ def _package_files(skill_dir: Path) -> tuple[Path, ...]:
     for directory_name in INCLUDED_DIRECTORIES:
         directory = skill_dir / directory_name
         if directory.is_dir():
-            files.extend(path for path in directory.rglob("*") if path.is_file())
+            files.extend(
+                path
+                for path in directory.rglob("*")
+                if path.is_file()
+                and "__pycache__" not in path.parts
+                and path.suffix not in {".pyc", ".pyo"}
+            )
     return tuple(sorted(files, key=lambda path: path.relative_to(skill_dir).as_posix()))
 
 

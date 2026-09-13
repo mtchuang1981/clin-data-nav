@@ -132,6 +132,15 @@ Follow `references/retrieval-playbook.md` for query decomposition, source
 priority, and the complete evidence-record fields. Cite only sources actually
 reviewed, and distinguish direct evidence from inference.
 
+When the user requests a machine-auditable, repeatable, or offline-checkable
+record for a formal deliverable, also read `references/evidence-ledger.md` and
+produce its closed JSON ledger outside the Skill or source repository. Do not
+add the ledger by default to a quick explanation. Never mark a source
+`reviewed` unless the actual source was opened and reviewed in this task; a
+snippet, citation, user mention, or model memory remains `not-reviewed`.
+Use `null` when a stable source identifier is unknown; do not invent a DOI,
+URL, URN, or request-reference surrogate.
+
 ## Convert Evidence into a Data Contract for an Implementation Specification
 
 For an `implementation specification`, translate confirmed evidence into an
@@ -204,6 +213,8 @@ Load only the directly relevant one-hop reference:
   guidance, an explicit depth request, or an unclear deliverable-depth choice.
 - Read `references/retrieval-playbook.md` for source discovery, authority
   ranking, and evidence capture.
+- Read `references/evidence-ledger.md` when the user requests a
+  machine-auditable, repeatable, or offline-checkable evidence record.
 - Read `references/evidence-output-template.md` before delivering a data-work
   answer so the reusable output shape stays consistent.
 - Read `references/institutional-adapter-contract.md` for any local schema,

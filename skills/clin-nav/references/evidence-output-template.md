@@ -45,6 +45,11 @@ section unless the user asks for a deeper output.
 Search results and snippets are leads, not reviewed evidence. Do not add a
 Data contract or Code maturity section.
 
+If the user requests a machine-auditable record, attach the JSON ledger defined
+in `evidence-ledger.md` as a separate repository-external artifact. The normal
+response remains readable prose; the ledger does not replace the evidence table
+or turn unreviewed sources into evidence.
+
 ## Research Design
 
 ```text

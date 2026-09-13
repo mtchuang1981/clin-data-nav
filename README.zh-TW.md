@@ -62,6 +62,7 @@ OpenAI 官方文件說明，Skill 會封裝操作指引、資源與選用指令�
 | 依序學習 | [學習路徑](docs/learning-paths.zh-TW.md) |
 | 合成資料實作範例 | [TEAE 到 SAS](examples/teae-to-sas-spec.md)、[OMOP phenotype 到 SQL 規格](examples/omop-phenotype-to-sql-spec.md)及[機構對應](examples/synthetic-institutional-mapping.md) |
 | 證據輸出與限制 | [證據輸出範本](skills/clin-nav/references/evidence-output-template.md)與[架構說明](docs/architecture.md) |
+| 可機器稽核的來源審閱 | [Evidence ledger 契約](skills/clin-nav/references/evidence-ledger.md)與離線檢查器 |
 | 產品效果評估框架 | [效果評估](evals/effectiveness/README.md) |
 | 不綁定供應商的合成模型比較 | [公開模擬 benchmark](evals/benchmark/README.md) |
 | 參與貢獻與驗證 | [貢獻指南](CONTRIBUTING.md) |

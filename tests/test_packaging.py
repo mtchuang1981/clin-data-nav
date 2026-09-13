@@ -100,6 +100,17 @@ def test_package_contains_rwe_routing_reference_but_no_second_skill(tmp_path):
     assert all("build-rwe-sap/" not in name for name in result.files)
 
 
+def test_package_contains_offline_evidence_ledger_checker(tmp_path):
+    result = build_package(Path("skills/clin-nav"), tmp_path)
+
+    assert "scripts/check_evidence_ledger.py" in result.files
+    assert "scripts/evidence_ledger.py" in result.files
+    assert "references/evidence-ledger.md" in result.files
+    assert "references/evidence-ledger-example.json" in result.files
+    assert all("__pycache__" not in name for name in result.files)
+    assert all(not name.endswith((".pyc", ".pyo")) for name in result.files)
+
+
 def test_v071_candidate_package_and_manifest_names_match_project_version(tmp_path):
     result = build_package(
         Path("skills/clin-nav"),
