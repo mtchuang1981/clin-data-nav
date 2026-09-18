@@ -3,7 +3,7 @@
 [繁體中文](installation.zh-TW.md)
 
 The recommended path is a project-local installation with `npx skills add`.
-The current verified immutable Release is `v0.7.0`; its exact `clin-nav`
+The current verified immutable Release is `v0.8.0`; its exact `clin-nav`
 artifact verification and installation path is below. The immutable v0.6.0
 Release remains available as the prior version, while the v0.4.0 ZIP material
 is a historical verification reference, not an installation path. Use the
@@ -94,14 +94,14 @@ npx skills update clin-nav --project --yes
 Confirm discovery again with `/skills`. If the displayed behavior is stale,
 follow the stage-specific recovery below instead of reinstalling blindly.
 
-## Current verified v0.7.0 Release artifact verification
+## Current verified v0.8.0 Release artifact verification
 
-The current verified immutable Release is `v0.7.0`. Its exact published assets
+The current verified immutable Release is `v0.8.0`. Its exact published assets
 are `clin-nav-0.7.0.zip` and `clin-nav-0.7.0.manifest.json`. The commands below
 download both assets from that same immutable Release, verify the manifest
 against its published SHA-256, and then verify the ZIP against both its
 published SHA-256 and the manifest's `archive_sha256` before installation.
-These values are bound to the reproducible v0.7.0 artifacts and the successful
+These values are bound to the reproducible v0.8.0 artifacts and the successful
 Linux/Windows package comparison for the tagged source.
 
 The immutable v0.6.0 Release remains available as the prior release. The
@@ -110,11 +110,11 @@ v0.4.0 bundle remains below as a historical verification reference only.
 PowerShell:
 
 ```powershell
-$releaseVersion = "0.7.0"
+$releaseVersion = "0.8.0"
 $archiveName = "clin-nav-$releaseVersion.zip"
 $manifestName = "clin-nav-$releaseVersion.manifest.json"
-$expectedArchiveSha256 = "b9b85db5bf91692ce8128b40031638576e659ad17c06861538f34c3661758325"
-$expectedManifestSha256 = "cd09af03eda8b16eb9a3173c52e6e80527227128232638041e03ed5a71ea9120"
+$expectedArchiveSha256 = "3fcc35afd33c558ef0b7a4db8c479668b18bd8c471a10c60bd850e7ee1da1c31"
+$expectedManifestSha256 = "6e00fd887e4717c351f3e2071fc4761247a24563de646d2568dbefd2cca42298"
 $releaseBase = "https://github.com/mtchuang1981/clin-data-nav/releases/download/v$releaseVersion"
 Invoke-WebRequest "$releaseBase/$archiveName" -OutFile $archiveName
 Invoke-WebRequest "$releaseBase/$manifestName" -OutFile $manifestName
@@ -129,7 +129,7 @@ if ($actualArchiveSha256 -ne $expectedArchiveSha256) { throw "Archive SHA-256 mi
 
 $skillsRoot = Join-Path (Get-Location) ".agents/skills"
 $skillDirectory = Join-Path $skillsRoot "clin-nav"
-$stagingDirectory = Join-Path $skillsRoot ".clin-nav-v0.7.0-staged"
+$stagingDirectory = Join-Path $skillsRoot ".clin-nav-v0.8.0-staged"
 if (Test-Path $skillDirectory) { throw "Installation already exists" }
 if (Test-Path $stagingDirectory) { throw "Staging directory already exists" }
 New-Item -ItemType Directory -Path $skillsRoot -Force | Out-Null
@@ -142,11 +142,11 @@ Move-Item -LiteralPath $stagingDirectory -Destination $skillDirectory
 POSIX shell:
 
 ```bash
-release_version="0.7.0"
+release_version="0.8.0"
 archive_name="clin-nav-$release_version.zip"
 manifest_name="clin-nav-$release_version.manifest.json"
-expected_archive_sha256="b9b85db5bf91692ce8128b40031638576e659ad17c06861538f34c3661758325"
-expected_manifest_sha256="cd09af03eda8b16eb9a3173c52e6e80527227128232638041e03ed5a71ea9120"
+expected_archive_sha256="3fcc35afd33c558ef0b7a4db8c479668b18bd8c471a10c60bd850e7ee1da1c31"
+expected_manifest_sha256="6e00fd887e4717c351f3e2071fc4761247a24563de646d2568dbefd2cca42298"
 release_base="https://github.com/mtchuang1981/clin-data-nav/releases/download/v$release_version"
 curl -fL "$release_base/$archive_name" -o "$archive_name"
 curl -fL "$release_base/$manifest_name" -o "$manifest_name"
@@ -167,7 +167,7 @@ test "$actual_archive_sha256" = "$expected_archive_sha256" || { echo "Archive SH
 
 skills_root="$PWD/.agents/skills"
 skill_directory="$skills_root/clin-nav"
-staging_directory="$skills_root/.clin-nav-v0.7.0-staged"
+staging_directory="$skills_root/.clin-nav-v0.8.0-staged"
 test ! -e "$skill_directory" || { echo "Installation already exists" >&2; exit 1; }
 test ! -e "$staging_directory" || { echo "Staging directory already exists" >&2; exit 1; }
 mkdir -p "$skills_root"

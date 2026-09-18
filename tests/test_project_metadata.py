@@ -2595,6 +2595,99 @@ def test_v070_publication_report_records_exact_public_evidence():
     )
 
 
+def test_v080_publication_report_records_exact_public_evidence():
+    report = (
+        ROOT / "docs/verification/2026-09-18-v0.8.0-publication.md"
+    ).read_text(encoding="utf-8")
+    normalized = " ".join(report.split())
+
+    for fact in (
+        "This is a post-publication record; this evidence commit is not part "
+        "of the immutable v0.8.0 source tree.",
+        "The public download contained exactly the two expected assets.",
+        "The downloaded bytes matched the local reproducible build and the "
+        "GitHub server digests.",
+        "The annotated tag was not moved or replaced.",
+        "The GitHub Release and its assets were not edited after publication.",
+        "The frozen 72-cell benchmark was not rerun for this release.",
+        "No human pilot was conducted as part of this release.",
+        "External repository settings were not re-evaluated by this "
+        "publication check.",
+    ):
+        assert normalized.count(fact) == 1
+
+    identity = _evidence_subsection(
+        report,
+        "## Immutable publication identity",
+        "## Public workflows and Release",
+    )
+    assert _evidence_table_rows(identity) == (
+        (
+            "Main release commit",
+            "`16e77df44a65c8b96b562e64f4ac0d8017077b71`",
+        ),
+        (
+            "Annotated tag object",
+            "`09250733a11556c541f1c26a71b0d8ada1934830`",
+        ),
+        (
+            "Peeled tag commit",
+            "`16e77df44a65c8b96b562e64f4ac0d8017077b71`",
+        ),
+        ("Release ID", "`391144842`"),
+    )
+
+    workflows = _evidence_subsection(
+        report,
+        "## Public workflows and Release",
+        "## Public assets",
+    )
+    assert _evidence_table_rows(workflows) == (
+        (
+            "Main validation",
+            "`https://github.com/mtchuang1981/clin-data-nav/actions/runs/35292293140`",
+        ),
+        (
+            "CodeQL",
+            "`https://github.com/mtchuang1981/clin-data-nav/actions/runs/35292292836`",
+        ),
+        (
+            "Dependency Graph",
+            "`https://github.com/mtchuang1981/clin-data-nav/actions/runs/35292296359`",
+        ),
+        (
+            "Guarded Release",
+            "`https://github.com/mtchuang1981/clin-data-nav/actions/runs/35292618780`",
+        ),
+        (
+            "Public Release",
+            "`https://github.com/mtchuang1981/clin-data-nav/releases/tag/v0.8.0`",
+        ),
+    )
+
+    assets = _evidence_subsection(
+        report,
+        "## Public assets",
+        "## Manifest and ZIP inspection",
+    )
+    assert _evidence_table_rows(assets) == (
+        (
+            "ZIP",
+            "`571490641`",
+            "`clin-nav-0.8.0.zip`",
+            "`26484`",
+            "`sha256:3fcc35afd33c558ef0b7a4db8c479668b18bd8c471a10c60bd850e7ee1da1c31`",
+        ),
+        (
+            "Manifest",
+            "`571490634`",
+            "`clin-nav-0.8.0.manifest.json`",
+            "`1744`",
+            "`sha256:6e00fd887e4717c351f3e2071fc4761247a24563de646d2568dbefd2cca42298`",
+        ),
+    )
+
+
 def test_release_process_requires_a_committed_post_release_evidence_report():
     process = " ".join(
         (ROOT / "docs/release.md").read_text(encoding="utf-8").split()
@@ -2796,9 +2889,9 @@ def test_installation_guides_preserve_quick_update_verified_and_source_paths():
         (
             (ROOT / "docs/installation.md").read_text(encoding="utf-8"),
             ENGLISH_ONBOARDING_CONTRACT,
-            "## Current verified v0.7.0 Release artifact verification",
+            "## Current verified v0.8.0 Release artifact verification",
             "## Historical v0.4.0 Release artifact verification (reference only)",
-            "current verified immutable Release is `v0.7.0`",
+            "current verified immutable Release is `v0.8.0`",
             "The v0.4.0 bundle remains below as a historical verification reference only.",
             (
                 "current verified Release is `v0.4.0`",
@@ -2809,9 +2902,9 @@ def test_installation_guides_preserve_quick_update_verified_and_source_paths():
         (
             (ROOT / "docs/installation.zh-TW.md").read_text(encoding="utf-8"),
             TRADITIONAL_CHINESE_ONBOARDING_CONTRACT,
-            "## 目前已驗證的 v0.7.0 Release 產物核對",
+            "## 目前已驗證的 v0.8.0 Release 產物核對",
             "## 歷史 v0.4.0 Release 產物驗證（僅供參考）",
-            "目前已驗證且不可變的 Release 是 `v0.7.0`",
+            "目前已驗證且不可變的 Release 是 `v0.8.0`",
             "v0.4.0 套件則保留於下方，僅供歷史驗證參考。",
             (
                 "目前已驗證的 Release 是 `v0.4.0`",
@@ -2837,18 +2930,18 @@ def test_installation_guides_preserve_quick_update_verified_and_source_paths():
         for stale_claim in stale_claims:
             assert stale_claim not in normalized
         current = _markdown_section(text, current_heading, historical_heading)
-        assert 'releaseVersion = "0.7.0"' in current
-        assert 'release_version="0.7.0"' in current
+        assert 'releaseVersion = "0.8.0"' in current
+        assert 'release_version="0.8.0"' in current
         assert "clin-nav-$releaseVersion.zip" in current
         assert "clin-nav-$releaseVersion.manifest.json" in current
         assert "clin-nav-$release_version.zip" in current
         assert "clin-nav-$release_version.manifest.json" in current
         assert (
-            "b9b85db5bf91692ce8128b40031638576e659ad17c06861538f34c3661758325"
+            "3fcc35afd33c558ef0b7a4db8c479668b18bd8c471a10c60bd850e7ee1da1c31"
             in current
         )
         assert (
-            "cd09af03eda8b16eb9a3173c52e6e80527227128232638041e03ed5a71ea9120"
+            "6e00fd887e4717c351f3e2071fc4761247a24563de646d2568dbefd2cca42298"
             in current
         )
         assert "archive_sha256" in current
