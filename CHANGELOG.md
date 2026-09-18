@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.8.0 - 2026-09-18
+
+### Features
+
+- Add a closed JSON evidence ledger and offline checker for recording source
+  review state, identifiers, freshness metadata, and claim support without
+  network access.
+- Distinguish direct, partial, unsupported, and not-assessed claim support;
+  preserve unknown dates, versions, and stable identifiers as null.
+
+### Changed
+
+- Carry forward the concise quick-explanation contract introduced in 0.7.1
+  while retaining structured evidence, research, and implementation outputs.
+
+### Validation
+
+- Validate ledger structure, controlled vocabularies, duplicate identifiers,
+  due-review states, and deterministic checker exit codes with synthetic
+  fixtures and repository gates.
+- Do not rerun the frozen 72-cell benchmark for this release; its earlier
+  result remains unchanged and separate from the deterministic release gates.
+
+### Limitations
+
+- The ledger records review state and declared support; it does not establish
+  source truth, scientific or clinical validity, human effectiveness, or
+  deployment fitness.
+
 ## 0.7.1 - 2026-09-09
 
 ### Changed

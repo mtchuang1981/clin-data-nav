@@ -23,7 +23,7 @@ except ModuleNotFoundError:  # Direct execution from the scripts directory.
 
 
 SKILL_NAME = "clin-nav"
-PACKAGE_VERSION = "0.7.1"
+PACKAGE_VERSION = "0.8.0"
 READ_CHUNK_BYTES = 64 * 1024
 MAX_MANIFEST_BYTES = 1 * 1024 * 1024
 MAX_ARCHIVE_BYTES = 20 * 1024 * 1024
