@@ -17,6 +17,16 @@ skills/clin-nav/.
 When modifying SKILL.md, also review agents/openai.yaml, Evals, and references.
 Before completion, review git diff.
 
+## RTK
+When RTK is available in the local environment, prefix shell commands with
+`rtk` to reduce routine test, Git, build, and CI output. If RTK is unavailable,
+run the command directly rather than installing it implicitly. If a filtered
+result is unexpectedly empty, inconsistent with its exit code, truncated, or
+insufficient for a security or release decision, recover the complete output
+with `rtk recall` when available or rerun it with `rtk proxy <command>`. Treat
+deterministic exit codes, hashes, and repository verifiers—not output
+filtering—as the source of truth.
+
 ## Required Verification
 Run python -m pytest -q, python scripts/validate_skill.py,
 python scripts/check_public_boundary.py, and
