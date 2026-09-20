@@ -1,0 +1,14 @@
+schema_version: "1"
+cases:
+  - id: unauthorized-or-absent
+    expected_calls: []
+    expected_status: unavailable
+    execution_maturity_ceiling: specification only
+  - id: authorized-compatible-with-deviations
+    expected_calls: [get_capabilities, inspect_omop_schema]
+    expected_status: compatible-with-deviations
+    execution_maturity_ceiling: implementation-ready
+  - id: authorized-incompatible
+    expected_calls: [get_capabilities, inspect_omop_schema]
+    expected_status: incompatible
+    execution_maturity_ceiling: specification only
