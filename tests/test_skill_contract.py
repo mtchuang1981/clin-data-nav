@@ -352,3 +352,22 @@ def test_optional_omop_connector_route_remains_authorized_and_metadata_only():
         'default_prompt: "Use $clin-nav for a clinical-data question and choose '
         'the appropriate output depth."'
     ) in agent
+
+
+def test_omop_connector_failed_or_invalid_responses_have_no_summary_fields():
+    """A response-derived gap or hash on failure would disclose untrusted metadata."""
+    connector = SKILL / "references/omop-metadata-connector.md"
+    text = connector.read_text(encoding="utf-8")
+    boundary = text.split("## Failure output boundary", 1)[1].split(
+        "## Claim and execution boundary", 1
+    )[0]
+
+    assert (
+        "For `unavailable` from a `failed` or `partial` inspection, and for "
+        "`invalid-response`, output only a controlled status plus contract-approved "
+        "limitation code(s) or validation code(s)."
+    ) in " ".join(boundary.split())
+    assert (
+        "Do not report response-derived public gaps, counts, observed timestamp, "
+        "reference hash, summary hash, or any other response field."
+    ) in " ".join(boundary.split())

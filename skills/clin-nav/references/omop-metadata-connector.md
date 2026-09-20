@@ -66,6 +66,15 @@ gaps, aggregate mismatch and unexpected-object counts, observed timestamp,
 public catalog hash, and controlled limitation codes. It must not report any
 non-standard object name or a full private response.
 
+## Failure output boundary
+
+For `unavailable` from a `failed` or `partial` inspection, and for
+`invalid-response`, output only a controlled status plus contract-approved
+limitation code(s) or validation code(s). Do not report response-derived public
+gaps, counts, observed timestamp, reference hash, summary hash, or any other
+response field. Only a validated non-failure status may use the approved summary
+fields above.
+
 ## Claim and execution boundary
 
 The connector is metadata-only. It can confirm only redacted structural facts
