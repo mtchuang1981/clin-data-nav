@@ -6,6 +6,7 @@ import hashlib
 import importlib.util
 import json
 from pathlib import Path
+import re
 
 import pytest
 
@@ -40,6 +41,27 @@ PROHIBITED_KEYS = (
     "sql",
     "error",
     "rows",
+)
+VALID_SEMVER_2_VALUES = (
+    "0.0.0",
+    "1.0.0-alpha",
+    "1.0.0-alpha.1",
+    "1.0.0-0.3.7",
+    "1.0.0-x.7.z.92",
+    "1.0.0-alpha+build.1",
+    "1.0.0+20130313144700",
+)
+INVALID_SEMVER_2_VALUES = (
+    "1.0.0-..",
+    "01.0.0",
+    "1.01.0",
+    "1.0.01",
+    "1.0.0-01",
+    "1.0.0-alpha..1",
+    "1.0.0-",
+    "1.0.0+",
+    "1.0.0+build..1",
+    "1.0",
 )
 
 
@@ -213,6 +235,135 @@ def test_build_inspection_request_is_fixed_and_catalog_bound(
         "reference_sha256": expected_hash,
         "max_response_bytes": 65536,
     }
+
+
+def _mutate_catalog_identity(catalog):
+    catalog["catalog_id"] = "substituted-public-catalog"
+
+
+def _mutate_catalog_provenance(catalog):
+    catalog["source"]["source_commit"] = "0" * 40
+
+
+def _mutate_catalog_table_order(catalog):
+    catalog["tables"][0], catalog["tables"][1] = (
+        catalog["tables"][1],
+        catalog["tables"][0],
+    )
+
+
+def _mutate_catalog_column_total(catalog):
+    catalog["tables"][0]["columns"].pop()
+
+
+def _mutate_catalog_public_names(catalog):
+    catalog["tables"][0]["canonical_table_name"] = "PRIVATE_TABLE"
+    catalog["tables"][0]["columns"][0]["canonical_column_name"] = (
+        "PRIVATE_COLUMN"
+    )
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    (
+        _mutate_catalog_identity,
+        _mutate_catalog_provenance,
+        _mutate_catalog_table_order,
+        _mutate_catalog_column_total,
+        _mutate_catalog_public_names,
+    ),
+)
+def test_build_request_rejects_any_substituted_catalog(
+    metadata_module, catalog, mutation
+):
+    """Shape-compatible catalog substitutions must not redefine the trust root."""
+    candidate = deepcopy(catalog)
+    mutation(candidate)
+    with pytest.raises(ValueError, match="invalid catalog"):
+        metadata_module.build_inspection_request(
+            candidate, max_response_bytes=262144
+        )
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    (
+        _mutate_catalog_identity,
+        _mutate_catalog_provenance,
+        _mutate_catalog_table_order,
+        _mutate_catalog_column_total,
+        _mutate_catalog_public_names,
+    ),
+)
+def test_validation_rejects_any_substituted_catalog(
+    metadata_module, catalog, capabilities, compatible, mutation
+):
+    """Inspection validation must fail before a substituted catalog defines names."""
+    candidate = deepcopy(catalog)
+    mutation(candidate)
+    assert "catalog-invalid" in _validation(
+        metadata_module, compatible, candidate, capabilities
+    )
+
+
+@pytest.mark.parametrize("version", VALID_SEMVER_2_VALUES)
+def test_semver_2_versions_are_accepted_consistently(
+    metadata_module, catalog, capabilities, compatible, version
+):
+    """Valid SemVer 2 prerelease/build forms must work in Schema and validator."""
+    schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
+    semantic_version_pattern = schema["$defs"]["semanticVersion"]["pattern"]
+    assert re.fullmatch(semantic_version_pattern, version)
+
+    candidate_capabilities = deepcopy(capabilities)
+    candidate_capabilities["adapter_version"] = version
+    candidate_capabilities["supported_allowlists"].insert(
+        0,
+        {
+            "allowlist_id": "aaa-synthetic-public",
+            "allowlist_version": version,
+        },
+    )
+    assert metadata_module.validate_capabilities(candidate_capabilities) == ()
+
+    candidate_inspection = deepcopy(compatible)
+    candidate_inspection["adapter_version"] = version
+    candidate_inspection["allowlist_version"] = version
+    candidate_inspection["tbls_version"] = version
+    _rehash(metadata_module, candidate_inspection)
+    assert _validation(
+        metadata_module,
+        candidate_inspection,
+        catalog,
+        candidate_capabilities,
+    ) == ()
+
+
+@pytest.mark.parametrize("version", INVALID_SEMVER_2_VALUES)
+def test_invalid_semver_2_versions_are_rejected_consistently(
+    metadata_module, catalog, capabilities, compatible, version
+):
+    """Empty identifiers and numeric leading zeroes must fail in both contracts."""
+    schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
+    semantic_version_pattern = schema["$defs"]["semanticVersion"]["pattern"]
+    assert re.fullmatch(semantic_version_pattern, version) is None
+
+    candidate_capabilities = deepcopy(capabilities)
+    candidate_capabilities["adapter_version"] = version
+    assert "invalid-value" in metadata_module.validate_capabilities(
+        candidate_capabilities
+    )
+
+    candidate_inspection = deepcopy(compatible)
+    candidate_inspection["allowlist_version"] = version
+    candidate_inspection["tbls_version"] = version
+    _rehash(metadata_module, candidate_inspection)
+    assert "invalid-value" in _validation(
+        metadata_module,
+        candidate_inspection,
+        catalog,
+        capabilities,
+    )
 
 
 def test_exact_compatible_fixture_validates_and_classifies(

@@ -20,6 +20,39 @@ CONTRACT_VERSION = "1.0"
 OMOP_CDM_VERSION = "5.4"
 ALLOWLIST_ID = "omop-v54-core-research-v1"
 ALLOWLIST_VERSION = "1.0.0"
+CATALOG_SCHEMA_VERSION = "1"
+CATALOG_ID = "omop-cdm-v5.4.2-core-research"
+APPROVED_CATALOG_SHA256 = (
+    "300646898e87297b8b75b013fd8398b361e0426e89ec8bfe698757d5f57b0e1e"
+)
+APPROVED_SOURCE = {
+    "license": "Apache License 2.0",
+    "retrieved_on": "2026-09-20",
+    "source_commit": "aa047a3c620b5c842b4370a0c965e2aa72203b1d",
+    "source_path": "inst/csv/OMOP_CDMv5.4_Field_Level.csv",
+    "source_repository": "https://github.com/OHDSI/CommonDataModel",
+    "source_sha256": (
+        "94006d0fac2a3911b5665ce421468fa99af23fb51a633148e5fe6045916ad950"
+    ),
+    "source_size_bytes": 130_164,
+    "source_tag": "v5.4.2",
+}
+APPROVED_TABLE_ORDER = (
+    "PERSON",
+    "OBSERVATION_PERIOD",
+    "VISIT_OCCURRENCE",
+    "CONDITION_OCCURRENCE",
+    "DRUG_EXPOSURE",
+    "PROCEDURE_OCCURRENCE",
+    "MEASUREMENT",
+    "OBSERVATION",
+    "DEATH",
+    "CDM_SOURCE",
+    "VOCABULARY",
+    "CONCEPT",
+    "CONCEPT_RELATIONSHIP",
+)
+APPROVED_STANDARD_COLUMN_TOTAL = 178
 HARD_MAX_RESPONSE_BYTES = 262_144
 MAX_NESTING_DEPTH = 6
 MAX_STRING_LENGTH = 128
@@ -87,6 +120,17 @@ _NULLABILITY_MISMATCH_KEYS = frozenset(
         "observed_nullable",
     }
 )
+_CATALOG_KEYS = frozenset(
+    {
+        "schema_version",
+        "catalog_id",
+        "omop_cdm_version",
+        "allowlist_id",
+        "allowlist_version",
+        "source",
+        "tables",
+    }
+)
 _PROHIBITED_KEYS = frozenset(
     {"database_name", "schema_name", "comment", "sql", "error", "rows"}
 )
@@ -109,8 +153,10 @@ _CANONICAL_NAME_RE = re.compile(r"^[A-Z][A-Z0-9_]{0,127}$")
 _PUBLIC_TOKEN_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{0,127}$")
 _ADAPTER_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
 _SEMVER_RE = re.compile(
-    r"^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)"
-    r"(?:[-+][0-9A-Za-z.-]+)?$"
+    r"^(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)"
+    r"(?:-(?:(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)"
+    r"(?:\.(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*))?"
+    r"(?:\+(?:[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$"
 )
 _OMOP_VERSION_RE = re.compile(r"^[0-9]+\.[0-9]+$")
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
@@ -408,6 +454,17 @@ def _catalog_index(
     try:
         if not isinstance(catalog, Mapping):
             raise TypeError
+        if (
+            set(catalog) != _CATALOG_KEYS
+            or catalog["schema_version"] != CATALOG_SCHEMA_VERSION
+            or catalog["catalog_id"] != CATALOG_ID
+            or catalog["omop_cdm_version"] != OMOP_CDM_VERSION
+            or catalog["allowlist_id"] != ALLOWLIST_ID
+            or catalog["allowlist_version"] != ALLOWLIST_VERSION
+            or catalog["source"] != APPROVED_SOURCE
+            or _catalog_reference_sha256(catalog) != APPROVED_CATALOG_SHA256
+        ):
+            raise ValueError
         tables = catalog["tables"]
         if not isinstance(tables, list) or len(tables) != 13:
             raise TypeError
@@ -444,8 +501,14 @@ def _catalog_index(
                 raise TypeError
             order.append(table_name)
             index[table_name] = column_index
+        if (
+            tuple(order) != APPROVED_TABLE_ORDER
+            or sum(len(columns) for columns in index.values())
+            != APPROVED_STANDARD_COLUMN_TOTAL
+        ):
+            raise ValueError
         return order, index
-    except (KeyError, TypeError, ValueError):
+    except (KeyError, OverflowError, TypeError, ValueError):
         errors.add("catalog-invalid")
         return None
 
