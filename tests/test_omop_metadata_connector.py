@@ -23,6 +23,7 @@ AS_OF = "2026-09-20T12:00:00+08:00"
 CLI_ERROR = "OMOP metadata validation failed\n"
 
 sys.path.insert(0, str(SKILL_SCRIPTS))
+import check_omop_metadata as packaged_checker
 import omop_metadata
 
 
@@ -206,6 +207,44 @@ def test_duplicate_json_keys_are_malformed_and_stop_inspection(
     }
 
 
+@pytest.mark.parametrize("constant", ("NaN", "Infinity", "-Infinity"))
+@pytest.mark.parametrize("response_side", ("capabilities", "inspection"))
+def test_non_finite_json_constants_are_malformed_before_contract_validation(
+    connector_module, catalog, capabilities, compatible, response_side, constant
+):
+    """Python-only non-finite constants must not enter either JSON contract."""
+    capability_json = json.dumps(capabilities, separators=(",", ":"))
+    inspection_json = json.dumps(compatible, separators=(",", ":"))
+    if response_side == "capabilities":
+        capability_json = capability_json.replace(
+            '"max_response_bytes":262144', f'"max_response_bytes":{constant}'
+        )
+    else:
+        inspection_json = inspection_json.replace(
+            '"unexpected_table_count":0', f'"unexpected_table_count":{constant}'
+        )
+    calls, get_capabilities, inspect = _operations(
+        capability_json.encode("utf-8"), inspection_json.encode("utf-8")
+    )
+
+    result = connector_module.assess_connector(
+        get_capabilities, inspect, catalog=catalog, as_of=AS_OF
+    )
+
+    expected_code = f"{response_side}-invalid-json"
+    assert result == {
+        "contract_version": "1.0",
+        "status": "invalid-response",
+        "validation_codes": [expected_code],
+    }
+    if response_side == "capabilities":
+        assert calls == ["get_capabilities"]
+    else:
+        assert len(calls) == 2
+        assert calls[0] == "get_capabilities"
+        assert calls[1][0] == "inspect_omop_schema"
+
+
 @pytest.mark.parametrize("failing_operation", ("capabilities", "inspection"))
 def test_adapter_exceptions_become_content_free_unavailable(
     connector_module, catalog, capabilities, compatible, failing_operation
@@ -378,6 +417,67 @@ def test_cli_uses_exit_three_for_valid_but_noncompatible_result(
     assert result.returncode == 3
     assert json.loads(result.stdout)["status"] == "stale"
     assert result.stderr == ""
+
+
+@pytest.mark.parametrize("path_kind", ("nonexistent", "directory"))
+def test_cli_path_failures_use_fixed_invalid_input_error(
+    tmp_path, capabilities, compatible, path_kind
+):
+    """Local path failures are invalid CLI input, never adapter unavailability."""
+    capabilities_path = tmp_path / "capabilities.json"
+    inspection_path = tmp_path / "inspection.json"
+    inspection_path.write_bytes(_bytes(compatible))
+    if path_kind == "nonexistent":
+        assert not capabilities_path.exists()
+    else:
+        capabilities_path.mkdir()
+
+    result = _run_cli(ROOT_CLI, capabilities_path, inspection_path)
+
+    assert result.returncode == 2
+    assert result.stdout == ""
+    assert result.stderr == CLI_ERROR
+    assert str(capabilities_path) not in result.stderr
+
+
+def test_cli_unreadable_file_uses_fixed_invalid_input_error(
+    tmp_path, monkeypatch, capsys, capabilities, compatible
+):
+    """A platform-independent injected read denial must remain a CLI error."""
+    capabilities_path = tmp_path / "capabilities.json"
+    inspection_path = tmp_path / "inspection.json"
+    capabilities_path.write_bytes(_bytes(capabilities))
+    inspection_path.write_bytes(_bytes(compatible))
+    original_read_bytes = Path.read_bytes
+
+    def deny_capabilities_read(path: Path) -> bytes:
+        if path.resolve() == capabilities_path.resolve():
+            raise PermissionError("PRIVATE-READ-ERROR-MARKER")
+        return original_read_bytes(path)
+
+    monkeypatch.setattr(Path, "read_bytes", deny_capabilities_read)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            str(PACKAGED_CLI),
+            "--capabilities",
+            str(capabilities_path),
+            "--input",
+            str(inspection_path),
+            "--as-of",
+            AS_OF,
+        ],
+    )
+
+    with pytest.raises(SystemExit) as caught:
+        packaged_checker.main()
+
+    output = capsys.readouterr()
+    assert caught.value.code == 2
+    assert output.out == ""
+    assert output.err == CLI_ERROR
+    assert "PRIVATE-READ-ERROR-MARKER" not in output.out + output.err
 
 
 @pytest.mark.parametrize(

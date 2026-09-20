@@ -53,6 +53,10 @@ def _reject_duplicate_keys(pairs: list[tuple[str, object]]) -> dict[str, object]
     return parsed
 
 
+def _reject_nonfinite_constant(value: str) -> object:
+    raise ValueError("non-finite JSON constant")
+
+
 def _parse_bytes(
     raw: object, *, maximum: int, label: str
 ) -> tuple[object | None, dict[str, object] | None]:
@@ -62,7 +66,14 @@ def _parse_bytes(
         return None, _result("invalid-response", f"{label}-response-too-large")
     try:
         text = raw.decode("utf-8", errors="strict")
-        return json.loads(text, object_pairs_hook=_reject_duplicate_keys), None
+        return (
+            json.loads(
+                text,
+                object_pairs_hook=_reject_duplicate_keys,
+                parse_constant=_reject_nonfinite_constant,
+            ),
+            None,
+        )
     except (UnicodeDecodeError, ValueError, RecursionError):
         return None, _result("invalid-response", f"{label}-invalid-json")
 

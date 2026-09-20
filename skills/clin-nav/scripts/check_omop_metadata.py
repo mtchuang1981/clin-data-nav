@@ -52,6 +52,8 @@ def _external_path(path: Path) -> Path:
     protected_root = _repository_or_skill_root()
     if resolved == protected_root or resolved.is_relative_to(protected_root):
         raise ValueError("input must be outside the repository or installed skill")
+    if not resolved.is_file():
+        raise ValueError("input must be a readable file")
     return resolved
 
 
@@ -69,10 +71,12 @@ def main() -> None:
     try:
         capabilities_path = _external_path(args.capabilities)
         inspection_path = _external_path(args.input)
+        capabilities_bytes = capabilities_path.read_bytes()
+        inspection_bytes = inspection_path.read_bytes()
         catalog = json.loads(CATALOG_PATH.read_text(encoding="utf-8"))
         summary = assess_connector(
-            capabilities_path.read_bytes,
-            lambda request: inspection_path.read_bytes(),
+            lambda: capabilities_bytes,
+            lambda request: inspection_bytes,
             catalog=catalog,
             as_of=args.as_of,
         )
