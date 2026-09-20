@@ -895,6 +895,38 @@ def classify_inspection(
     foreign_key_mismatch_count = sum(
         table["foreign_key_status"] != "matches" for table in typed_tables
     )
+    public_standard_gaps = {
+        "missing_tables": [
+            str(table["canonical_table_name"])
+            for table in typed_tables
+            if table["presence"] == "missing"
+        ],
+        "missing_columns": [
+            f'{table["canonical_table_name"]}.{column}'
+            for table in typed_tables
+            for column in table["missing_standard_columns"]
+        ],
+        "type_mismatch_columns": [
+            f'{table["canonical_table_name"]}.{mismatch["canonical_column_name"]}'
+            for table in typed_tables
+            for mismatch in table["type_mismatches"]
+        ],
+        "nullability_mismatch_columns": [
+            f'{table["canonical_table_name"]}.{mismatch["canonical_column_name"]}'
+            for table in typed_tables
+            for mismatch in table["nullability_mismatches"]
+        ],
+        "primary_key_tables": [
+            str(table["canonical_table_name"])
+            for table in typed_tables
+            if table["primary_key_status"] != "matches"
+        ],
+        "foreign_key_tables": [
+            str(table["canonical_table_name"])
+            for table in typed_tables
+            if table["foreign_key_status"] != "matches"
+        ],
+    }
 
     status: str
     if payload["scan_status"] in {"failed", "partial"}:
@@ -944,4 +976,5 @@ def classify_inspection(
         "unexpected_column_count": payload["unexpected_column_count"],
         "limitation_codes": list(payload["limitation_codes"]),
         "summary_sha256": payload["summary_sha256"],
+        "public_standard_gaps": public_standard_gaps,
     }

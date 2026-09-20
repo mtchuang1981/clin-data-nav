@@ -424,6 +424,42 @@ def test_missing_table_and_column_are_valid_incompatible_facts(
         )["status"] == "incompatible"
 
 
+def test_in_memory_classification_retains_only_public_standard_gap_names(
+    metadata_module, catalog, capabilities, compatible
+):
+    """Downstream routing needs public gaps while aggregate output must filter them."""
+    candidate = deepcopy(compatible)
+    person = candidate["tables"][0]
+    missing_column = person["present_standard_columns"].pop(0)
+    person["missing_standard_columns"] = [missing_column]
+    measurement = next(
+        table
+        for table in candidate["tables"]
+        if table["canonical_table_name"] == "MEASUREMENT"
+    )
+    measurement["type_mismatches"] = [
+        {
+            "canonical_column_name": "MEASUREMENT_DATE",
+            "expected_type_family": "date",
+            "observed_type_family": "datetime",
+        }
+    ]
+    _rehash(metadata_module, candidate)
+
+    result = metadata_module.classify_inspection(
+        candidate, catalog=catalog, capabilities=capabilities, as_of=AS_OF
+    )
+
+    assert result["public_standard_gaps"] == {
+        "missing_tables": [],
+        "missing_columns": [f"PERSON.{missing_column}"],
+        "type_mismatch_columns": ["MEASUREMENT.MEASUREMENT_DATE"],
+        "nullability_mismatch_columns": [],
+        "primary_key_tables": [],
+        "foreign_key_tables": [],
+    }
+
+
 def test_each_standard_mismatch_classifies_incompatible(
     metadata_module, catalog, capabilities, compatible
 ):
