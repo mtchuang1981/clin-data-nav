@@ -184,6 +184,28 @@ def test_json_numeric_conversion_failure_is_content_free_and_stops_inspection(
     }
 
 
+def test_duplicate_json_keys_are_malformed_and_stop_inspection(
+    connector_module, catalog, capabilities, compatible
+):
+    """Conflicting raw safety declarations must not use last-key-wins parsing."""
+    serialized = json.dumps(capabilities, separators=(",", ":"))
+    duplicate = serialized.replace(
+        '"row_access":false', '"row_access":true,"row_access":false'
+    ).encode("utf-8")
+    calls, get_capabilities, inspect = _operations(duplicate, compatible)
+
+    result = connector_module.assess_connector(
+        get_capabilities, inspect, catalog=catalog, as_of=AS_OF
+    )
+
+    assert calls == ["get_capabilities"]
+    assert result == {
+        "contract_version": "1.0",
+        "status": "invalid-response",
+        "validation_codes": ["capabilities-invalid-json"],
+    }
+
+
 @pytest.mark.parametrize("failing_operation", ("capabilities", "inspection"))
 def test_adapter_exceptions_become_content_free_unavailable(
     connector_module, catalog, capabilities, compatible, failing_operation
