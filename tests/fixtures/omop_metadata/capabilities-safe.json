@@ -1,0 +1,21 @@
+{
+  "contract_version": "1.0",
+  "adapter_id": "synthetic-adapter",
+  "adapter_version": "1.2.3",
+  "metadata_read_only": true,
+  "row_access": false,
+  "sql_execution": false,
+  "raw_schema_export": false,
+  "supported_omop_cdm_versions": [
+    "5.4"
+  ],
+  "supported_allowlists": [
+    {
+      "allowlist_id": "omop-v54-core-research-v1",
+      "allowlist_version": "1.0.0"
+    }
+  ],
+  "max_snapshot_age_seconds": 86400,
+  "tbls_inspection_available": true,
+  "max_response_bytes": 262144
+}
