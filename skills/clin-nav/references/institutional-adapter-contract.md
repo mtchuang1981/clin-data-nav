@@ -65,6 +65,11 @@ When live metadata differs from the Adapter:
 
 Historical documentation alone never verifies the current environment.
 
+For OMOP metadata verification, a valid redacted connector result may supply
+one bounded structural input to this comparison. It does not replace the
+approved Adapter manifest, governed study parameters, or target-environment
+fixture checks; retain every discrepancy as a validation gap.
+
 ## Fixture checks
 
 Require de-identified or wholly synthetic fixtures approved for the target
@@ -93,3 +98,7 @@ Apply these gates:
 
 Without a versioned Adapter, live metadata verification, and passing fixtures,
 emit `SPECIFICATION ONLY — NOT EXECUTABLE`.
+
+A metadata-only connector result cannot by itself promote code to `executable`
+or `validated`. Promotion still requires governed study parameters, current
+live metadata verification, and passing target-environment fixture checks.

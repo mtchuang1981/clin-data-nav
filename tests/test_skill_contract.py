@@ -294,3 +294,61 @@ def test_examples_use_only_synthetic_institutional_names():
         text = path.read_text(encoding="utf-8")
         assert "SYNTH_" in text
         assert "TMUCRD" not in text
+
+
+def test_optional_omop_connector_route_remains_authorized_and_metadata_only():
+    """Dropping the fail-closed connector route would risk private metadata use."""
+    skill = " ".join((SKILL / "SKILL.md").read_text(encoding="utf-8").split())
+    connector = SKILL / "references/omop-metadata-connector.md"
+    adapter = " ".join(
+        (SKILL / "references/institutional-adapter-contract.md")
+        .read_text(encoding="utf-8")
+        .split()
+    )
+    agent = (SKILL / "agents/openai.yaml").read_text(encoding="utf-8")
+
+    assert connector.is_file(), "the optional connector contract is required"
+    reference = " ".join(connector.read_text(encoding="utf-8").split())
+
+    assert "references/omop-metadata-connector.md" in skill
+    assert "quick explanation" in skill.lower()
+    assert "never consider the connector" in skill.lower()
+    assert "explicitly authorizes read-only metadata access in the current request" in skill
+
+    assert reference.index("get_capabilities") < reference.index("inspect_omop_schema")
+    for required in (
+        "current request",
+        "Do not automatically discover, install, or retry",
+        "fixed allowlist",
+        "No DSN, query, credential, database name, schema name, or local object name",
+        "content-free",
+        "public standard names only",
+        "metadata-only",
+        "`executable`",
+        "`validated`",
+        "tbls runs only inside the private Adapter",
+        "Neither this repository nor its CI owns a DSN",
+    ):
+        assert required in reference
+
+    for status in (
+        "unavailable",
+        "version-mismatch",
+        "reference-mismatch",
+        "stale",
+        "incompatible",
+        "compatible-with-deviations",
+        "compatible",
+    ):
+        assert status in reference
+
+    assert "valid redacted connector result" in adapter
+    assert "study parameters" in adapter
+    assert "fixture checks" in adapter
+    assert "cannot by itself promote code to `executable` or `validated`" in adapter
+
+    assert "mcp" not in agent.lower()
+    assert (
+        'default_prompt: "Use $clin-nav for a clinical-data question and choose '
+        'the appropriate output depth."'
+    ) in agent

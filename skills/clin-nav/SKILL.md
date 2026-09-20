@@ -159,6 +159,19 @@ columns, joins, codes, OMOP Concept IDs, availability, or current versions.
 Use `references/institutional-adapter-contract.md` whenever the request depends
 on an institutional schema.
 
+For a local schema, mapping, metadata, or implementation-readiness request,
+consider the optional OMOP metadata connector only if the user explicitly
+authorizes read-only metadata access in the current request. A `quick
+explanation` must never consider the connector. Read
+`references/omop-metadata-connector.md` before using the route: call
+`get_capabilities` first; if it is unsafe or unavailable, stop at the logical
+contract and report the validation gap. With safe capabilities, inspect only
+the fixed public allowlist and report its computed status, public-standard
+gaps, aggregate counts, timestamp, hash, and limitations. Do not discover,
+install, or retry a connector automatically. Every outcome retains the
+execution-maturity gate; metadata-only verification cannot make code
+`executable` or `validated`.
+
 ## Apply the Execution Gate
 
 The execution restrictions apply at every depth: never label code executable
@@ -219,6 +232,9 @@ Load only the directly relevant one-hop reference:
   answer so the reusable output shape stays consistent.
 - Read `references/institutional-adapter-contract.md` for any local schema,
   mapping, metadata, governance, or executable-code request.
+- Read `references/omop-metadata-connector.md` only for an authorized current
+  request to use read-only OMOP metadata for a local schema, mapping, metadata,
+  or implementation-readiness deliverable.
 - Read `references/rwe-question-routing.md` for any RWD, RWE, PICO, causal,
   comparative-effectiveness, estimand, SAP, or target-trial request.
 - Read `references/tmucrd-public-profile.md` only for public TMUCRD background;
