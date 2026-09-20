@@ -146,7 +146,9 @@ DATA_SUFFIXES = {
     ".xlsx",
     ".xpt",
 }
-DATA_ARTIFACT_ALLOWLIST: set[str] = set()
+DATA_ARTIFACT_ALLOWLIST = {
+    "vendor/ohdsi/omop-cdm-v5.4.2/OMOP_CDMv5.4_Field_Level.csv"
+}
 SKIP_DIRECTORIES = {
     ".git",
     ".pytest_cache",

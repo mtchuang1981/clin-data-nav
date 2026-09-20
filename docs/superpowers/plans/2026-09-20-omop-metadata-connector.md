@@ -16,7 +16,7 @@
 - Do not read or modify the private `tmucrd-adapter`, connect to MCP, run tbls against a database, or inspect any institutional schema.
 - Use only synthetic connector payloads in Git and CI. Never commit raw tbls output, DSNs, endpoints, local object names, database/schema/owner names, row counts, samples, or error text.
 - Target `omop_cdm_version = "5.4"` and official OHDSI CommonDataModel release `v5.4.2` at commit `aa047a3c620b5c842b4370a0c965e2aa72203b1d`.
-- Pin `inst/csv/OMOP_CDMv5.4_Field_Level.csv` at 130,164 bytes and SHA-256 `940006d0fac2a3911b5665ce421468fa99af23fb51a633148e5fe6045916ad950`; reject any other bytes before generation.
+- Pin `inst/csv/OMOP_CDMv5.4_Field_Level.csv` at 130,164 bytes and SHA-256 `94006d0fac2a3911b5665ce421468fa99af23fb51a633148e5fe6045916ad950`; reject any other bytes before generation.
 - Record the upstream license as Apache License 2.0 from that commit's `DESCRIPTION`; do not imply OHDSI endorsement.
 - Use allowlist ID `omop-v54-core-research-v1`, allowlist version `1.0.0`, the 13 approved canonical tables, and the 178 standard columns derived from the pinned CSV.
 - Do not add `jsonschema` or another runtime dependency. The JSON Schema is the portable contract; standard-library Python is the executable validator.
@@ -101,7 +101,7 @@ Before moving it into `vendor/`, require the exact byte length and SHA-256 from 
   "source_commit": "aa047a3c620b5c842b4370a0c965e2aa72203b1d",
   "source_path": "inst/csv/OMOP_CDMv5.4_Field_Level.csv",
   "source_repository": "https://github.com/OHDSI/CommonDataModel",
-  "source_sha256": "940006d0fac2a3911b5665ce421468fa99af23fb51a633148e5fe6045916ad950",
+  "source_sha256": "94006d0fac2a3911b5665ce421468fa99af23fb51a633148e5fe6045916ad950",
   "source_size_bytes": 130164,
   "source_tag": "v5.4.2"
 }

@@ -1,0 +1,10 @@
+{
+  "license": "Apache License 2.0",
+  "retrieved_on": "2026-09-20",
+  "source_commit": "aa047a3c620b5c842b4370a0c965e2aa72203b1d",
+  "source_path": "inst/csv/OMOP_CDMv5.4_Field_Level.csv",
+  "source_repository": "https://github.com/OHDSI/CommonDataModel",
+  "source_sha256": "94006d0fac2a3911b5665ce421468fa99af23fb51a633148e5fe6045916ad950",
+  "source_size_bytes": 130164,
+  "source_tag": "v5.4.2"
+}

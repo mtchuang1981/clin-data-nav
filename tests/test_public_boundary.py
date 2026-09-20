@@ -106,6 +106,26 @@ def test_scanner_rejects_non_allowlisted_data_artifacts(
     ]
 
 
+def test_scanner_allows_only_the_pinned_public_omop_csv(tmp_path):
+    allowed = (
+        tmp_path
+        / "vendor/ohdsi/omop-cdm-v5.4.2/OMOP_CDMv5.4_Field_Level.csv"
+    )
+    allowed.parent.mkdir(parents=True)
+    allowed.write_bytes(b"synthetic public upstream source")
+    rejected = allowed.with_name("local-export.csv")
+    rejected.write_bytes(b"synthetic data-shaped payload")
+
+    findings = scan_repository(tmp_path)
+
+    assert [(item.path, item.rule) for item in findings] == [
+        (
+            "vendor/ohdsi/omop-cdm-v5.4.2/local-export.csv",
+            "data-artifact",
+        )
+    ]
+
+
 def test_scanner_allows_fixed_large_public_profile_path(tmp_path):
     path = (
         tmp_path

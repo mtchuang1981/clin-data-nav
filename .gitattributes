@@ -1,1 +1,2 @@
 * text=auto eol=lf
+vendor/ohdsi/omop-cdm-v5.4.2/OMOP_CDMv5.4_Field_Level.csv -text -eol
