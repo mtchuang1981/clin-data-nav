@@ -171,3 +171,53 @@ def test_build_catalog_rejects_malformed_pinned_source_rows(tmp_path, mutation):
     finally:
         renderer.EXPECTED_SOURCE_SHA256 = original_hash
         renderer.EXPECTED_SOURCE_SIZE = original_size
+
+
+def test_build_catalog_rejects_changed_source_hash(tmp_path):
+    """Any byte change must fail before the source can be trusted."""
+    renderer = importlib.import_module("scripts.render_omop_catalog")
+    candidate = tmp_path / SOURCE.name
+    candidate.write_bytes(SOURCE.read_bytes() + b"\n")
+
+    with pytest.raises(ValueError, match="SHA-256"):
+        renderer.build_catalog(candidate)
+
+
+def test_build_catalog_rejects_absent_allowlisted_table(tmp_path, monkeypatch):
+    """A partial public source must not silently omit a required OMOP table."""
+    renderer = importlib.import_module("scripts.render_omop_catalog")
+    source_text = SOURCE.read_text(encoding="cp1252")
+    mutated = source_text.replace("\nperson,", "\nperson_missing,")
+    assert mutated != source_text
+    candidate_bytes = mutated.encode("cp1252")
+    candidate = tmp_path / SOURCE.name
+    candidate.write_bytes(candidate_bytes)
+    monkeypatch.setattr(
+        renderer, "EXPECTED_SOURCE_SHA256", hashlib.sha256(candidate_bytes).hexdigest()
+    )
+    monkeypatch.setattr(renderer, "EXPECTED_SOURCE_SIZE", len(candidate_bytes))
+
+    with pytest.raises(ValueError, match="required OMOP table is absent: PERSON"):
+        renderer.build_catalog(candidate)
+
+
+def test_build_catalog_rejects_non_public_foreign_key_target(
+    tmp_path, monkeypatch
+):
+    """A local or non-standard FK target must never enter the public catalog."""
+    renderer = importlib.import_module("scripts.render_omop_catalog")
+    source_text = SOURCE.read_text(encoding="cp1252")
+    mutated = source_text.replace(
+        ",LOCATION,LOCATION_ID,", ",PRIVATE_TARGET,PRIVATE_TARGET_ID,", 1
+    )
+    assert mutated != source_text
+    candidate_bytes = mutated.encode("cp1252")
+    candidate = tmp_path / SOURCE.name
+    candidate.write_bytes(candidate_bytes)
+    monkeypatch.setattr(
+        renderer, "EXPECTED_SOURCE_SHA256", hashlib.sha256(candidate_bytes).hexdigest()
+    )
+    monkeypatch.setattr(renderer, "EXPECTED_SOURCE_SIZE", len(candidate_bytes))
+
+    with pytest.raises(ValueError, match="non-public OMOP foreign key target"):
+        renderer.build_catalog(candidate)
