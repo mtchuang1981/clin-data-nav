@@ -68,19 +68,31 @@ def _parser() -> argparse.ArgumentParser:
 def main() -> None:
     parser = _parser()
     args = parser.parse_args()
+    inspection_read_failed = False
     try:
         capabilities_path = _external_path(args.capabilities)
         inspection_path = _external_path(args.input)
         capabilities_bytes = capabilities_path.read_bytes()
-        inspection_bytes = inspection_path.read_bytes()
         catalog = json.loads(CATALOG_PATH.read_text(encoding="utf-8"))
+
+        def read_inspection(_request: object) -> bytes:
+            nonlocal inspection_read_failed
+            try:
+                return inspection_path.read_bytes()
+            except OSError:
+                inspection_read_failed = True
+                raise
+
         summary = assess_connector(
             lambda: capabilities_bytes,
-            lambda request: inspection_bytes,
+            read_inspection,
             catalog=catalog,
             as_of=args.as_of,
         )
     except Exception:
+        parser.exit(2, CLI_ERROR)
+
+    if inspection_read_failed:
         parser.exit(2, CLI_ERROR)
 
     codes = summary.get("validation_codes", [])

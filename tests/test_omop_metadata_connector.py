@@ -480,6 +480,97 @@ def test_cli_unreadable_file_uses_fixed_invalid_input_error(
     assert "PRIVATE-READ-ERROR-MARKER" not in output.out + output.err
 
 
+def test_unsafe_capabilities_do_not_read_inspection_file(
+    tmp_path, monkeypatch, capsys, capabilities, compatible
+):
+    """Failing the handshake must leave inspection-file bytes untouched."""
+    unsafe_capabilities = deepcopy(capabilities)
+    unsafe_capabilities["row_access"] = True
+    capabilities_path = tmp_path / "capabilities.json"
+    inspection_path = tmp_path / "inspection.json"
+    capabilities_path.write_bytes(_bytes(unsafe_capabilities))
+    inspection_path.write_bytes(_bytes(compatible))
+    original_read_bytes = Path.read_bytes
+    observed_reads: list[str] = []
+
+    def track_input_reads(path: Path) -> bytes:
+        if path.resolve() == capabilities_path.resolve():
+            observed_reads.append("capabilities")
+        elif path.resolve() == inspection_path.resolve():
+            observed_reads.append("inspection")
+        return original_read_bytes(path)
+
+    monkeypatch.setattr(Path, "read_bytes", track_input_reads)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            str(PACKAGED_CLI),
+            "--capabilities",
+            str(capabilities_path),
+            "--input",
+            str(inspection_path),
+            "--as-of",
+            AS_OF,
+        ],
+    )
+
+    with pytest.raises(SystemExit) as caught:
+        packaged_checker.main()
+
+    output = capsys.readouterr()
+    assert caught.value.code == 2
+    assert observed_reads == ["capabilities"]
+    assert json.loads(output.out)["status"] == "invalid-response"
+    assert "capability-unsafe" in json.loads(output.out)["validation_codes"]
+    assert output.err == ""
+
+
+def test_unreadable_inspection_after_safe_capabilities_is_fixed_cli_error(
+    tmp_path, monkeypatch, capsys, capabilities, compatible
+):
+    """Lazy local inspection read failures must not become adapter unavailable."""
+    capabilities_path = tmp_path / "capabilities.json"
+    inspection_path = tmp_path / "inspection.json"
+    capabilities_path.write_bytes(_bytes(capabilities))
+    inspection_path.write_bytes(_bytes(compatible))
+    original_read_bytes = Path.read_bytes
+    observed_reads: list[str] = []
+
+    def deny_inspection_read(path: Path) -> bytes:
+        if path.resolve() == capabilities_path.resolve():
+            observed_reads.append("capabilities")
+        elif path.resolve() == inspection_path.resolve():
+            observed_reads.append("inspection")
+            raise PermissionError("PRIVATE-LAZY-READ-MARKER")
+        return original_read_bytes(path)
+
+    monkeypatch.setattr(Path, "read_bytes", deny_inspection_read)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            str(PACKAGED_CLI),
+            "--capabilities",
+            str(capabilities_path),
+            "--input",
+            str(inspection_path),
+            "--as-of",
+            AS_OF,
+        ],
+    )
+
+    with pytest.raises(SystemExit) as caught:
+        packaged_checker.main()
+
+    output = capsys.readouterr()
+    assert caught.value.code == 2
+    assert observed_reads == ["capabilities", "inspection"]
+    assert output.out == ""
+    assert output.err == CLI_ERROR
+    assert "PRIVATE-LAZY-READ-MARKER" not in output.out + output.err
+
+
 @pytest.mark.parametrize(
     ("capabilities_path", "inspection_path"),
     (
