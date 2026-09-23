@@ -863,7 +863,7 @@ def classify_inspection(
     capabilities: Mapping[str, object],
     as_of: str,
 ) -> dict[str, object]:
-    """Classify a validated summary and return content-free aggregate facts."""
+    """Classify a validated summary and return only facts safe for its status."""
     try:
         raw_size = len(canonical_json_bytes(payload))
     except (TypeError, ValueError, OverflowError):
@@ -877,6 +877,33 @@ def classify_inspection(
     )
     if errors:
         return {"status": "invalid-response", "validation_codes": list(errors)}
+
+    if payload["scan_status"] in {"failed", "partial"}:
+        return {
+            "status": "unavailable",
+            "validation_codes": [],
+            "limitation_codes": list(payload["limitation_codes"]),
+        }
+    if (
+        payload["omop_cdm_version"] != catalog["omop_cdm_version"]
+        or payload["omop_cdm_version"]
+        not in capabilities["supported_omop_cdm_versions"]
+    ):
+        return {"status": "version-mismatch", "validation_codes": []}
+    if (
+        payload["allowlist_id"] != catalog["allowlist_id"]
+        or payload["allowlist_version"] != catalog["allowlist_version"]
+        or payload["reference_sha256"] != _catalog_reference_sha256(catalog)
+    ):
+        return {"status": "reference-mismatch", "validation_codes": []}
+
+    observed_at = datetime.fromisoformat(
+        str(payload["observed_at"]).replace("Z", "+00:00")
+    )
+    reference_time = datetime.fromisoformat(as_of.replace("Z", "+00:00"))
+    age_seconds = (reference_time - observed_at).total_seconds()
+    if age_seconds > capabilities["max_snapshot_age_seconds"]:
+        return {"status": "stale", "validation_codes": []}
 
     tables = payload["tables"]
     assert isinstance(tables, list)
@@ -929,39 +956,19 @@ def classify_inspection(
     }
 
     status: str
-    if payload["scan_status"] in {"failed", "partial"}:
-        status = "unavailable"
-    elif payload["omop_cdm_version"] != catalog["omop_cdm_version"]:
-        status = "version-mismatch"
-    elif payload["omop_cdm_version"] not in capabilities["supported_omop_cdm_versions"]:
-        status = "version-mismatch"
-    elif (
-        payload["allowlist_id"] != catalog["allowlist_id"]
-        or payload["allowlist_version"] != catalog["allowlist_version"]
-        or payload["reference_sha256"] != _catalog_reference_sha256(catalog)
+    if (
+        any(table["presence"] != "present" for table in typed_tables)
+        or missing_standard_column_count
+        or type_mismatch_count
+        or nullability_mismatch_count
+        or primary_key_mismatch_count
+        or foreign_key_mismatch_count
     ):
-        status = "reference-mismatch"
+        status = "incompatible"
+    elif payload["unexpected_table_count"] or payload["unexpected_column_count"]:
+        status = "compatible-with-deviations"
     else:
-        observed_at = datetime.fromisoformat(
-            str(payload["observed_at"]).replace("Z", "+00:00")
-        )
-        reference_time = datetime.fromisoformat(as_of.replace("Z", "+00:00"))
-        age_seconds = (reference_time - observed_at).total_seconds()
-        if age_seconds > capabilities["max_snapshot_age_seconds"]:
-            status = "stale"
-        elif (
-            any(table["presence"] != "present" for table in typed_tables)
-            or missing_standard_column_count
-            or type_mismatch_count
-            or nullability_mismatch_count
-            or primary_key_mismatch_count
-            or foreign_key_mismatch_count
-        ):
-            status = "incompatible"
-        elif payload["unexpected_table_count"] or payload["unexpected_column_count"]:
-            status = "compatible-with-deviations"
-        else:
-            status = "compatible"
+        status = "compatible"
 
     return {
         "status": status,

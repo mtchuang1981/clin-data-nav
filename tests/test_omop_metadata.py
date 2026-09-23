@@ -547,6 +547,72 @@ def test_policy_states_have_explicit_classification(
     )["status"] == status
 
 
+@pytest.mark.parametrize("scan_status", ("partial", "failed"))
+def test_incomplete_scans_classify_without_response_facts(
+    metadata_module, catalog, capabilities, compatible, scan_status
+):
+    """An unavailable scan must not publish its otherwise valid response facts."""
+    candidate = deepcopy(compatible)
+    candidate["scan_status"] = scan_status
+    candidate["limitation_codes"] = ["snapshot-incomplete"]
+    candidate["unexpected_table_count"] = 7
+    candidate["observed_at"] = "2026-09-20T10:00:00+08:00"
+    candidate["allowlist_id"] = "private-marker-8c24"
+    _rehash(metadata_module, candidate)
+
+    assert _validation(metadata_module, candidate, catalog, capabilities) == ()
+    assert metadata_module.classify_inspection(
+        candidate, catalog=catalog, capabilities=capabilities, as_of=AS_OF
+    ) == {
+        "status": "unavailable",
+        "validation_codes": [],
+        "limitation_codes": ["snapshot-incomplete"],
+    }
+
+
+@pytest.mark.parametrize(
+    ("key", "marker"),
+    (
+        ("allowlist_id", "private-marker-8c24"),
+        ("allowlist_version", "1.0.0+private-marker-8c24"),
+    ),
+)
+def test_reference_mismatch_classifies_without_untrusted_identity(
+    metadata_module, catalog, capabilities, compatible, key, marker
+):
+    """A syntactically valid private token cannot become a public identifier."""
+    candidate = deepcopy(compatible)
+    candidate[key] = marker
+    _rehash(metadata_module, candidate)
+
+    assert _validation(metadata_module, candidate, catalog, capabilities) == ()
+    assert metadata_module.classify_inspection(
+        candidate, catalog=catalog, capabilities=capabilities, as_of=AS_OF
+    ) == {"status": "reference-mismatch", "validation_codes": []}
+
+
+@pytest.mark.parametrize(
+    ("mutation", "status"),
+    (
+        (lambda value: value.update(omop_cdm_version="5.3"), "version-mismatch"),
+        (lambda value: value.update(observed_at="2026-09-18T11:59:59+08:00"), "stale"),
+    ),
+)
+def test_noncomparable_policy_states_classify_without_response_facts(
+    metadata_module, catalog, capabilities, compatible, mutation, status
+):
+    """A version mismatch or expired snapshot cannot authorize fact reporting."""
+    candidate = deepcopy(compatible)
+    mutation(candidate)
+    candidate["unexpected_table_count"] = 7
+    _rehash(metadata_module, candidate)
+
+    assert _validation(metadata_module, candidate, catalog, capabilities) == ()
+    assert metadata_module.classify_inspection(
+        candidate, catalog=catalog, capabilities=capabilities, as_of=AS_OF
+    ) == {"status": status, "validation_codes": []}
+
+
 @pytest.mark.parametrize(
     ("mutation", "expected_code"),
     (

@@ -81,9 +81,20 @@ def _parse_bytes(
 def _safe_summary(
     inspection: Mapping[str, object], classification: Mapping[str, object]
 ) -> dict[str, object]:
+    status = classification["status"]
+    if status == "unavailable":
+        return {
+            **_result("unavailable"),
+            "limitation_codes": list(classification["limitation_codes"]),
+        }
+    if status in {"version-mismatch", "reference-mismatch", "stale"}:
+        return _result(str(status))
+    if status not in {"compatible", "compatible-with-deviations", "incompatible"}:
+        return _result("invalid-response", "unclassified-status")
+
     summary: dict[str, object] = {
-        "contract_version": inspection["contract_version"],
-        "status": classification["status"],
+        "contract_version": CONTRACT_VERSION,
+        "status": status,
     }
     for key in _IDENTITY_KEYS:
         summary[key] = inspection[key]

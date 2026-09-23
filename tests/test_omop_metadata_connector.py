@@ -287,14 +287,10 @@ def _case_payloads(compatible: dict[str, object]):
     person["missing_standard_columns"] = [missing]
     _rehash(incompatible)
 
-    stale = deepcopy(compatible)
-    stale["observed_at"] = "2026-09-18T11:59:59+08:00"
-    _rehash(stale)
     return (
         ("compatible", compatible),
         ("compatible-with-deviations", deviations),
         ("incompatible", incompatible),
-        ("stale", stale),
     )
 
 
@@ -340,6 +336,80 @@ def test_valid_cases_return_deterministic_aggregate_only_summaries(
         assert "adapter" not in serialized.lower()
         assert "PERSON" not in serialized
         assert "BIRTH_DATETIME" not in serialized
+
+
+@pytest.mark.parametrize("scan_status", ("partial", "failed"))
+def test_incomplete_scan_harness_output_is_content_free(
+    connector_module, catalog, capabilities, compatible, scan_status
+):
+    """A validated incomplete scan must not expose aggregates or response identity."""
+    candidate = deepcopy(compatible)
+    candidate["scan_status"] = scan_status
+    candidate["limitation_codes"] = ["snapshot-incomplete"]
+    candidate["unexpected_table_count"] = 7
+    candidate["observed_at"] = "2026-09-20T10:00:00+08:00"
+    candidate["allowlist_id"] = "private-marker-8c24"
+    _rehash(candidate)
+    _, get_capabilities, inspect = _operations(capabilities, candidate)
+
+    assert connector_module.assess_connector(
+        get_capabilities, inspect, catalog=catalog, as_of=AS_OF
+    ) == {
+        "contract_version": "1.0",
+        "status": "unavailable",
+        "validation_codes": [],
+        "limitation_codes": ["snapshot-incomplete"],
+    }
+
+
+@pytest.mark.parametrize(
+    ("key", "marker"),
+    (
+        ("allowlist_id", "private-marker-8c24"),
+        ("allowlist_version", "1.0.0+private-marker-8c24"),
+    ),
+)
+def test_reference_mismatch_harness_never_echoes_response_identity(
+    connector_module, catalog, capabilities, compatible, key, marker
+):
+    """Even token-shaped mismatches must stay behind the public boundary."""
+    candidate = deepcopy(compatible)
+    candidate[key] = marker
+    _rehash(candidate)
+    _, get_capabilities, inspect = _operations(capabilities, candidate)
+
+    assert connector_module.assess_connector(
+        get_capabilities, inspect, catalog=catalog, as_of=AS_OF
+    ) == {
+        "contract_version": "1.0",
+        "status": "reference-mismatch",
+        "validation_codes": [],
+    }
+
+
+@pytest.mark.parametrize(
+    ("mutation", "status"),
+    (
+        (lambda value: value.update(omop_cdm_version="5.3"), "version-mismatch"),
+        (lambda value: value.update(observed_at="2026-09-18T11:59:59+08:00"), "stale"),
+    ),
+)
+def test_noncomparable_harness_output_is_content_free(
+    connector_module, catalog, capabilities, compatible, mutation, status
+):
+    candidate = deepcopy(compatible)
+    mutation(candidate)
+    candidate["unexpected_table_count"] = 7
+    _rehash(candidate)
+    _, get_capabilities, inspect = _operations(capabilities, candidate)
+
+    assert connector_module.assess_connector(
+        get_capabilities, inspect, catalog=catalog, as_of=AS_OF
+    ) == {
+        "contract_version": "1.0",
+        "status": status,
+        "validation_codes": [],
+    }
 
 
 def _run_cli(
@@ -417,6 +487,66 @@ def test_cli_uses_exit_three_for_valid_but_noncompatible_result(
     assert result.returncode == 3
     assert json.loads(result.stdout)["status"] == "stale"
     assert result.stderr == ""
+
+
+@pytest.mark.parametrize("cli", (ROOT_CLI, PACKAGED_CLI))
+@pytest.mark.parametrize("scan_status", ("partial", "failed"))
+def test_cli_incomplete_scan_output_is_content_free(
+    tmp_path, cli, capabilities, compatible, scan_status
+):
+    candidate = deepcopy(compatible)
+    candidate["scan_status"] = scan_status
+    candidate["limitation_codes"] = ["snapshot-incomplete"]
+    candidate["unexpected_table_count"] = 7
+    candidate["observed_at"] = "2026-09-20T10:00:00+08:00"
+    candidate["allowlist_id"] = "private-marker-8c24"
+    _rehash(candidate)
+    capabilities_path = tmp_path / "capabilities.json"
+    inspection_path = tmp_path / "inspection.json"
+    capabilities_path.write_bytes(_bytes(capabilities))
+    inspection_path.write_bytes(_bytes(candidate))
+
+    result = _run_cli(cli, capabilities_path, inspection_path)
+
+    assert result.returncode == 3
+    assert result.stderr == ""
+    assert json.loads(result.stdout) == {
+        "contract_version": "1.0",
+        "status": "unavailable",
+        "validation_codes": [],
+        "limitation_codes": ["snapshot-incomplete"],
+    }
+
+
+@pytest.mark.parametrize("cli", (ROOT_CLI, PACKAGED_CLI))
+@pytest.mark.parametrize(
+    ("key", "marker"),
+    (
+        ("allowlist_id", "private-marker-8c24"),
+        ("allowlist_version", "1.0.0+private-marker-8c24"),
+    ),
+)
+def test_cli_reference_mismatch_never_echoes_private_marker(
+    tmp_path, cli, capabilities, compatible, key, marker
+):
+    candidate = deepcopy(compatible)
+    candidate[key] = marker
+    _rehash(candidate)
+    capabilities_path = tmp_path / "capabilities.json"
+    inspection_path = tmp_path / "inspection.json"
+    capabilities_path.write_bytes(_bytes(capabilities))
+    inspection_path.write_bytes(_bytes(candidate))
+
+    result = _run_cli(cli, capabilities_path, inspection_path)
+
+    assert result.returncode == 3
+    assert result.stderr == ""
+    assert marker not in result.stdout
+    assert json.loads(result.stdout) == {
+        "contract_version": "1.0",
+        "status": "reference-mismatch",
+        "validation_codes": [],
+    }
 
 
 @pytest.mark.parametrize("path_kind", ("nonexistent", "directory"))
