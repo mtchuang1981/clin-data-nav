@@ -1,10 +1,40 @@
 from pathlib import Path
 import json
+import re
 from zipfile import ZipFile
 
 import pytest
 
 from scripts.package_skill import PACKAGE_VERSION, build_package
+
+
+PACKAGE_TEXT_SUFFIXES = {".json", ".md", ".py", ".toml", ".txt", ".yaml", ".yml"}
+PRIVATE_CONNECTOR_CONFIG_KEY = re.compile(
+    r"^[ \t]*['\"]?"
+    r"(?:dsn|database[_-]?url|endpoint|connector[_-]?endpoint)"
+    r"['\"]?[ \t]*(?:=|:)[ \t]*\S",
+    re.IGNORECASE | re.MULTILINE,
+)
+
+
+def _assert_no_private_connector_configuration(result) -> None:
+    with ZipFile(result.archive) as archive:
+        dependency_text = "\n".join(
+            archive.read(name).decode("utf-8")
+            for name in result.files
+            if name == "agents/openai.yaml" or name.endswith(".py")
+        )
+        for name in result.files:
+            if Path(name).suffix.casefold() not in PACKAGE_TEXT_SUFFIXES:
+                continue
+            text = archive.read(name).decode("utf-8")
+            if PRIVATE_CONNECTOR_CONFIG_KEY.search(text):
+                raise AssertionError(
+                    f"private connector configuration in package file: {name}"
+                )
+
+    normalized_dependency_text = dependency_text.casefold().replace("_", "-")
+    assert "tmucrd-adapter" not in normalized_dependency_text
 
 
 def _write_minimal_skill(skill: Path) -> None:
@@ -112,31 +142,55 @@ def test_package_contains_public_omop_contract_without_private_connector_artifac
         for name in packaged_files
     )
 
-    with ZipFile(result.archive) as archive:
-        dependency_text = "\n".join(
-            archive.read(name).decode("utf-8")
-            for name in result.files
-            if name == "agents/openai.yaml" or name.endswith(".py")
-        )
-        package_text = "\n".join(
-            archive.read(name).decode("utf-8")
-            for name in result.files
-        )
+    _assert_no_private_connector_configuration(result)
 
-    normalized_dependency_text = dependency_text.casefold().replace("_", "-")
-    assert "tmucrd-adapter" not in normalized_dependency_text
-    forbidden_config_prefixes = (
-        "dsn:",
-        "dsn =",
-        "endpoint:",
-        "endpoint =",
-        "database_url:",
-        "database_url =",
+
+@pytest.mark.parametrize(
+    "leaked_configuration",
+    [
+        (
+            "d"
+            + 'sn="post'
+            + "gresql://synthetic-user:synthetic-password@db.invalid/clinical\""
+        ),
+        'endpoint="https://private.invalid/mcp"',
+        "dsn : synthetic-private-value",
+        '"endpoint": "https://private.invalid/mcp"',
+        'connector_endpoint = "https://private.invalid/mcp"',
+    ],
+)
+def test_package_guard_rejects_private_connector_configuration_mutations(
+    tmp_path,
+    leaked_configuration,
+):
+    skill = tmp_path / "clin-nav"
+    _write_minimal_skill(skill)
+    references = skill / "references"
+    references.mkdir()
+    (references / "connector-config.md").write_text(
+        leaked_configuration,
+        encoding="utf-8",
     )
-    assert all(
-        not line.strip().casefold().startswith(forbidden_config_prefixes)
-        for line in package_text.splitlines()
+    result = build_package(skill, tmp_path / "output")
+
+    with pytest.raises(AssertionError):
+        _assert_no_private_connector_configuration(result)
+
+
+def test_package_guard_allows_public_connector_contract_prose(tmp_path):
+    skill = tmp_path / "clin-nav"
+    _write_minimal_skill(skill)
+    references = skill / "references"
+    references.mkdir()
+    (references / "connector-contract.md").write_text(
+        "The public contract excludes DSNs, endpoints, and connector_endpoint "
+        "configuration.\n"
+        "Public reference: https://ohdsi.github.io/CommonDataModel/cdm54.html\n",
+        encoding="utf-8",
     )
+    result = build_package(skill, tmp_path / "output")
+
+    _assert_no_private_connector_configuration(result)
 
 
 def test_package_contains_rwe_routing_reference_but_no_second_skill(tmp_path):
