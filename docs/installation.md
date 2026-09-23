@@ -17,6 +17,41 @@ Python 3.11 is required only for this repository's contributor, validation,
 packaging, release-verification, and strict source-checkout installation tools;
 see [CONTRIBUTING.md](../CONTRIBUTING.md).
 
+## Optional OMOP v5.4 metadata connector
+
+This optional feature does not change the normal `npx skills add
+mtchuang1981/clin-data-nav` installation or its instruction-only runtime: that
+normal use does not require Python. Consider the connector only after the user
+explicitly authorizes read-only metadata access in the current request. It is
+limited to an OMOP CDM v5.4, 13-table allowlist whose public catalog is pinned
+to official v5.4.2 provenance; it permits no row access or SQL execution.
+
+The public Skill owns that catalog, contract, and validator/status calculation.
+The private `tmucrd-adapter` owner owns `get_capabilities`, authorization,
+private tbls inspection and redaction, raw schema material, credentials, and
+connection configuration. The owner can perform conformance without disclosing
+an endpoint, server command, DSN, or private configuration:
+
+1. Confirm that `get_capabilities` declares the required read-only boundary.
+2. Run tbls only in the governed private environment, inspect only the fixed
+   allowlist, and redact it into the closed metadata-summary contract.
+3. Keep raw output and diagnostics private; export only the closed, redacted
+   response when an authorized workflow needs offline validation.
+4. Treat the resulting status as a logical mapping-gap check, never automatic
+   execution or proof of study fitness.
+
+For an optional offline check, use already-exported redacted JSON files held
+outside this repository and the installed Skill:
+
+```text
+python scripts/check_omop_metadata.py --capabilities <external-capabilities.json> --input <external-inspection.json> --as-of <RFC-3339-timestamp>
+```
+
+The packaged checker validates those external files offline; it does not
+discover, install, or contact a connector. Public examples and fixtures are
+synthetic only. A metadata-only result cannot produce `executable` or
+`validated` status by itself.
+
 ## Check prerequisites
 
 The recommended installation needs Node.js with npm/npx and a Codex interface

@@ -87,6 +87,24 @@ framework](evals/effectiveness/README.md) for public offline dry runs and a
 separately authorized exploratory human pilot. The framework's presence does
 not mean a pilot was conducted and makes no observed-effectiveness claim.
 
+## Optional OMOP metadata connector
+
+The optional OMOP metadata connector is a governed verification aid, not part
+of ordinary Skill use. Consider it only when the user explicitly authorizes
+read-only metadata access in the current request. The public Skill owns the
+pinned OMOP CDM v5.4 catalog and contract, derived from the official v5.4.2
+release provenance, its 13-table allowlist, and the public validator/status
+logic. The private `tmucrd-adapter` owns authorization, `get_capabilities`,
+tbls schema inspection and redaction, raw schema material, credentials, and
+connection configuration.
+
+The fixed 13-table allowlist is metadata-only: it permits no row access or SQL
+execution. A closed redacted summary can identify logical mapping gaps, but it
+cannot establish data fitness, study readiness, governance approval, or an
+analysis result. It cannot produce `executable` or `validated` status by
+itself. See [the installation guide](docs/installation.md#optional-omop-v54-metadata-connector)
+for the optional offline checker and private-owner conformance boundary.
+
 This public Core contains reusable guidance, synthetic examples, tests, and
 packaging tools. It contains no private TMUCRD Adapter, codingbook, data
 dictionary, physical schema, linkage rule, PII classification, credential, or

@@ -14,6 +14,34 @@
 封裝、發布查核及嚴格原始碼安裝工具時，才需要 Python 3.11；設定方式請見
 [CONTRIBUTING.md](../CONTRIBUTING.md)。
 
+## 選用的 OMOP v5.4 中繼資料連接器
+
+此選用功能不會改變一般的 `npx skills add mtchuang1981/clin-data-nav` 安裝或僅含
+指令的執行環境；一般使用不需要 Python。只有使用者在目前請求中明確授權唯讀中繼資料
+存取時，才可考慮連接器。它僅限 OMOP CDM v5.4 的 13 個資料表的允許清單，公開目錄
+固定追溯至官方 v5.4.2 版來源；不得存取資料列或執行 SQL。
+
+公開 Skill 負責該目錄、契約與驗證器／狀態計算。私有 `tmucrd-adapter` 擁有者則負責
+`get_capabilities`、授權、私有 tbls 檢查與遮蔽、原始 schema 資料、憑證及連線設定。
+擁有者可在不公開端點、伺服器命令、DSN 或私有設定的情況下執行一致性確認：
+
+1. 確認 `get_capabilities` 宣告必要的唯讀界線。
+2. tbls 僅在受治理的私有環境執行，只檢查固定允許清單，並遮蔽為封閉的
+   中繼資料摘要契約。
+3. 保留原始輸出與診斷資訊於私有端；只有已授權的工作流程需要離線驗證時，才輸出
+   封閉且已遮蔽的回應。
+4. 將所得狀態視為邏輯對應缺口檢查，絕不作為自動執行或研究適用性的證明。
+
+若要選用離線檢查，請使用保存在本儲存庫與已安裝 Skill 之外、且已輸出的遮蔽 JSON
+檔案：
+
+```text
+python scripts/check_omop_metadata.py --capabilities <external-capabilities.json> --input <external-inspection.json> --as-of <RFC-3339-timestamp>
+```
+
+封裝的檢查器會離線驗證這些外部檔案；它不會探索、安裝或連線至連接器。公開範例與
+測試資料僅使用合成資料。僅限中繼資料的結果本身不能產生 `executable` 或 `validated` 狀態。
+
 ## 確認必要條件
 
 建議的安裝方式需要 Node.js 與 npm/npx，也需要支援 Skills 的 Codex 介面。

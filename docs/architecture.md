@@ -18,6 +18,39 @@ approved environment. The Core must not read, copy, or infer private Adapter
 values. If an Adapter, live metadata verification, or fixtures are absent, the
 result remains `SPECIFICATION ONLY — NOT EXECUTABLE`.
 
+## Optional OMOP metadata connector ownership
+
+The optional connector is a metadata-only comparison route. The public Skill
+owns the pinned OMOP CDM v5.4 catalog with official v5.4.2 provenance, its
+13-table allowlist, the closed public contract, and validator/status logic.
+The private `tmucrd-adapter` owns authorization, connector operation,
+private tbls configuration and inspection, redaction, raw schema material,
+DSNs, credentials, network access, and detailed diagnostics. It permits no row
+access or SQL execution. Neither the public repository nor CI owns a database
+connection or private response.
+
+```text
+ClinNav request + explicit authorization
+  -> private tmucrd-adapter get_capabilities
+  -> private tbls schema inspection/redaction
+  -> closed metadata summary
+  -> public ClinNav validator/status
+  -> logical mapping gaps; never automatic execution
+```
+
+The private owner first confirms the declared read-only capabilities, runs tbls
+only in its governed environment against the fixed public allowlist, retains
+the raw result, and exports only a closed redacted summary for an authorized
+offline check. Public example files are synthetic only. The packaged checker
+validates external exported responses offline; it neither starts nor contacts a
+connector and is not required for ordinary Skill invocation.
+
+The summary may identify logical mapping gaps observed at one time. It does not
+prove data population, quality, vocabulary currency, study fitness, governance
+approval, clinical validity, or causal validity. A metadata-only result cannot
+produce `executable` or `validated` status by itself; the existing Adapter,
+study-parameter, and target-environment fixture requirements remain in force.
+
 ## Validation and packaging flow
 
 ```mermaid
