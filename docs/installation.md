@@ -40,11 +40,13 @@ an endpoint, server command, DSN, or private configuration:
 4. Treat the resulting status as a logical mapping-gap check, never automatic
    execution or proof of study fitness.
 
-For an optional offline check, use already-exported redacted JSON files held
-outside this repository and the installed Skill:
+For an optional offline check, run this from the project root after `npx skills
+add` has installed ClinNav. It requires Python only for this checker and uses
+already-exported redacted JSON files held outside this repository and the
+installed Skill:
 
 ```text
-python scripts/check_omop_metadata.py --capabilities <external-capabilities.json> --input <external-inspection.json> --as-of <RFC-3339-timestamp>
+python .agents/skills/clin-nav/scripts/check_omop_metadata.py --capabilities <external-capabilities.json> --input <external-inspection.json> --as-of <RFC-3339-timestamp>
 ```
 
 The packaged checker validates those external files offline; it does not

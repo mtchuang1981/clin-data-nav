@@ -32,11 +32,12 @@
    封閉且已遮蔽的回應。
 4. 將所得狀態視為邏輯對應缺口檢查，絕不作為自動執行或研究適用性的證明。
 
-若要選用離線檢查，請使用保存在本儲存庫與已安裝 Skill 之外、且已輸出的遮蔽 JSON
+若要選用離線檢查，請在 `npx skills add` 安裝 ClinNav 後，於專案根目錄執行下列命令。
+只有此檢查器需要 Python；它使用保存在本儲存庫與已安裝 Skill 之外、且已輸出的遮蔽 JSON
 檔案：
 
 ```text
-python scripts/check_omop_metadata.py --capabilities <external-capabilities.json> --input <external-inspection.json> --as-of <RFC-3339-timestamp>
+python .agents/skills/clin-nav/scripts/check_omop_metadata.py --capabilities <external-capabilities.json> --input <external-inspection.json> --as-of <RFC-3339-timestamp>
 ```
 
 封裝的檢查器會離線驗證這些外部檔案；它不會探索、安裝或連線至連接器。公開範例與
