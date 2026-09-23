@@ -127,6 +127,10 @@ PRIVATE_RECOVERY_ARTIFACT_NAME = re.compile(
 SECRET_PATTERNS = (
     re.compile(r"(?i)\b(api[_-]?key|token|password)\b\s*[:=]\s*['\"][^'\"]{12,}"),
     re.compile(r"\bsk-[A-Za-z0-9_-]{16,}\b"),
+    re.compile(
+        r"(?i)\b(?:dsn|database[_-]?url)\b\s*[:=]\s*['\"]?"
+        r"[a-z][a-z0-9+.-]{1,31}://[^\s'\"]+"
+    ),
 )
 TEXT_SUFFIXES = {".md", ".txt", ".yaml", ".yml", ".json", ".py", ".toml"}
 DATA_SUFFIXES = {
@@ -252,6 +256,19 @@ def _is_private_benchmark_directory_path(relative_path: Path) -> bool:
     return any(part in PRIVATE_BENCHMARK_PARTS for part in normalized_parts)
 
 
+def _is_raw_connector_schema_path(relative_path: Path) -> bool:
+    if relative_path.name.casefold() != "schema.json":
+        return False
+    normalized_parents = (
+        re.sub(r"[-_. ]+", "", part.casefold())
+        for part in relative_path.parent.parts
+    )
+    return any(
+        part in {"run", "runs"} or part.endswith("connector")
+        for part in normalized_parents
+    )
+
+
 def scan_repository(root: Path, max_text_bytes: int = 200_000) -> list[Finding]:
     """Return deterministic public-boundary findings below *root*."""
     findings: list[Finding] = []
@@ -353,6 +370,24 @@ def scan_repository(root: Path, max_text_bytes: int = 200_000) -> list[Finding]:
                     Finding(
                         relative_path,
                         "environment-file",
+                    )
+                )
+                continue
+
+            if lowercase_name == ".tbls.yml":
+                findings.append(
+                    Finding(
+                        relative_path,
+                        "tbls-configuration",
+                    )
+                )
+                continue
+
+            if _is_raw_connector_schema_path(relative):
+                findings.append(
+                    Finding(
+                        relative_path,
+                        "raw-connector-schema",
                     )
                 )
                 continue

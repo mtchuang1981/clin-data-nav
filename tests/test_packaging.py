@@ -90,6 +90,55 @@ def test_package_excludes_repository_files(tmp_path):
     )
 
 
+def test_package_contains_public_omop_contract_without_private_connector_artifacts(
+    tmp_path,
+):
+    result = build_package(Path("skills/clin-nav"), tmp_path)
+    packaged_files = set(result.files)
+    required_files = {
+        "references/omop-metadata-connector.md",
+        "references/omop-v5.4-core-catalog.json",
+        "references/omop-metadata-response.schema.json",
+        "scripts/omop_metadata.py",
+        "scripts/omop_metadata_connector.py",
+        "scripts/check_omop_metadata.py",
+    }
+
+    assert required_files <= packaged_files
+    assert all(
+        not name.startswith(("vendor/", "tests/"))
+        and "fixtures" not in Path(name).parts
+        and Path(name).name.casefold() not in {".tbls.yml", "schema.json"}
+        for name in packaged_files
+    )
+
+    with ZipFile(result.archive) as archive:
+        dependency_text = "\n".join(
+            archive.read(name).decode("utf-8")
+            for name in result.files
+            if name == "agents/openai.yaml" or name.endswith(".py")
+        )
+        package_text = "\n".join(
+            archive.read(name).decode("utf-8")
+            for name in result.files
+        )
+
+    normalized_dependency_text = dependency_text.casefold().replace("_", "-")
+    assert "tmucrd-adapter" not in normalized_dependency_text
+    forbidden_config_prefixes = (
+        "dsn:",
+        "dsn =",
+        "endpoint:",
+        "endpoint =",
+        "database_url:",
+        "database_url =",
+    )
+    assert all(
+        not line.strip().casefold().startswith(forbidden_config_prefixes)
+        for line in package_text.splitlines()
+    )
+
+
 def test_package_contains_rwe_routing_reference_but_no_second_skill(tmp_path):
     result = build_package(
         Path("skills/clin-nav"),

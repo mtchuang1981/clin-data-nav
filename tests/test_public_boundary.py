@@ -126,6 +126,56 @@ def test_scanner_allows_only_the_pinned_public_omop_csv(tmp_path):
     ]
 
 
+def test_scanner_rejects_tbls_configuration(tmp_path):
+    path = tmp_path / "connector/.tbls.yml"
+    path.parent.mkdir()
+    path.write_text("dsn: synthetic", encoding="utf-8")
+
+    findings = scan_repository(tmp_path)
+
+    assert [(item.path, item.rule) for item in findings] == [
+        ("connector/.tbls.yml", "tbls-configuration")
+    ]
+
+
+def test_scanner_rejects_raw_schema_snapshot_only_under_connector_run(
+    tmp_path,
+):
+    raw_snapshot = tmp_path / "omop-connector/schema.json"
+    raw_snapshot.parent.mkdir(parents=True)
+    raw_snapshot.write_text("{}", encoding="utf-8")
+    public_schema = tmp_path / "docs/schema.json"
+    public_schema.parent.mkdir()
+    public_schema.write_text("{}", encoding="utf-8")
+
+    findings = scan_repository(tmp_path)
+
+    assert [(item.path, item.rule) for item in findings] == [
+        ("omop-connector/schema.json", "raw-connector-schema")
+    ]
+
+
+def test_scanner_rejects_dsn_shaped_secret_without_reporting_content(
+    tmp_path,
+):
+    secret = (
+        "D"
+        + "SN = 'post"
+        + "gresql://synthetic-user:synthetic-password@db.invalid/clinical'"
+    )
+    path = tmp_path / "connector/config.toml"
+    path.parent.mkdir()
+    path.write_text(secret, encoding="utf-8")
+
+    finding = scan_repository(tmp_path)[0]
+
+    assert vars(finding) == {
+        "path": "connector/config.toml",
+        "rule": "possible-secret",
+    }
+    assert secret not in str(finding)
+
+
 def test_scanner_allows_fixed_large_public_profile_path(tmp_path):
     path = (
         tmp_path
