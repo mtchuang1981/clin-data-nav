@@ -12,6 +12,7 @@ __pycache__/
 .pytest_cache/
 *.pyc
 .worktrees/
+.serena/
 study-data/
 study-governance/
 evals/effectiveness/raw/
