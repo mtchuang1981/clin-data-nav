@@ -7,6 +7,7 @@ import json
 
 from omop_metadata import (
     CONTRACT_VERSION,
+    EVIDENCE_CONTRACT_VERSION,
     HARD_MAX_RESPONSE_BYTES,
     build_inspection_request,
     classify_inspection,
@@ -36,9 +37,11 @@ _IDENTITY_KEYS = (
 )
 
 
-def _result(status: str, *codes: str) -> dict[str, object]:
+def _result(
+    status: str, *codes: str, contract_version: str = CONTRACT_VERSION
+) -> dict[str, object]:
     return {
-        "contract_version": CONTRACT_VERSION,
+        "contract_version": contract_version,
         "status": status,
         "validation_codes": sorted(set(codes)),
     }
@@ -84,16 +87,19 @@ def _safe_summary(
     status = classification["status"]
     if status == "unavailable":
         return {
-            **_result("unavailable"),
+            **_result("unavailable", contract_version=str(inspection["contract_version"])),
             "limitation_codes": list(classification["limitation_codes"]),
         }
     if status in {"version-mismatch", "reference-mismatch", "stale"}:
-        return _result(str(status))
+        return _result(str(status), contract_version=str(inspection["contract_version"]))
     if status not in {"compatible", "compatible-with-deviations", "incompatible"}:
-        return _result("invalid-response", "unclassified-status")
+        return _result(
+            "invalid-response", "unclassified-status",
+            contract_version=str(inspection["contract_version"]),
+        )
 
     summary: dict[str, object] = {
-        "contract_version": CONTRACT_VERSION,
+        "contract_version": inspection["contract_version"],
         "status": status,
     }
     for key in _IDENTITY_KEYS:
@@ -103,6 +109,10 @@ def _safe_summary(
     summary["limitation_codes"] = list(classification["limitation_codes"])
     summary["summary_sha256"] = inspection["summary_sha256"]
     summary["validation_codes"] = list(classification["validation_codes"])
+    if inspection["contract_version"] == EVIDENCE_CONTRACT_VERSION:
+        summary["dqd_foreign_key_evidence_status"] = classification[
+            "dqd_foreign_key_evidence_status"
+        ]
     return summary
 
 
@@ -113,6 +123,7 @@ def assess_connector(
     catalog: Mapping[str, object],
     as_of: str,
     hard_max_bytes: int = HARD_MAX_RESPONSE_BYTES,
+    contract_version: str = CONTRACT_VERSION,
 ) -> dict[str, object]:
     """Run the two-operation connector protocol and return only safe summary data."""
     if (
@@ -122,10 +133,16 @@ def assess_connector(
     ):
         return _result("invalid-response", "invalid-hard-max-bytes")
 
+    if contract_version not in {CONTRACT_VERSION, EVIDENCE_CONTRACT_VERSION}:
+        return _result("unavailable", "unsupported-contract-version", contract_version=contract_version)
     try:
-        capabilities_raw = get_capabilities()
+        capabilities_raw = (
+            get_capabilities(contract_version=contract_version)
+            if contract_version == EVIDENCE_CONTRACT_VERSION
+            else get_capabilities()
+        )
     except Exception:
-        return _result("unavailable", "connector-unavailable")
+        return _result("unavailable", "connector-unavailable", contract_version=contract_version)
 
     capabilities, parse_error = _parse_bytes(
         capabilities_raw, maximum=hard_max_bytes, label="capabilities"
@@ -133,8 +150,10 @@ def assess_connector(
     if parse_error is not None:
         return parse_error
 
-    capability_errors = validate_capabilities(capabilities)
+    capability_errors = validate_capabilities(capabilities, contract_version=contract_version)
     if capability_errors:
+        if contract_version == EVIDENCE_CONTRACT_VERSION and "unsupported-contract-version" in capability_errors:
+            return _result("unavailable", "unsupported-contract-version", contract_version=contract_version)
         return _result("invalid-response", *capability_errors)
     assert isinstance(capabilities, Mapping)
     capability_limit = capabilities["max_response_bytes"]
@@ -142,7 +161,8 @@ def assess_connector(
     accepted_bytes = min(hard_max_bytes, capability_limit)
     try:
         request = build_inspection_request(
-            catalog, max_response_bytes=accepted_bytes
+            catalog, max_response_bytes=accepted_bytes,
+            contract_version=contract_version,
         )
     except (TypeError, ValueError, OverflowError):
         return _result("invalid-response", "catalog-invalid")

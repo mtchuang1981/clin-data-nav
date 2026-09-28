@@ -62,6 +62,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--capabilities", required=True, type=Path)
     parser.add_argument("--input", required=True, type=Path)
     parser.add_argument("--as-of", required=True)
+    parser.add_argument("--contract-version", choices=("1.0", "1.1"), default="1.0")
     return parser
 
 
@@ -84,10 +85,11 @@ def main() -> None:
                 raise
 
         summary = assess_connector(
-            lambda: capabilities_bytes,
+            lambda **_kwargs: capabilities_bytes,
             read_inspection,
             catalog=catalog,
             as_of=args.as_of,
+            contract_version=args.contract_version,
         )
     except Exception:
         parser.exit(2, CLI_ERROR)

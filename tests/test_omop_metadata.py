@@ -130,7 +130,11 @@ def test_portable_schema_is_closed_and_bounded():
         if isinstance(node, dict):
             if node.get("type") == "object":
                 assert node.get("additionalProperties") is False
-                assert set(node.get("properties", ())) == set(node.get("required", ()))
+                optional = (
+                    {"dqd_foreign_key_evidence", "snapshot_binding_sha256"}
+                    if node is schema["$defs"]["inspectionSummary"] else set()
+                )
+                assert set(node.get("properties", ())) - optional == set(node.get("required", ()))
             for value in node.values():
                 assert_closed_objects(value)
         elif isinstance(node, list):

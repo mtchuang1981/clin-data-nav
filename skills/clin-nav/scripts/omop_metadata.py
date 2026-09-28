@@ -17,6 +17,7 @@ from typing import Any
 
 
 CONTRACT_VERSION = "1.0"
+EVIDENCE_CONTRACT_VERSION = "1.1"
 OMOP_CDM_VERSION = "5.4"
 ALLOWLIST_ID = "omop-v54-core-research-v1"
 ALLOWLIST_VERSION = "1.0.0"
@@ -92,6 +93,15 @@ _INSPECTION_KEYS = frozenset(
         "tables",
     }
 )
+_INSPECTION_11_KEYS = _INSPECTION_KEYS | {
+    "snapshot_binding_sha256", "dqd_foreign_key_evidence"
+}
+_DQD_EVIDENCE_KEYS = frozenset({
+    "binding_kind", "snapshot_binding_sha256", "checked_at",
+    "reference_sha256", "checked_fk_set_sha256",
+    "expected_fk_check_count", "checked_fk_count", "failed_fk_count",
+})
+_BINDING_KINDS = frozenset({"content-sha256", "immutable-snapshot-id", "size-mtime"})
 _TABLE_KEYS = frozenset(
     {
         "canonical_table_name",
@@ -351,7 +361,9 @@ def _parse_rfc3339(value: object, errors: _Errors) -> datetime | None:
     return parsed
 
 
-def validate_capabilities(payload: object) -> tuple[str, ...]:
+def validate_capabilities(
+    payload: object, *, contract_version: str = CONTRACT_VERSION
+) -> tuple[str, ...]:
     """Validate the closed safety handshake and fixed connector support."""
     errors = _Errors()
     _check_recursive_limits(payload, errors)
@@ -359,7 +371,7 @@ def validate_capabilities(payload: object) -> tuple[str, ...]:
         return errors.result()
     assert isinstance(payload, Mapping)
 
-    if payload.get("contract_version") != CONTRACT_VERSION:
+    if payload.get("contract_version") != contract_version:
         errors.add("unsupported-contract-version")
     _check_text(payload.get("contract_version"), errors, max_length=8)
     _check_text(
@@ -518,7 +530,8 @@ def _catalog_reference_sha256(catalog: Mapping[str, object]) -> str:
 
 
 def build_inspection_request(
-    catalog: Mapping[str, object], *, max_response_bytes: int
+    catalog: Mapping[str, object], *, max_response_bytes: int,
+    contract_version: str = CONTRACT_VERSION,
 ) -> dict[str, object]:
     """Build the fixed, public-only request for ``inspect_omop_schema``."""
     errors = _Errors()
@@ -536,14 +549,90 @@ def build_inspection_request(
         or not 1 <= max_response_bytes <= HARD_MAX_RESPONSE_BYTES
     ):
         raise ValueError("invalid max_response_bytes")
+    if contract_version not in {CONTRACT_VERSION, EVIDENCE_CONTRACT_VERSION}:
+        raise ValueError("unsupported contract version")
     return {
-        "contract_version": CONTRACT_VERSION,
+        "contract_version": contract_version,
         "omop_cdm_version": OMOP_CDM_VERSION,
         "allowlist_id": ALLOWLIST_ID,
         "allowlist_version": ALLOWLIST_VERSION,
         "reference_sha256": _catalog_reference_sha256(catalog),
         "max_response_bytes": max_response_bytes,
     }
+
+
+def expected_fk_check_set(catalog: Mapping[str, object]) -> list[str]:
+    """Return public catalog FK requirements in deterministic order."""
+    errors = _Errors()
+    if _catalog_index(catalog, errors) is None:
+        raise ValueError("invalid catalog")
+    checks = [
+        f'{table["canonical_table_name"]}.{column["canonical_column_name"]}'
+        f'->{column["foreign_table"]}.{column["foreign_column"]}'
+        for table in catalog["tables"]
+        for column in table["columns"]
+        if column["foreign_key"] is True
+    ]
+    return sorted(checks)
+
+
+def _validate_dqd_evidence(
+    evidence: object, *, reference_sha256: object,
+    snapshot_binding_sha256: object, as_of: datetime | None, errors: _Errors,
+) -> None:
+    if evidence is None:
+        return
+    if not _closed_object(evidence, _DQD_EVIDENCE_KEYS, errors):
+        return
+    assert isinstance(evidence, Mapping)
+    kind = evidence.get("binding_kind")
+    if not isinstance(kind, str):
+        errors.add("invalid-type")
+    elif kind not in _BINDING_KINDS:
+        errors.add("unknown-enum")
+    digest = evidence.get("snapshot_binding_sha256")
+    if kind in {"content-sha256", "immutable-snapshot-id"}:
+        _check_text(digest, errors, pattern=_SHA256_RE, max_length=64)
+    elif digest is not None:
+        errors.add("invalid-value")
+    if digest != snapshot_binding_sha256:
+        errors.add("evidence-binding-mismatch")
+    checked_at = _parse_rfc3339(evidence.get("checked_at"), errors)
+    if checked_at is not None and as_of is not None and checked_at > as_of:
+        errors.add("future-snapshot")
+    if evidence.get("reference_sha256") != reference_sha256:
+        errors.add("evidence-reference-mismatch")
+    _check_text(evidence.get("reference_sha256"), errors, pattern=_SHA256_RE, max_length=64)
+    _check_text(evidence.get("checked_fk_set_sha256"), errors, pattern=_SHA256_RE, max_length=64)
+    for key in ("expected_fk_check_count", "checked_fk_count", "failed_fk_count"):
+        _check_nonnegative_int(evidence.get(key), errors, maximum=178)
+    checked = evidence.get("checked_fk_count")
+    failed = evidence.get("failed_fk_count")
+    if _is_int(checked) and _is_int(failed) and failed > checked:
+        errors.add("inconsistent-total")
+def _dqd_evidence_status(
+    evidence: object, *, catalog: Mapping[str, object],
+    capabilities: Mapping[str, object], as_of: datetime,
+) -> str:
+    if evidence is None:
+        return "unavailable"
+    assert isinstance(evidence, Mapping)
+    checked_at = datetime.fromisoformat(str(evidence["checked_at"]).replace("Z", "+00:00"))
+    if (as_of - checked_at).total_seconds() > capabilities["max_snapshot_age_seconds"]:
+        return "stale"
+    checks = expected_fk_check_set(catalog)
+    expected_hash = hashlib.sha256(canonical_json_bytes({"checks": checks})).hexdigest()
+    if (
+        evidence["expected_fk_check_count"] != len(checks)
+        or evidence["checked_fk_count"] != len(checks)
+        or evidence["checked_fk_set_sha256"] != expected_hash
+    ):
+        return "incomplete-coverage"
+    if evidence["failed_fk_count"]:
+        return "failed-checks"
+    if evidence["binding_kind"] == "size-mtime":
+        return "weak-binding"
+    return "accepted-attestation"
 
 
 def _check_type_mismatches(
@@ -653,16 +742,21 @@ def validate_inspection(
         if raw_size_bytes > effective_limit:
             errors.add("response-too-large")
 
-    if validate_capabilities(capabilities):
+    contract_version = payload.get("contract_version") if isinstance(payload, Mapping) else None
+    if validate_capabilities(
+        capabilities,
+        contract_version=contract_version if isinstance(contract_version, str) else CONTRACT_VERSION,
+    ):
         errors.add("invalid-capabilities")
     catalog_data = _catalog_index(catalog, errors)
     as_of_value = _parse_rfc3339(as_of, errors)
 
-    if not _closed_object(payload, _INSPECTION_KEYS, errors):
+    keys = _INSPECTION_11_KEYS if contract_version == EVIDENCE_CONTRACT_VERSION else _INSPECTION_KEYS
+    if not _closed_object(payload, keys, errors):
         return errors.result()
     assert isinstance(payload, Mapping)
 
-    if payload.get("contract_version") != CONTRACT_VERSION:
+    if payload.get("contract_version") not in {CONTRACT_VERSION, EVIDENCE_CONTRACT_VERSION}:
         errors.add("unsupported-contract-version")
     _check_text(payload.get("contract_version"), errors, max_length=8)
     _check_text(
@@ -704,6 +798,17 @@ def validate_inspection(
     observed_at = _parse_rfc3339(payload.get("observed_at"), errors)
     if observed_at is not None and as_of_value is not None and observed_at > as_of_value:
         errors.add("future-snapshot")
+    if contract_version == EVIDENCE_CONTRACT_VERSION:
+        snapshot_binding = payload.get("snapshot_binding_sha256")
+        if snapshot_binding is not None:
+            _check_text(snapshot_binding, errors, pattern=_SHA256_RE, max_length=64)
+        _validate_dqd_evidence(
+            payload.get("dqd_foreign_key_evidence"),
+            reference_sha256=payload.get("reference_sha256"),
+            snapshot_binding_sha256=snapshot_binding,
+            as_of=as_of_value,
+            errors=errors,
+        )
     _check_text(
         payload.get("tbls_version"),
         errors,
@@ -970,7 +1075,7 @@ def classify_inspection(
     else:
         status = "compatible"
 
-    return {
+    result = {
         "status": status,
         "validation_codes": [],
         "missing_table_count": missing_table_count,
@@ -985,3 +1090,11 @@ def classify_inspection(
         "summary_sha256": payload["summary_sha256"],
         "public_standard_gaps": public_standard_gaps,
     }
+    if payload["contract_version"] == EVIDENCE_CONTRACT_VERSION:
+        result["dqd_foreign_key_evidence_status"] = _dqd_evidence_status(
+            payload["dqd_foreign_key_evidence"],
+            catalog=catalog,
+            capabilities=capabilities,
+            as_of=reference_time,
+        )
+    return result

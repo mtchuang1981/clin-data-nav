@@ -13,7 +13,7 @@
   "$defs": {
     "contractVersion": {
       "type": "string",
-      "const": "1.0",
+      "enum": ["1.0", "1.1"],
       "maxLength": 8
     },
     "semanticVersion": {
@@ -280,9 +280,36 @@
         }
       }
     },
+    "dqdForeignKeyEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "binding_kind", "snapshot_binding_sha256", "checked_at",
+        "reference_sha256", "checked_fk_set_sha256",
+        "expected_fk_check_count", "checked_fk_count", "failed_fk_count"
+      ],
+      "properties": {
+        "binding_kind": {"type": "string", "enum": ["content-sha256", "immutable-snapshot-id", "size-mtime"], "maxLength": 32},
+        "snapshot_binding_sha256": {"oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]},
+        "checked_at": {"type": "string", "maxLength": 64, "format": "date-time"},
+        "reference_sha256": {"$ref": "#/$defs/sha256"},
+        "checked_fk_set_sha256": {"$ref": "#/$defs/sha256"},
+        "expected_fk_check_count": {"type": "integer", "minimum": 0, "maximum": 178},
+        "checked_fk_count": {"type": "integer", "minimum": 0, "maximum": 178},
+        "failed_fk_count": {"type": "integer", "minimum": 0, "maximum": 178}
+      }
+    },
     "inspectionSummary": {
       "type": "object",
       "additionalProperties": false,
+      "allOf": [{
+        "if": {"properties": {"contract_version": {"const": "1.1"}}},
+        "then": {"required": ["dqd_foreign_key_evidence", "snapshot_binding_sha256"]},
+        "else": {"not": {"anyOf": [
+          {"required": ["dqd_foreign_key_evidence"]},
+          {"required": ["snapshot_binding_sha256"]}
+        ]}}
+      }],
       "required": [
         "contract_version",
         "adapter_version",
@@ -370,6 +397,12 @@
           "items": {
             "$ref": "#/$defs/tableResult"
           }
+        },
+        "dqd_foreign_key_evidence": {
+          "oneOf": [{"$ref": "#/$defs/dqdForeignKeyEvidence"}, {"type": "null"}]
+        },
+        "snapshot_binding_sha256": {
+          "oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]
         }
       }
     }

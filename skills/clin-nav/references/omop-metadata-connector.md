@@ -13,6 +13,52 @@ user explicitly authorizes read-only metadata access in the current request.
 Naming an institution, mentioning OMOP, or having an Adapter available is not
 authorization. Do not automatically discover, install, or retry a connector.
 
+## Optional 1.1 DQD foreign-key evidence
+
+Version `1.0` remains the default and its wire shape, structural status, and
+checker exit codes are unchanged. Request `1.1` explicitly with
+`--contract-version 1.1` for an offline check, or with
+`assess_connector(..., contract_version="1.1")` in a governed integration.
+The 1.1 capability call requests that same version; an unsupported version is
+`unavailable`, with no 1.0 fallback or automatic retry.
+
+Version 1.1 requires `dqd_foreign_key_evidence` in the inspection summary.
+It may be `null` when evidence is absent, or a closed object containing only
+binding kind, a digest of the snapshot binding (for strong binding), check
+time, public catalog digest, digest of the exact checked public FK requirement
+set, and aggregate expected/checked/failed check counts. The public FK set is
+the sorted list of every catalog FK edge from the 13 allowlisted source tables,
+including references to public standard target tables outside the allowlist.
+It currently contains 79 requirements. Hash the canonical JSON object
+`{"checks": [sorted public FK edge identifiers]}` using the same UTF-8,
+sorted-key, compact, trailing-LF rule as `summary_sha256`. Merely reporting
+13 checked tables or 79 checked items is not sufficient: the exact set digest
+must match. All 1.1 fields are covered by `summary_sha256` and size limits.
+The 1.1 summary also carries `snapshot_binding_sha256`; the evidence digest
+must equal it. This equality checks that both attestations name the same
+snapshot token, but does not let the public checker prove how the private
+token was produced. For weak binding both digests are `null`.
+
+The separate `dqd_foreign_key_evidence_status` is one of
+`accepted-attestation`, `weak-binding`, `stale`, `incomplete-coverage`,
+`failed-checks`, or `unavailable`. Strong binding requires a content SHA-256 or
+an immutable snapshot-ID digest; size and modification time are only
+`weak-binding`. `accepted-attestation` means the *declared* binding and exact
+coverage pass public contract checks; the public checker cannot independently
+inspect the private snapshot or prove the adapter's attestation. Private
+operators must retain auditable binding and per-requirement DQD results outside
+this repository. DQD checks are point-in-time referential-integrity evidence,
+not a database-enforced FK constraint. They never rewrite
+`foreign_key_status`, structural `status`, or checker exit code. An
+`incompatible` structure remains exit 3 even with accepted DQD evidence.
+
+Before a private 1.1 trial, resolve any 1.0 `snapshot-incomplete` or partial
+scan at the private source and produce a new, complete redacted summary.
+Changing contract version cannot turn an incomplete scan into a pass. The
+public repository neither diagnoses private scan internals nor stores raw DQD
+results, local identifiers, rows, or private diagnostic text. Report structural
+compatibility and evidence status as two distinct outcomes.
+
 ## Two-operation contract
 
 Call `get_capabilities` first and inspect its closed, bounded response before
