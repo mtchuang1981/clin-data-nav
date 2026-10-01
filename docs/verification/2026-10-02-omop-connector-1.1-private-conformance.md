@@ -57,9 +57,10 @@ different purposes and need not be equal.
 
 ## Remaining acceptance work
 
-1. The private operator must reconcile the earlier two-failure FK aggregate
-   with retained per-requirement results and snapshot lineage. This checkpoint
-   does not establish why the earlier and current counts differ.
+1. The earlier two-failure aggregate has been traced to two failed
+   supplementary vocabulary FK checks in the historical audit. A category-only
+   audit filter excluded them. The private operator must still establish
+   snapshot lineage and the change that removed those violations.
 2. Bind the inspection and DQD evidence to the same immutable snapshot or
    content hash, retain the supporting evidence privately, and export a new
    summary. Do not create a digest from size and modification time and label it
@@ -85,9 +86,9 @@ must retain the following evidence outside the public repository:
   snapshot.
 - Per-requirement execution results for the exact 79 public FK requirements,
   with the expected set digest, check time, and aggregate failure count.
-- A reconciliation of the historical two-failure aggregate with its original
-  snapshot and check set. Keep unresolved lineage explicit when original
-  evidence cannot be recovered.
+- Snapshot and change lineage for the historical two-failure aggregate. The
+  failed checks have been located, but their transition to passing results
+  does not establish the underlying remediation or snapshot equivalence.
 - Private disposition of the structural differences and unexpected-object
   count, followed by a new complete redacted export.
 
@@ -101,6 +102,26 @@ that outcome.
 
 The next public record should contain only the two computed statuses,
 contract-approved counts, timestamps, controlled limitations, and hashes.
+
+## Historical audit reconciliation follow-up
+
+An explicitly authorized read-only follow-up on 2026-10-02 inspected retained
+audit results across all check categories, rather than limiting the query to
+one category. The audit generated at `2026-09-28T21:31:09` contains two failed
+supplementary vocabulary FK checks. Those checks were excluded by the earlier
+category filter, which explains why that query could not locate them.
+
+The audit generated at `2026-10-01T20:48:31` reports the corresponding two
+checks as passing, with zero violations. No private target names, row counts,
+diagnostic text, or audit payloads are recorded here. This result locates the
+historical failures and corrects the earlier audit-query interpretation; it
+does not prove which private remediation changed the result.
+
+The follow-up live inspection at `2026-10-02T00:20:53+08:00` still reports
+79 checked FK requirements, zero failed checks, `size-mtime` binding, and no
+strong snapshot binding digest. The existing offline structural verdict
+remains the latest validated structural outcome; the follow-up live response
+was not substituted for the exported bytes checked above.
 
 ## Engineering verification
 
