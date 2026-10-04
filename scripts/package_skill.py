@@ -20,7 +20,7 @@ except ModuleNotFoundError:  # Direct execution from the scripts directory.
 
 
 SKILL_NAME = "clin-nav"
-PACKAGE_VERSION = "0.8.0"
+PACKAGE_VERSION = "0.9.0"
 ARCHIVE_NAME = f"{SKILL_NAME}-{PACKAGE_VERSION}.zip"
 MANIFEST_NAME = f"{SKILL_NAME}-{PACKAGE_VERSION}.manifest.json"
 INCLUDED_DIRECTORIES = ("agents", "references", "scripts", "assets")

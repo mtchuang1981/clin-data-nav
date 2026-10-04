@@ -1,5 +1,41 @@
 # Changelog
 
+## 0.9.0 - 2026-10-04
+
+### Features
+
+- Add an optional read-only OMOP CDM v5.4 metadata connector, a pinned public
+  catalog, and an offline checker for redacted contract 1.0 summaries.
+- Add an opt-in, offline evidence audit bound to the exact canonical ledger;
+  record source access, version review, citation locators, and claim-fit checks
+  without changing ledger schema 1 or its existing checker.
+- Add optional read-only installed-Skill verification against a trusted
+  external manifest, distinguishing byte identity from canonical-text matches.
+
+### Changed
+
+- Make formal validation gaps actionable with blocking effects, safe next
+  actions, responsible roles, and completion evidence; retain concise quick
+  explanations and the existing execution boundaries.
+- Align synthetic implementation examples and add bilingual, low-burden
+  community feedback forms without collecting raw answers or private schema.
+
+### Fixed
+
+- Bind public-boundary scans to the physical Git root and fail closed on
+  ancestor fallback or a redirected worktree.
+- Harden bounded JSON input, public audit URLs, content-free OMOP failure
+  summaries, and shared package-validation boundaries.
+
+### Validation and limitations
+
+- Use deterministic tests, offline contract checks, and reproducible packaging;
+  do not rerun or reinterpret the historical benchmark or evidence-ledger pilot.
+- Metadata compatibility, recorded audit completion, and installed-file matches
+  do not establish source truth, scientific or clinical validity, human
+  effectiveness, loaded host version, or deployment fitness.
+- OMOP contract 1.1 and private-adapter validation are not part of this release.
+
 ## 0.8.0 - 2026-09-18
 
 ### Features
