@@ -2,13 +2,13 @@
 
 ## Supported versions
 
-The newest published release line receives security fixes. As of 2026-08-27,
-that line is `0.7.x`.
+The newest published release line receives security fixes. As of 2026-10-04,
+that line is `0.9.x`.
 
 | Version | Supported |
 |---|---|
-| `0.7.x` | Yes |
-| `< 0.7` | No |
+| `0.9.x` | Yes |
+| `< 0.9` | No |
 
 Support and response timing are best effort. This project does not promise an
 acknowledgement or remediation service level.

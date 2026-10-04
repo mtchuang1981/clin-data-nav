@@ -1322,7 +1322,7 @@ def test_v071_candidate_verification_record_is_aggregate_only_and_auditable():
     assert "answer text" not in record.lower()
 
 
-def test_v070_release_preserves_v050_publication_history_and_advances_security():
+def test_current_security_preserves_v050_publication_history():
     publication = (
         ROOT / "docs/verification/2026-08-16-v0.5.0-publication.md"
     ).read_text(encoding="utf-8")
@@ -1333,8 +1333,8 @@ def test_v070_release_preserves_v050_publication_history_and_advances_security()
     assert "`clin-nav-0.5.0.zip`" in publication
     assert "`clin-nav-0.5.0.manifest.json`" in publication
     assert release_notes.startswith("# Clinical Data Research Navigator v0.5.0\n")
-    assert "`0.7.x` | Yes" in " ".join(security.split())
-    assert "`< 0.7` | No" in " ".join(security.split())
+    assert "`0.9.x` | Yes" in " ".join(security.split())
+    assert "`< 0.9` | No" in " ".join(security.split())
     assert "`0.6.x` | Yes" not in " ".join(security.split())
 
 
@@ -2891,9 +2891,9 @@ def test_installation_guides_preserve_quick_update_verified_and_source_paths():
         (
             (ROOT / "docs/installation.md").read_text(encoding="utf-8"),
             ENGLISH_ONBOARDING_CONTRACT,
-            "## Current verified v0.8.0 Release artifact verification",
+            "## Current verified v0.9.0 Release artifact verification",
             "## Historical v0.4.0 Release artifact verification (reference only)",
-            "current verified immutable Release is `v0.8.0`",
+            "current verified Release is `v0.9.0`",
             "The v0.4.0 bundle remains below as a historical verification reference only.",
             (
                 "current verified Release is `v0.4.0`",
@@ -2904,9 +2904,9 @@ def test_installation_guides_preserve_quick_update_verified_and_source_paths():
         (
             (ROOT / "docs/installation.zh-TW.md").read_text(encoding="utf-8"),
             TRADITIONAL_CHINESE_ONBOARDING_CONTRACT,
-            "## 目前已驗證的 v0.8.0 Release 產物核對",
+            "## 目前已驗證的 v0.9.0 Release 產物核對",
             "## 歷史 v0.4.0 Release 產物驗證（僅供參考）",
-            "目前已驗證且不可變的 Release 是 `v0.8.0`",
+            "目前已驗證的 Release 是 `v0.9.0`",
             "v0.4.0 套件則保留於下方，僅供歷史驗證參考。",
             (
                 "目前已驗證的 Release 是 `v0.4.0`",
@@ -2932,18 +2932,18 @@ def test_installation_guides_preserve_quick_update_verified_and_source_paths():
         for stale_claim in stale_claims:
             assert stale_claim not in normalized
         current = _markdown_section(text, current_heading, historical_heading)
-        assert 'releaseVersion = "0.8.0"' in current
-        assert 'release_version="0.8.0"' in current
+        assert 'releaseVersion = "0.9.0"' in current
+        assert 'release_version="0.9.0"' in current
         assert "clin-nav-$releaseVersion.zip" in current
         assert "clin-nav-$releaseVersion.manifest.json" in current
         assert "clin-nav-$release_version.zip" in current
         assert "clin-nav-$release_version.manifest.json" in current
         assert (
-            "3fcc35afd33c558ef0b7a4db8c479668b18bd8c471a10c60bd850e7ee1da1c31"
+            "884debb04144c7a1541ce78bfd4a722175f6ef01dc4aff498712b4eb929c3457"
             in current
         )
         assert (
-            "6e00fd887e4717c351f3e2071fc4761247a24563de646d2568dbefd2cca42298"
+            "09fbaeccbb3c4dcf3020cd49d7ef820ad9e80e91bd7dbe7b57fdc5a54477cb5b"
             in current
         )
         assert "archive_sha256" in current
@@ -3278,8 +3278,8 @@ def test_security_policy_has_supported_versions_and_safe_confidential_reporting(
     normalized = " ".join(security.split())
 
     assert "| Version | Supported |" in security
-    assert "`0.7.x` | Yes" in normalized
-    assert "`< 0.7` | No" in normalized
+    assert "`0.9.x` | Yes" in normalized
+    assert "`< 0.9` | No" in normalized
     assert "`0.4.x` | Yes" not in normalized
     assert "`0.3.x` | Yes" not in normalized
     assert "`0.2.x` | Yes" not in normalized
@@ -3290,7 +3290,7 @@ def test_security_policy_has_supported_versions_and_safe_confidential_reporting(
     ):
         assert prohibited_public_material in normalized
     assert "public issue" in normalized
-    assert "As of 2026-08-27, that line is `0.7.x`." in normalized
+    assert "As of 2026-10-04, that line is `0.9.x`." in normalized
     assert "On 2026-08-09 (Asia/Taipei)" in normalized
     assert "private vulnerability reporting is enabled" in normalized
     assert "security/advisories/new" in normalized
