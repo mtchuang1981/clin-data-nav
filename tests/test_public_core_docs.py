@@ -3,6 +3,7 @@ from pathlib import Path
 
 import pytest
 import yaml
+import re
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -30,3 +31,49 @@ def test_release_docs_describe_dispatch_sha_not_tag_checkout():
     assert "refs/heads/main" in text
     assert "github.sha" in text
     assert "tag does not control checkout" in text.casefold()
+
+
+@pytest.mark.parametrize(("name", "maturity"), [
+    ("teae-to-sas-spec.md", "dictionary-specified"),
+    ("omop-phenotype-to-sql-spec.md", "conceptual"),
+    ("synthetic-institutional-mapping.md", "dictionary-specified"),
+])
+def test_examples_match_implementation_contract(name, maturity):
+    text = (ROOT / "examples" / name).read_text(encoding="utf-8")
+    for field in ("Output depth", "Decision", "Confirmed facts", "Assumptions", "Limitations", "Sources actually consulted"):
+        assert re.search(rf"(?m)^{field}:\s+\S", text)
+    assert "Output depth: implementation specification" in text
+    sections = re.findall(r"(?m)^## (.+)$", text)
+    assert sections == ["Governing evidence", "Data contract", "Code maturity", "Validation gaps", "Execution gate"]
+    maturity_section = text.split("## Code maturity", 1)[1].split("\n## ", 1)[0]
+    assert maturity in maturity_section
+    assert not set(("conceptual", "dictionary-specified", "parameterized", "executable", "validated")) - {maturity} & set(re.findall(r"`([^`]+)`", maturity_section))
+    assert "SPECIFICATION ONLY — NOT EXECUTABLE" in text and "unmet" in text.casefold()
+    assert "| Gap | Blocks | Next safe action | Responsible role | Completion evidence |" in text
+    assert "Work still possible" in text
+    if maturity == "dictionary-specified":
+        assumptions = re.search(r"(?m)^Assumptions: (.+)$", text).group(1)
+        assert "synthetic" in assumptions.casefold() and "approved dictionary" in assumptions.casefold()
+        facts = re.search(r"(?m)^Confirmed facts: (.+)$", text).group(1)
+        assert "approved dictionary" not in facts.casefold()
+
+
+def test_formal_gaps_are_actionable_without_changing_quick_shape():
+    refs = ROOT / "skills/clin-nav/references"
+    template = (refs / "evidence-output-template.md").read_text(encoding="utf-8")
+    assert "| Gap | Blocks | Next safe action | Responsible role | Completion evidence |" in template
+    for clause in ("unknown", "unavailable", "not reviewed", "known failure", "pending approval", "conflict", "Work still possible", "new authorization", "role is unknown"):
+        assert clause in template
+    for path in (ROOT / "skills/clin-nav/SKILL.md", refs / "output-depths-and-learning-paths.md"):
+        text = path.read_text(encoding="utf-8")
+        assert "actionable gaps" in text.casefold() and "evidence-output-template.md" in text
+    quick = template.split("## Quick Explanation", 1)[1].split("\n## ", 1)[0]
+    assert "without a fixed header" in quick
+    assert "Responsible role" not in quick
+
+
+def test_research_gaps_do_not_require_physical_execution_gates():
+    text = (ROOT / "skills/clin-nav/references/evidence-output-template.md").read_text(encoding="utf-8")
+    research = text.split("## Research Design", 1)[1].split("\n## Implementation Specification", 1)[0]
+    assert "design-appropriate review" in research
+    assert "does not require metadata or fixtures" in research

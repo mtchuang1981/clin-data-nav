@@ -75,6 +75,10 @@ or turn unreviewed sources into evidence.
 Report TTE readiness only for causal-comparative questions. This depth may
 state logical data needs but must not add a full Data contract, Code maturity,
 or Execution gate section or imply a complete SAP, causal result, or program.
+Use the actionable gaps contract below with design-appropriate review criteria;
+resolving a descriptive or bias gap does not require metadata or fixtures solely
+because the gap is recorded. Physical execution gates apply only when seeking
+an implementation maturity upgrade.
 
 ### Research question and study-design routing
 
@@ -108,3 +112,23 @@ SPECIFICATION ONLY — NOT EXECUTABLE
 Without the required Adapter, current metadata, parameters, and fixtures,
 retain the specification-only marker and do not emit SQL-, SAS-, R-, or
 Python-shaped placeholders that could be mistaken for physical objects.
+
+### Actionable gaps contract
+
+For Implementation Validation gaps and Research Bias and validation gaps,
+record each unmet condition using these five fields:
+
+| Gap | Blocks | Next safe action | Responsible role | Completion evidence |
+| --- | --- | --- | --- | --- |
+| Actual unresolved condition and state | Deliverable, claim or maturity upgrade blocked | Safe authorized next step, or required new authorization | Responsible role; if the role is unknown, state pending confirmation | Versioned approval, check or review sufficient to close this gap |
+
+Distinguish unknown, unavailable, not reviewed, known failure, pending approval,
+and conflict. Do not invent ownership, metadata, or completed checks. Completion
+evidence must not request private raw data or logs. After the table, state
+**Work still possible**: what can safely be delivered now without closing these gaps.
+For a maturity upgrade, rerun all relevant execution gates; resolving one gap
+does not grant executable status or expand metadata-only authorization.
+Research uses its design-appropriate review conditions, not an automatic
+metadata/fixture requirement. Evidence navigation retains Conflicts and
+unreviewed gaps with optional safe next steps, not this mandatory table.
+Quick explanation has no added header or table requirement.

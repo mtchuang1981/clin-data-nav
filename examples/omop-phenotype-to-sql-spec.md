@@ -1,80 +1,62 @@
 # SYNTH_PHENOTYPE_001 OMOP-to-SQL Specification
 
-## Decision
+Output depth: implementation specification
+Decision: Translate the hypothetical phenotype into a logical mapping checklist, without SQL or invented Concept IDs.
+Confirmed facts: This is a synthetic mapping request; no institution's schema or vocabulary has been supplied.
+Assumptions: The phenotype will be governed by a versioned research protocol and clinically reviewed concept set.
+Limitations: Concept set, windows, mappings, current metadata and fixtures are missing.
+Sources actually consulted: Current request only; artifacts below are planned review targets, not consulted sources.
 
-Keep three layers distinct:
+## Governing evidence
 
-1. A standard concept is a vocabulary-governed meaning selected from the
-   approved OMOP vocabulary release.
-2. `SYNTH_LOCAL_CODE` is a source-system value that requires an approved
-   mapping.
-3. `SYNTH_PHENOTYPE_001` is a research rule combining concepts, time windows,
-   exclusions, and observation requirements.
+Keep vocabulary-governed standard concepts, approved local-code mappings and
+the research phenotype rule separate. Public OMOP definitions do not establish
+an institutional schema or a clinically valid phenotype.
 
-Never invent or infer Concept IDs. Accept identifiers only from a supplied,
-versioned `SYNTH_CONCEPT_SET`.
-
-## Evidence table
-
-| Claim | Source | Authority level | Publication date | Version or snapshot | Applicability | Limitations |
-|---|---|---|---|---|---|---|
-| Standard-concept semantics | Official OMOP/OHDSI documentation | Official implementation standard | Confirm from source | `SYNTH_VOCAB_VERSION_SLOT` | Vocabulary selection | Does not define the research phenotype |
-| Local-code mapping | `SYNTH_ADAPTER_001` | Institutional | `SYNTH_EFFECTIVE_DATE` | `SYNTH_ADAPTER_VERSION` | `SYNTH_LOCAL_CODE` | Requires live verification |
-| Inclusion and exclusion logic | `SYNTH_PHENOTYPE_PROTOCOL_001` | Study-specific | `SYNTH_APPROVAL_DATE` | `SYNTH_APPROVED_VERSION` | `SYNTH_PHENOTYPE_001` | Requires clinical review |
+| Claim | Governing source to review | Authority | Applicability | Limitation |
+| --- | --- | --- | --- | --- |
+| Standard concept meaning | Official OMOP/OHDSI documentation | Official implementation standard | Selected vocabulary release | Concept set/version absent |
+| Local mapping | SYNTH Adapter contract | Institutional | Intended source roles | Approval/live verification absent |
+| Research inclusion/exclusion | SYNTH phenotype protocol | Study-specific | Hypothetical population | Clinical review pending |
 
 ## Data contract
 
-Parameter slots:
-
-```yaml
-phenotype_id: "SYNTH_PHENOTYPE_001"
-vocabulary_version: "SYNTH_VOCAB_VERSION_SLOT"
-concept_set: "SYNTH_CONCEPT_SET_REQUIRED"
-local_mapping_version: "SYNTH_MAPPING_VERSION_SLOT"
-index_window: "SYNTH_INDEX_WINDOW_SLOT"
-lookback_window: "SYNTH_LOOKBACK_WINDOW_SLOT"
-minimum_observation: "SYNTH_OBSERVATION_SLOT"
-exclusions: "SYNTH_EXCLUSION_SET_SLOT"
-```
-
-Require logical input roles for person, observation period, qualifying events,
-and exclusions. Obtain their physical mappings, grain, keys, date semantics,
-and allowed joins from `SYNTH_ADAPTER_001`.
-
-SQL specification:
-
-```text
-resolve the supplied SYNTH_CONCEPT_SET against SYNTH_VOCAB_VERSION_SLOT
-map SYNTH_LOCAL_CODE only through SYNTH_MAPPING_VERSION_SLOT
-identify qualifying events inside SYNTH_INDEX_WINDOW_SLOT
-apply SYNTH_OBSERVATION_SLOT and SYNTH_LOOKBACK_WINDOW_SLOT
-apply SYNTH_EXCLUSION_SET_SLOT
-deduplicate according to SYNTH_PHENOTYPE_PROTOCOL_001
-```
-
-Do not substitute numeric identifiers, local values, physical objects, or
-executable SQL for any unresolved slot.
+- Logical roles: person, observation period, qualifying event and exclusion event.
+- Grain, keys, allowed joins and date semantics: pending owner confirmation;
+  no physical names inferred from these roles.
+- Concept set/vocabulary version: require clinically reviewed versioned input;
+  never substitute numeric identifiers or model-memory codes.
+- Time anchors: index, lookback, minimum observation and exclusion windows
+  need protocol values; unknowns remain natural-language requirements.
+- Mapping: source codes use only an approved mapping version; preserve unmapped
+  status rather than treating it as a negative event.
+- Missingness/coverage: assess observation gaps and incomplete event capture;
+  zero recorded events do not prove absence of disease.
+- Outputs/lineage: approved aggregates tied to protocol, concept set, mapping
+  and transformation versions; no row-level identifiers.
+- Acceptance: positive, negative, boundary-window, unmapped-code and zero-result
+  synthetic cases with protocol-derived expectations.
 
 ## Code maturity
 
-Current maturity is `conceptual` while the concept set is absent. Assign
-`parameterized` only after the versioned `SYNTH_CONCEPT_SET` and every required
-window, mapping, and exclusion parameter are supplied.
-
-```text
-SPECIFICATION ONLY — NOT EXECUTABLE
-```
+`conceptual`; the concept set and required parameters are absent.
 
 ## Validation gaps
 
-- Supply and clinically review `SYNTH_CONCEPT_SET`.
-- Confirm vocabulary and local-mapping versions.
-- Approve `SYNTH_PHENOTYPE_PROTOCOL_001`.
-- Verify live physical mappings, join cardinalities, and date semantics.
-- Test positive, negative, boundary-window, unmapped-code, and zero-result
-  synthetic fixtures.
+| Gap | Blocks | Next safe action | Responsible role | Completion evidence |
+| --- | --- | --- | --- | --- |
+| Concept set/version unknown | Phenotype specification | Request versioned reviewed summary | Clinical/vocabulary reviewer | Approved set and applicability review |
+| Protocol approval pending | Inclusion/exclusion | Resolve windows and observation needs | Research owner | Signed protocol decisions |
+| Local mappings unavailable | Physical implementation | Obtain authorized Adapter summary | Data owner, pending confirmation | Approved contract outside Git |
+| Current metadata not verified | Maturity upgrade | Seek authorization before comparison | Adapter owner | Current comparison and discrepancy resolution |
+| Fixtures not run | Acceptance claim | Prepare edge cases for authorized testing | Implementation reviewer | Passing declared checks |
 
-## Sources
+Work still possible: refine logical event roles and clinical acceptance cases,
+without SQL-shaped placeholders or a claim of phenotype validation.
 
-List the reviewed official OMOP/OHDSI documentation,
-`SYNTH_PHENOTYPE_PROTOCOL_001`, and the approved `SYNTH_ADAPTER_001` identifier.
+## Execution gate
+
+Unmet. Reassess all relevant execution gates before promotion; concept-set
+approval or metadata-only results cannot independently permit SQL.
+
+SPECIFICATION ONLY — NOT EXECUTABLE

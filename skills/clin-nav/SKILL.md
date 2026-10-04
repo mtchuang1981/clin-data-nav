@@ -194,7 +194,11 @@ passing fixture tests before using `executable` or `validated`. Otherwise emit:
 SPECIFICATION ONLY — NOT EXECUTABLE
 ```
 
-State the maturity label and list every unmet gate as a validation gap. Do not
+State the maturity label and list every unmet gate as a validation gap.
+Use the actionable gaps contract in `references/evidence-output-template.md`
+for implementation and research gaps. Completing one gap never automatically
+upgrades maturity; reassess all relevant execution gates before promotion.
+Metadata-only access remains metadata-only. Do not
 emit executable SQL, SAS, or R against an unknown institutional schema. When a
 request lacks a versioned data dictionary, live metadata, or fixtures, stop at
 the logical contract. Do not provide even placeholder SQL or SQL-shaped

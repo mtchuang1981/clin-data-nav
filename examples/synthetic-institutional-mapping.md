@@ -1,67 +1,63 @@
 # SYNTH_INSTITUTION Encounter Mapping
 
-## Decision
+Output depth: implementation specification
+Decision: Specify logical encounter-to-person mapping without executable institutional code.
+Confirmed facts: This is a fictional mapping request, not a current institution-owned contract.
+Assumptions: The synthetic scenario supplies an approved dictionary describing logical encounters and persons; this hypothetical approved dictionary is not verified real-world approval.
+Limitations: Adapter approval, live metadata, coverage and target-environment fixtures remain unverified.
+Sources actually consulted: Current request only; SYNTH identifiers are fictional scenario artifacts, not reviewed private documents.
 
-Map the logical encounter role only through approved
-`SYNTH_ADAPTER_001`. Do not produce executable institutional code until the
-Adapter, live metadata, and fixtures agree.
+## Governing evidence
 
-## Evidence table
+Only an approved versioned Adapter may establish physical mappings. The assumed
+dictionary supplies logical roles, not live availability or execution authority.
 
-| Claim | Source | Authority level | Publication date | Version or snapshot | Applicability | Limitations |
-|---|---|---|---|---|---|---|
-| Encounter grain | `SYNTH_DICTIONARY_001` | Institutional dictionary | `SYNTH_EFFECTIVE_DATE` | `SYNTH_DICTIONARY_VERSION` | `SYNTH_ENCOUNTER` | Requires live metadata comparison |
-| Allowed join | `SYNTH_ADAPTER_001` | Institutional Adapter | `SYNTH_EFFECTIVE_DATE` | `SYNTH_ADAPTER_VERSION` | Encounter-to-person mapping | Cardinality must pass fixtures |
-| Output constraint | `SYNTH_GOVERNANCE_RULE_001` | Institutional governance | `SYNTH_EFFECTIVE_DATE` | `SYNTH_RULE_VERSION` | Research output | Approval scope must be confirmed |
+| Claim | Governing source to review | Authority | Applicability | Limitation |
+| --- | --- | --- | --- | --- |
+| Encounter grain | SYNTH dictionary | Institutional dictionary | Fictional encounter role | Approval assumed; live comparison absent |
+| Allowed join | SYNTH Adapter | Institutional Adapter | Encounter-to-person | Version/cardinality unverified |
+| Output restriction | SYNTH governance rule | Institutional governance | Aggregate output | Scope needs explicit approval |
 
 ## Data contract
 
-- Logical object: `SYNTH_ENCOUNTER`.
-- Grain: one synthetic row per approved encounter occurrence.
-- Primary key: `SYNTH_ENCOUNTER_KEY`.
-- Person key: `SYNTH_PERSON_KEY`.
-- Allowed join: many `SYNTH_ENCOUNTER` rows to one `SYNTH_PERSON` row.
-- Cardinality check: every non-null `SYNTH_PERSON_KEY` matches at most one
-  `SYNTH_PERSON` row; joining must not multiply encounter rows.
-- Time precision: `SYNTH_ENCOUNTER_START` and `SYNTH_ENCOUNTER_END` have
-  day-level precision unless `SYNTH_ADAPTER_001` explicitly approves a more
-  precise value.
-- Coverage: use `SYNTH_COVERAGE_START` through `SYNTH_COVERAGE_END` for
-  `SYNTH_SITE_SCOPE`; treat values outside or missing from that snapshot as
-  unknown, not absent.
-- Sensitivity label: `SYNTH_RESTRICTED`.
-- Output constraint: allow approved aggregate results only; prohibit
-  row-level identifiers and direct-identifier output.
-- Lineage: trace every output to `SYNTH_ADAPTER_001`,
-  `SYNTH_DICTIONARY_001`, and the transformation version.
-
-Live metadata discrepancy check:
-
-1. Compare approved catalog metadata with `SYNTH_ADAPTER_001`.
-2. Check object presence, key uniqueness, types, nullability, date precision,
-   coverage snapshot, and many-to-one cardinality.
-3. Stop if any value differs.
-4. Record the discrepancy and obtain owner approval for a revised Adapter.
-5. Re-run all synthetic fixtures before promotion.
+- Grain: one logical record per approved encounter occurrence.
+- Keys: encounter/person identity are logical roles; physical names and
+  nullability remain pending owner confirmation.
+- Join: many encounters to one person; non-null person keys match at most one
+  person and the join must not multiply encounter records.
+- Time precision: day-level is a synthetic assumption; an approved Adapter must
+  establish actual precision and start/end precedence.
+- Coverage: require a dated site/coverage snapshot; missing/out-of-scope values
+  remain unknown, not absent.
+- Sensitivity/output: restricted inputs and approved aggregates only; no
+  row-level identifiers or direct-identifier output.
+- Lineage: retain approved Adapter, dictionary, governance and transformation
+  version identifiers outside the public repository.
+- Acceptance: unique/orphan keys, multiplying joins, boundary dates and
+  prohibited outputs. Compare presence, types, nullability, precision and
+  coverage to approved current metadata; stop on discrepancies, request
+  owner-approved corrections and retest.
 
 ## Code maturity
 
-`dictionary-specified`
-
-```text
-SPECIFICATION ONLY — NOT EXECUTABLE
-```
+`dictionary-specified` under the synthetic dictionary assumption above.
 
 ## Validation gaps
 
-- Supply the current approved `SYNTH_ADAPTER_001`.
-- Verify the live metadata snapshot and resolve every discrepancy.
-- Confirm date precision and coverage with the source owner.
-- Run unique-key, orphan-key, row-multiplication, boundary-date, and prohibited
-  output fixtures.
+| Gap | Blocks | Next safe action | Responsible role | Completion evidence |
+| --- | --- | --- | --- | --- |
+| Current Adapter unavailable | Physical mapping | Obtain authorized version summary | Adapter owner, pending confirmation | Versioned approved contract |
+| Live comparison not reviewed | Maturity upgrade | Seek metadata-only authorization; resolve discrepancies | Data owner | Approved current comparison, no raw schema in Git |
+| Precision/coverage unknown | Analysis scope | Confirm logical requirements with source owner | Source owner | Dated coverage/precision approval |
+| Output approval pending | Aggregate delivery | Confirm release scope | Governance reviewer | Explicit scoped approval |
+| Fixtures not run | Acceptance claim | Prepare cases for authorized testing | Implementation reviewer | Passing cases and review |
 
-## Sources
+Work still possible: refine the logical checklist and acceptance cases without
+guessing physical objects, obtaining patient rows or executing joins.
 
-List the approved synthetic contract identifiers:
-`SYNTH_ADAPTER_001`, `SYNTH_DICTIONARY_001`, and
-`SYNTH_GOVERNANCE_RULE_001`.
+## Execution gate
+
+Unmet. Reassess all relevant execution gates before promotion; closing one gap
+does not upgrade maturity or expand metadata-only permission.
+
+SPECIFICATION ONLY — NOT EXECUTABLE
