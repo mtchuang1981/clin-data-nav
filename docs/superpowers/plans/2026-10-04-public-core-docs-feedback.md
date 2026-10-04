@@ -38,7 +38,7 @@
 - Consumes: 現有 `.github/workflows/release.yml` 的 main dispatch 與 immutable `github.sha` checkout，以及現行 v0.8.0 文檔。
 - Produces: 修正後的文件，沒有 Python API 或 workflow 行為變更。
 
-- [ ] **Step 1: 新增 `test_current_release_asset_names_are_consistent` 與 `test_release_docs_describe_dispatch_sha_not_tag_checkout`**
+- [x] **Step 1: 新增 `test_current_release_asset_names_are_consistent` 與 `test_release_docs_describe_dispatch_sha_not_tag_checkout`**
 
 第一個測試對兩版 current verification H2 區段 assert 包含 `clin-nav-0.8.0.zip`、`clin-nav-0.8.0.manifest.json`，不含 `clin-nav-0.7.0.`；另 assert 歷史 v0.4.0 指令仍存在。第二個讀現有 YAML 的 jobs，assert preflight／validate／build checkout ref 為 `${{ github.sha }}`，文件說明 dispatch main、tag only verification／identity，不再描述 tag 控制 checkout。不要按完整段落字串綁定。
 
@@ -58,19 +58,19 @@ def test_current_release_asset_names_are_consistent(name, heading):
 
 新 test module 的 ROOT 定義為 `Path(__file__).resolve().parents[1]`。
 
-- [ ] **Step 2: RED**
+- [x] **Step 2: RED**
 
 Run `python -m pytest -q tests/test_public_core_docs.py --basetemp <fresh-external-basetemp>`。期望文件一致性 assertion 失敗；不能是語法、匯入或 tmp ACL 錯誤。
 
-- [ ] **Step 3: 僅修正文檔的錯誤敘述**
+- [x] **Step 3: 僅修正文檔的錯誤敘述**
 
 不改發布 hash、歷史 migration 指令或 release.yml；Current 資產名從 0.7.0 改為 0.8.0，architecture 描述與 trusted SHA 流程一致。
 
-- [ ] **Step 4: GREEN 與既有 recovery／activation 文檔測試**
+- [x] **Step 4: GREEN 與既有 recovery／activation 文檔測試**
 
 Run `python -m pytest -q tests/test_public_core_docs.py tests/test_project_metadata.py --basetemp <fresh-external-basetemp>`。期望所有相關測試 pass，無文檔 recovery route 回歸。
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 僅 add 上述三份 docs 與新 test module，commit `docs: align current release installation and trusted-sha guidance`。
 
@@ -86,7 +86,7 @@ Run `python -m pytest -q tests/test_public_core_docs.py tests/test_project_metad
 - Consumes: 現有正式共同 header、DEPTH_SECTION_CONTRACTS，以及 A1 的新 docs tests。
 - Produces: Gap、Blocks、Next safe action、Responsible role、Completion evidence 五欄規則與完整 examples；不修改 evaluator schema、case IDs、既有得分／門檻或歷史 fixtures。
 
-- [ ] **Step 1: 新增失敗契約測試**
+- [x] **Step 1: 新增失敗契約測試**
 
 `test_formal_gaps_are_actionable_without_changing_quick_shape` assert template 定義上述五欄、safe authorization／role unknown／completion evidence／仍可完成工作，其他兩處 references 明確指向它，quick 段落仍無固定表頭要求。`test_examples_match_implementation_contract` 對三例 assert depth、六個非空 header、五個 implementation H2、單一 maturity、unmet gate 與 specification-only；dictionary-specified 例子的 Assumptions 必須明示 synthetic approval，不將 SYNTH 核准寫成 reviewed/confirmed 真實證據。`test_research_gaps_do_not_require_physical_execution_gates` 核對研究設計沒有被加上 Code maturity／Execution gate 必填章節。
 
@@ -109,19 +109,19 @@ def test_examples_match_implementation_contract(name, maturity):
 
 同一測試再以既有共同 header patterns 檢查非空欄位，並擷取 Assumptions／Confirmed facts 分別核對 synthetic approval 的位置。
 
-- [ ] **Step 2: RED**
+- [x] **Step 2: RED**
 
 Run `python -m pytest -q tests/test_skill_contract.py tests/test_public_core_docs.py --basetemp <fresh-external-basetemp>`。期望因缺五欄／範例正式 header 而失敗。
 
-- [ ] **Step 3: 以單一規則來源更新 Skill、references 與 examples**
+- [x] **Step 3: 以單一規則來源更新 Skill、references 與 examples**
 
 Template 定義 Gap 狀態與五欄表格；其餘文件引用模板而非完整重複。每個例子補「目前仍可完成的工作」，責任角色未知就待確認，不猜人名、schema、概念 ID 或真實查閱狀態。成熟度升級才重新評估全部 execution gates；research gaps 使用其設計適用的審閱條件。Evidence navigation 保留原 shape。
 
-- [ ] **Step 4: GREEN 與 deterministic Eval 不變檢查**
+- [x] **Step 4: GREEN 與 deterministic Eval 不變檢查**
 
 Run `python -m pytest -q tests/test_skill_contract.py tests/test_public_core_docs.py tests/test_response_evaluator.py --basetemp <fresh-external-basetemp>` 及 `python scripts/render_eval_summary.py --check`。期望 pass／exit 0；agents YAML 不需要新增 policy.products。若 catalog／evaluator／fixtures 確有必要行為調整，先停下報告契約衝突，不默默改 frozen baseline 或 scoring 來通過。
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 僅 add 本 task 實際修改的 Skill、references、examples 與 tests，commit `feat: make formal validation gaps actionable`；review-only 檔案不要無故重寫。
 
@@ -136,7 +136,7 @@ Run `python -m pytest -q tests/test_skill_contract.py tests/test_public_core_doc
 - Consumes: 現有 field IDs／英文選項語義；GitHub 表單入口 `https://github.com/mtchuang1981/clin-data-nav/issues/new?template=<filename>`。
 - Produces: 八個 input IDs 的雙語對應（repository_version、installation_method、agent、operating_system、task_category、completion_outcome、problem_reproduction、acknowledgement），不新增 upload／raw-material 欄位。
 
-- [ ] **Step 1: 新增表單失敗測試**
+- [x] **Step 1: 新增表單失敗測試**
 
 `test_no_problem_feedback_may_omit_description` assert problem_reproduction required false、render text、無 default/value/max_length，completion_outcome 無 default。`test_feedback_forms_preserve_semantic_parity` 核對 ID 順序與每個選項的明確翻譯 map。安裝選項依序為「npx 專案安裝／已核對 ZIP 安裝／本機開發 checkout」；OS 為 Linux/macOS/Windows/其他或混合；任務為「安裝或更新／快速解說／證據導覽／研究設計／實作規格／repository benchmark 工具」；結果為「無問題完成／遇到問題但完成／未完成」。`test_feedback_readmes_open_forms_not_yaml_source` 核對英文／繁中入口各選正確 template。`test_forms_do_not_solicit_raw_material` 檢查雙語警語、required checkbox option 與 closed ID set。
 
@@ -153,18 +153,18 @@ def test_no_problem_feedback_may_omit_description(filename):
     assert fields["acknowledgement"]["attributes"]["options"][0]["required"] is True
 ```
 
-- [ ] **Step 2: RED**
+- [x] **Step 2: RED**
 
 Run `python -m pytest -q tests/test_usability_feedback_forms.py --basetemp <fresh-external-basetemp>`。期望因缺繁中表單、textarea 必填與入口缺失而失敗。
 
-- [ ] **Step 3: 更新表單與入口，保留 truthful claim boundary**
+- [x] **Step 3: 更新表單與入口，保留 truthful claim boundary**
 
 兩版說明只填約 1,000 字元公開／合成摘要；禁止 prompts、responses、logs、screenshots、attachments 及既有敏感類別。無問題可留白。確認 option 設 required true；不假造 conditional-required 或 max_length 屬性。README 不把 self-report 當成已驗證使用成效；benchmark-result.yml 不改。
 
-- [ ] **Step 4: GREEN**
+- [x] **Step 4: GREEN**
 
 Run `python -m pytest -q tests/test_usability_feedback_forms.py tests/test_project_metadata.py tests/test_public_boundary.py --basetemp <fresh-external-basetemp>`，再跑 public-boundary CLI。期望 pass／exit 0；這輪不改 scanner 行為。若新公開表單意外被拒絕，先查根因並回報，不順手放寬 private-artifact 規則。
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 僅 add 兩 forms、兩 README 與相關 tests，commit `feat: add safe bilingual community feedback forms`。

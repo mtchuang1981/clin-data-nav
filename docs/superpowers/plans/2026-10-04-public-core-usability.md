@@ -42,14 +42,17 @@
 
 執行前先讀 Spec、此索引與該子計畫。工作區固定使用既有、已附加的 `codex/public-core-usability` 隔離分支；基底 main 為 `a8b9976dbbf62fec250fb7c571f3e714ce0b360f`，設計 commit 為 `aa012c665f20e01e5eb3e254dbd3473fe65a84d9`。不要在 `codex/omop-connector-1-1` 或 E 槽原 checkout 修改產品檔案。
 
-本輪仍待使用者審閱計畫並選擇 Native 或 Subagent-driven；尚未開始任何 A／B／C 實作。
+使用者已核准 Native 執行；A1–C2 已於本機隔離分支完成。一次獨立全分支
+review 發現的 URL 邊界問題以 RED→GREEN 修補；共同驗收與限制記錄於
+[本機驗證紀錄](../../verification/2026-10-04-public-core-usability-local.md)。
+本輪不 merge、push 或發布；main 與既有發布資產保持不變。
 
 ## 測試執行環境
 
-- [ ] 確認分支、乾淨工作樹與只有預期的本機規格／計畫 commits；保存 `git status --short --branch` 與 `git rev-parse HEAD` 的結果。
-- [ ] 以唯讀方式確認既有 Python 3.11（例如 `py -0p`，或已配置的 dependency runtime）。若沒有可用版本，不下載、不安裝，記錄未完成的受支援 runtime gate，請求後續方向；不得把 3.13 通過當作等效。
-- [ ] pytest 的 basetemp 必須是所有 Git repository 之外、尚不存在的專用 GUID 目錄；在 Windows 可使用既有 writable visualization root 下的專用目錄。不可重用未知非空目錄，pytest 可能移除既有 basetemp。
-- [ ] 後續 RED／GREEN 指令中的 `<fresh-external-basetemp>` 每次替換成新的絕對路徑。執行 `rtk proxy <python3.11> -m pytest ... --basetemp <fresh-external-basetemp>`；使用支援 runtime，不改測試以遷就環境。
+- [x] 確認分支、乾淨工作樹與只有預期的本機規格／計畫 commits；保存 `git status --short --branch` 與 `git rev-parse HEAD` 的結果。
+- [x] 以唯讀方式確認既有 Python 3.11（例如 `py -0p`，或已配置的 dependency runtime）。若沒有可用版本，不下載、不安裝，記錄未完成的受支援 runtime gate，請求後續方向；不得把 3.13 通過當作等效。
+- [x] pytest 的 basetemp 必須是所有 Git repository 之外、尚不存在的專用 GUID 目錄；在 Windows 可使用既有 writable visualization root 下的專用目錄。不可重用未知非空目錄，pytest 可能移除既有 basetemp。
+- [x] 後續 RED／GREEN 指令中的 `<fresh-external-basetemp>` 每次替換成新的絕對路徑。執行 `rtk proxy <python3.11> -m pytest ... --basetemp <fresh-external-basetemp>`；使用支援 runtime，不改測試以遷就環境。
 
 已知另案待辦：空的 nested `.git` 位於有效祖先 repo 內時，public-boundary checker 可能接受祖先的 Git 成功結果，未檢查實際 top-level。此計畫不修補此問題、不弱化兩項既有測試；所有 baseline 使用 repo 外 basetemp，交付限制明示該變體未修復。
 
@@ -63,7 +66,7 @@
 - Consumes: A1–C2 的本機 commits、新 audit 與 installation CLI、既有 report renderers。
 - Produces: 僅含 commit/runtime、命令、退出碼、計數、套件雜湊、限制的驗證紀錄；不保存輸入、回答、來源文字或私有路徑。
 
-- [ ] **Step 1: 在受支援 Python 3.11 執行完整驗證**
+- [x] **Step 1: 在受支援 Python 3.11 執行完整驗證**
 
 ```text
 python -m pytest -q --basetemp <fresh-external-basetemp>
@@ -78,14 +81,14 @@ git diff --check
 
 每個指令分別檢查退出碼，不能以最後指令掩蓋前面的失敗。期望全部 exit `0`；pytest 的平台 skips 各別列明。若現行 deterministic Eval snapshots 漂移，先查根因，不重算門檻、不重寫歷史 benchmark，停止完成宣告。
 
-- [ ] **Step 2: 驗證 source／packaged CLI parity 與重新包裝**
+- [x] **Step 2: 驗證 source／packaged CLI parity 與重新包裝**
 
 用純合成 repository 外資料分別執行 source 與解壓後 Skill 的 audit CLI：完整紀錄 `0`、待審閱 `3`、invalid `2` 三種狀態的摘要／退出碼一致；ZIP 解壓後在外部測試目錄執行，不讀已安裝的真實私人 Skill。重建兩次 development candidate，逐位元比較 ZIP／manifest；不可覆寫外部已發布 v0.8.0 產物。
 
-- [ ] **Step 3: 檢閱完整 diff 並完成全分支 review**
+- [x] **Step 3: 檢閱完整 diff 並完成全分支 review**
 
 核對無私有內容、raw answers／logs／實際 audit 入 Git；無版本、CHANGELOG、release.yml、OMOP 1.1 或 benchmark 歷史意外變動。Native 執行方式在此採一次獨立全分支 review；Subagent-driven 另有逐 task review。Reviewer 只讀公開材料，不執行未授權外部系統存取。
 
-- [ ] **Step 4: 保存 aggregate-only 紀錄與本機 commit**
+- [x] **Step 4: 保存 aggregate-only 紀錄與本機 commit**
 
 紀錄只聲稱契約／deterministic checks 與已實際驗證的 runtime。明示 checker 不驗證來源真實／語意、安裝工具不證明 loaded version、root-discovery 另案未修，以及遠端 Windows／Ubuntu CI 尚未執行。`git add -- docs/verification/2026-10-04-public-core-usability-local.md` 後 commit `docs: record public-core local verification`；核對乾淨工作樹，回報待外部授權的 merge／push／CI，不自動執行。

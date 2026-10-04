@@ -40,7 +40,7 @@
 - Produces: `read_strict_json(path: Path, *, max_bytes: int, max_depth: int = 12) -> object`
 - 三者對格式／限額錯誤 raise `ValueError`（固定無內容訊息）；OS errors 交由呼叫 CLI 安全轉換。max_bytes/max_depth 必須正整數、拒絕 bool。沒有 network 或 write。
 
-- [ ] **Step 1: 新增失敗測試**
+- [x] **Step 1: 新增失敗測試**
 
 `test_limit_accepts_exact_bytes_and_rejects_one_extra` assert `{}` 在 max_bytes=2 接受、1 拒絕；`test_strict_json_rejects_duplicate_keys_and_nonfinite_numbers` 參數化 duplicate keys、NaN、Infinity、-Infinity、1e999。`test_depth_counts_containers_not_escaped_text` assert 12 層接受、13 層拒絕；含 escaped quote／brace 的字串不增加 depth。`test_reader_never_uses_unbounded_read` 用 guarded file object assert 每次 read 大小為正且不超過 chunk_bytes／remaining+1；檔案成長超限時仍拒絕。另測 invalid UTF-8、BOM、trailing JSON、非常長整數、錯誤參數與敏感 sentinel 不進 exception 字串。
 
@@ -56,19 +56,19 @@ def test_limit_accepts_exact_bytes_and_rejects_one_extra():
         parse_strict_json(b'{}', max_bytes=1)
 ```
 
-- [ ] **Step 2: RED**
+- [x] **Step 2: RED**
 
 Run `python -m pytest -q tests/test_bounded_json.py --basetemp <fresh-external-basetemp>`；期望新 module 尚不存在，不是 pytest 環境錯誤。
 
-- [ ] **Step 3: 實作 reader**
+- [x] **Step 3: 實作 reader**
 
 先 bounded bytes 與 UTF-8 decode，再用 string-aware scan 核對 container 深度（根 object/array 深度為 1），最後 json.loads 以 object_pairs_hook 拒絕 duplicate keys、parse_constant 拒絕非有限常數，並迭代檢查溢出 float 的 isfinite。統一捕捉解析／遞迴錯誤為固定 ValueError；不輸出 raw exception。不要用全檔無限 read，不修改既有 ledger／installer reader。
 
-- [ ] **Step 4: GREEN**
+- [x] **Step 4: GREEN**
 
 Run `python -m pytest -q tests/test_bounded_json.py tests/test_evidence_ledger.py tests/test_install_local.py --basetemp <fresh-external-basetemp>`；期望新 reader pass、舊 consumers 接受行為不變。
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 Add 兩新檔，commit `feat: add bounded strict JSON input reader`。
 
@@ -90,7 +90,7 @@ Add 兩新檔，commit `feat: add bounded strict JSON input reader`。
 
 Audit reason codes：source-not-opened、scope-not-assessed、version-unknown、status-basis-missing、newer-search-unavailable、newer-search-not-performed、current-source-superseded、current-source-in-development、current-newer-found、locator-not-verified、authority-insufficient、authority-conflicted、authority-not-assessed、support-overstated、support-understated、support-not-assessed。原 ledger summary 的 source lists 依序映為 ledger-review-due、ledger-freshness-unknown、ledger-source-not-reviewed、ledger-source-unavailable、ledger-source-unidentified；claim lists 映為 ledger-partial-support、ledger-unsupported、ledger-not-assessed。任一 item 存在即 needs-review。
 
-- [ ] **Step 1: 新增正向與綁定的 RED tests**
+- [x] **Step 1: 新增正向與綁定的 RED tests**
 
 在 `tests/test_evidence_audit.py` 定義 `complete_pair() -> tuple[dict, dict]`，用純 SYNTH、example.org、2026-10-01 ledger、2026-10-02 checked、future due、current/opened/current/no-newer-found／全部 locator verified/fit appropriate。`test_complete_pair_has_recorded_checks_complete` assert validator=[]、status 完成。`test_hash_ignores_object_key_order_but_not_array_or_claim_changes` assert dict key reorder digest 相同，text／array reorder 不同；改文字不更新 audit hash 應含固定 code ledger-hash-mismatch。`test_audit_requires_exact_ids_and_per_source_locators` 參數化 missing/extra/duplicate sources、claims、source_checks，全部 invalid；兩來源各有 locator 才完整。
 
@@ -103,15 +103,15 @@ def test_complete_pair_has_recorded_checks_complete():
     assert summarize_evidence_audit(ledger, audit, as_of="2026-10-02")["status"] == "recorded-checks-complete"
 ```
 
-- [ ] **Step 2: RED**
+- [x] **Step 2: RED**
 
 Run `python -m pytest -q tests/test_evidence_audit.py --basetemp <fresh-external-basetemp>`；期望新 module／API 缺失。不要先寫 stub 讓測試忽略功能。
 
-- [ ] **Step 3: 實作純函式契約與判定**
+- [x] **Step 3: 實作純函式契約與判定**
 
 精確欄位與 enums 逐一採 Spec 第一節，不增 optional 欄位；hash 用指定 UTF-8 sorted-key JSON、保留 array 順序。先驗 ledger、限額、closed rows、dates、URLs、ID 集合與 access 相容矩陣，再算 summary。URL 只做字串／urlsplit 語法檢查，不 DNS resolve；拒絕 credentials、query、fragment、localhost、IP、單節點 host，未知 retrieval/status basis 允許 null。不要解析 notes 判斷真偽。
 
-- [ ] **Step 4: 核對 Step 1 已建立的狀態／負向／限額矩陣**
+- [x] **Step 4: 核對 Step 1 已建立的狀態／負向／限額矩陣**
 
 `test_ledger_review_items_are_never_cleared_by_audit` 覆蓋 due、partial-support、unsupported、not-assessed、未知 identifier；request-provided 無來源 N/A 仍 needs-review。`test_freshness_is_scope_aware`：historical/superseded + no-newer-found 完成，current/superseded needs-review；所有 scope not-performed needs-review；current/not-applicable invalid；historical/newer-found 不單獨阻擋。`test_recorded_overstatement_is_valid_but_needs_review` 保留 row 並回3；access 矩陣矛盾與 verified 無位置 invalid。參數化每個 Spec 限額的 exact/over 邊界、日期倒序、非 ISO、未來 observed date、未知欄位、bool／非字串 enums／空必要文字，verify不截斷。
 
@@ -127,15 +127,15 @@ def test_recorded_overstatement_is_valid_but_needs_review():
     assert "support-overstated" in summary["claim_review_items"][0]["reasons"]
 ```
 
-- [ ] **Step 5: 核對剩餘 RED 或已達 GREEN**
+- [x] **Step 5: 核對剩餘 RED 或已達 GREEN**
 
 Run core test module；若仍缺狀態處理，應有對應 assertion fail。全部已 GREEN 就記錄結果；不先削弱實作製造假 RED。
 
-- [ ] **Step 6: 補齊純函式規則並 GREEN**
+- [x] **Step 6: 補齊純函式規則並 GREEN**
 
 只補前一步證明缺失的契約／summary 規則，core tests 全 pass。用參數化縮短測試，勿把每個 enum 寫成一次相同流程。
 
-- [ ] **Step 7: 新增 CLI tests**
+- [x] **Step 7: 新增 CLI tests**
 
 `test_repository_and_packaged_cli_have_same_summary_and_exit` 對 complete/review/invalid 三狀態跑兩入口。`test_cli_never_opens_network_or_echoes_input` 以 synthetic sentinel 放在 claim/notes／unknown field／argv，assertstdout+stderr無 sentinel 或 path，invalid exactly固定訊息。`test_cli_rejects_inputs_inside_repository_or_installed_skill` 覆蓋兩輸入各自 protected-root 及 resolved path；外部 regular inputs 才接受。
 
@@ -150,15 +150,15 @@ def test_cli_never_echoes_unknown_arguments():
 
 CLI 常數定義為 ROOT/scripts/check_evidence_audit.py，ROOT 為測試檔的 parents[1]；packaged CLI 用 ROOT/skills/clin-nav/scripts/check_evidence_audit.py。
 
-- [ ] **Step 8: RED**
+- [x] **Step 8: RED**
 
 Run `python -m pytest -q tests/test_evidence_audit_cli.py --basetemp <fresh-external-basetemp>`，期望未實作 CLI／安全訊息的 assertions fail。
 
-- [ ] **Step 9: 實作安全 CLI 並 GREEN**
+- [x] **Step 9: 實作安全 CLI 並 GREEN**
 
 CLI 只用 B1 reader、core APIs 和既有可信 script-directory import pattern；main return int，兩入口 __main__ 都 `raise SystemExit(main())`。未識別參數與 abbreviation 拒絕，不回顯 ArgParse error 原文；CLI tests 全 pass。
 
-- [ ] **Step 10: 新增契約文件、純合成 example 與可選路由 tests**
+- [x] **Step 10: 新增契約文件、純合成 example 與可選路由 tests**
 
 `test_audit_reference_example_is_synthetic_valid_and_packaged`：example ledger 使用既有 evidence-ledger-example.json，checked_on 不早於其 prepared_on，hash 實際核對、配對 source/claim IDs 恰好一致；不是重做真實 pilot。`test_audit_route_is_optional_and_preserves_old_ledger_contract` 檢查 quick 沒有 audit 必填、舊 ledger JSON／schema 不變、Skill 只在 requested freshness/citation audit route 讀新 reference。
 
@@ -173,18 +173,18 @@ def test_audit_reference_example_is_synthetic_valid_and_packaged():
 
 同測試再 build synthetic candidate，assert ZIP包含兩個新 scripts、bounded_json 與 audit reference/example。
 
-- [ ] **Step 11: RED**
+- [x] **Step 11: RED**
 
 Run 新 doc/example/route tests，期望缺文件／路由失敗。
 
-- [ ] **Step 12: 新增 reference、example、必要路由並 GREEN**
+- [x] **Step 12: 新增 reference、example、必要路由並 GREEN**
 
 例子明示全部假設人工結果是合成契約資料。套件應自動包含 scripts/references，不變更 agents policy.products 或 implicit invocation；相關測試全 pass。
 
-- [ ] **Step 13: 完整 focused GREEN、parity 與相容性**
+- [x] **Step 13: 完整 focused GREEN、parity 與相容性**
 
 Run `python -m pytest -q tests/test_bounded_json.py tests/test_evidence_audit.py tests/test_evidence_audit_cli.py tests/test_evidence_ledger.py tests/test_skill_contract.py --basetemp <fresh-external-basetemp>`、validate_skill、public_boundary、reproducible package；期望全 pass／exit0。
 
-- [ ] **Step 14: Commit**
+- [x] **Step 14: Commit**
 
 Add 本 task 新檔與實際修改的路由／tests，commit `feat: add opt-in offline evidence audit`。不得改既有 pilot aggregate record 或 raw external artifacts。

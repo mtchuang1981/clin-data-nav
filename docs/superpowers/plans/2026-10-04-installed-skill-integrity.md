@@ -44,7 +44,7 @@
 - Produces: `hash_stream(stream: BinaryIO, *, max_bytes: int | None = None, chunk_bytes: int = 65536) -> str`
 - C2 使用 strict path mode；舊 installer wrapper 明確傳 False，保留錯誤訊息、大小 constants monkeypatch 與 ZIP metadata checks。
 
-- [ ] **Step 1: 新增純 helper RED tests**
+- [x] **Step 1: 新增純 helper RED tests**
 
 `test_canonical_bytes_normalize_only_text_line_endings` assert `b'a\r\nb\rc' -> b'a\nb\nc'`；NUL、invalid UTF-8 原樣；不 trim、不 Unicode normalize、不加結尾 LF。`test_strict_paths_reject_portable_aliases_before_open` 參數化 drive-relative、絕對、backslash、empty/dot/dotdot、重複 separator、ADS、尾端點/空白；strict mode 另拒 ASCII controls、DEL 與 Windows device basenames（含副檔名）。`test_manifest_records_reject_bool_size_and_duplicate_paths` 與 max_records 256/257；`test_hash_stream_is_bounded_and_uses_fixed_chunks` 檢查 exact/over與無 unbounded read。
 
@@ -56,19 +56,19 @@ def test_canonical_bytes_normalize_only_text_line_endings():
     assert canonical_package_bytes(b' a ') == b' a '
 ```
 
-- [ ] **Step 2: RED**
+- [x] **Step 2: RED**
 
 Run `python -m pytest -q tests/test_package_contract.py --basetemp <fresh-external-basetemp>`；期望 module/API 缺失。
 
-- [ ] **Step 3: 抽取現有 primitives，不重構 installation 流程**
+- [x] **Step 3: 抽取現有 primitives，不重構 installation 流程**
 
 canonical_bytes 直接採現行 packager演算法；現行 `_canonical_package_bytes(path)` 仍存在，改呼叫 bytes helper。Installer `_portable_path_key`、`_manifest_records`、`_hash_stream` 仍存在，forward既有 constants；`_validate_member` 只共用 name checks，仍保留 ZipInfo 型別／DOS directory／symlink checks與原 unsafe ZIP member訊息。新的strict mode只供diagnostic使用；原 preflight、atomic publish／rollback、PACKAGE_VERSION 與 parser不變。
 
-- [ ] **Step 4: GREEN 與位元組相容性**
+- [x] **Step 4: GREEN 與位元組相容性**
 
 Run `python -m pytest -q tests/test_package_contract.py tests/test_install_local.py tests/test_compare_packages.py --basetemp <fresh-external-basetemp>` 與 reproducible gate。新增 `test_packager_refactor_preserves_legacy_bytes`：同一 synthetic Skill／版本先正常 build，再用 test-only legacy canonical function 暫時 monkeypatch packager `_canonical_package_bytes` build reference，assert ZIP與manifest bytes完全一致。Reference function 只複製本 task 開始時的原 9 行 canonical 規則，不涉及私人檔案。若舊 tests 失敗，先修抽取／forward相容性，不改測試期待來掩蓋。
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 Add helper、兩 consumers 與 tests，commit `refactor: share narrow package validation primitives`。
 
@@ -87,7 +87,7 @@ Add helper、兩 consumers 與 tests，commit `refactor: share narrow package va
 
 Summary固定為 comparison、manifest_version、status、expected_file_count、matched_file_count、missing_file_count、extra_file_count、different_file_count、ignored_file_count、loaded_version。成功status依模式為 manifest-files-byte-identical／manifest-files-canonical-content-matches；差異 content-differs。只用整數計數，不回傳檔名、本機路徑、檔案內容或 archive-verified 宣告。
 
-- [ ] **Step 1: 建立可信 synthetic 安裝fixture與 RED tests**
+- [x] **Step 1: 建立可信 synthetic 安裝fixture與 RED tests**
 
 在test module定義 `make_installed_package(tmp_path: Path, *, version: str = "0.8.0") -> tuple[Path, Path, str]`：建立最小合法 synthetic Skill，以 build_package生成manifest，外部installed目錄填入該package的精確 member bytes；manifest hash用原始bytes計算，輸入都在repo外。`test_exact_manifest_files_match_without_writes` assert成功、loaded_version not-verified、目錄與manifest執行前後bytes／mtime不變；`test_trusted_historical_manifest_is_supported` 用0.7.0，不改installer舊版限制；`test_missing_extra_and_hash_changes_are_differences` assert對應計數及exit3。
 
@@ -104,11 +104,11 @@ def test_exact_manifest_files_match_without_writes(tmp_path):
 
 同測試在呼叫前後 snapshot 該 synthetic fixture 的 bytes／mtime，assert 相同；不要以實際已安裝 Skill 作 fixture。
 
-- [ ] **Step 2: RED**
+- [x] **Step 2: RED**
 
 Run `python -m pytest -q tests/test_verify_installation.py --basetemp <fresh-external-basetemp>`；期望新module/API不存在。
 
-- [ ] **Step 3: 先驗信任／manifest，再遍歷目錄**
+- [x] **Step 3: 先驗信任／manifest，再遍歷目錄**
 
 先拒root／manifest leaf links、相同或nested manifest、source-repo內manifest、錯誤hash格式；bounded讀manifest rawbytes核對expected SHA-256後strict parse。頂層恰name/version/archive/archive_sha256/files，name clin-nav、ASCII X.Y.Z、archive與version一致、archive hash64lowerhex；manifest_version至多80字元以避免無界輸出。records閉合、size非bool、至少SKILL.md，size與總數限額；所有path strict checks、NFC/casefold collision與ancestor conflict在任何installed file open前完成。拒絕空manifest不假稱有Skill。
 
@@ -116,7 +116,7 @@ Run `python -m pytest -q tests/test_verify_installation.py --basetemp <fresh-ext
 
 預期普通檔案用64KiB bounded stream與單檔／總檔限額，stat/open-fstat/post-stat核對 identity、size、mtime；發現變動invalid。raw bytes模式不作內容轉換；canonical mode先bounded讀bytes，再用C1同規則，依canonical size/hash比較。此為best-effort，不承諾防止具修改權限的惡意競態。
 
-- [ ] **Step 4: 核對 Step 1 已建立的安全／邊界矩陣**
+- [x] **Step 4: 核對 Step 1 已建立的安全／邊界矩陣**
 
 `test_manifest_trust_is_checked_before_member_open`（badexpectedhash、duplicatekeys、未知欄位、emptyfiles、missingSKILL.md、name/version/archive不符）；所有pathmutation先更新fixture manifest hash，真正測trust後的path validation。`test_links_are_rejected_even_under_ignored_cache` 覆蓋root／member／cache link，Windows可建立時測junction；無權限時真實skip，不冒稱測過。`test_declared_bytecode_is_not_ignored`、`test_extra_files_are_not_opened`、`test_directory_entry_and_depth_limits`、`test_canonical_matches_do_not_claim_bytes_identical`，以及openfstat／poststat／growth race三種。用monkeypatch或syntheticstat精確測reparse判斷，另記真實filesystem tests差異。
 
@@ -128,15 +128,15 @@ def test_empty_manifest_cannot_verify_an_empty_installation():
         validate_installation_manifest(payload)
 ```
 
-- [ ] **Step 5: 核對剩餘 RED 或已達 GREEN**
+- [x] **Step 5: 核對剩餘 RED 或已達 GREEN**
 
 Run 安全／邊界 tests；若尚缺 race／limits／path 行為，應有對應 assertion fail；全部已 GREEN 就記錄結果，不先刪除保護製造假 RED。此步前核對矩陣發現新缺失時，先加測試再修補。
 
-- [ ] **Step 6: 補齊 safety guards 並 GREEN**
+- [x] **Step 6: 補齊 safety guards 並 GREEN**
 
 每種manifest/檔案限額測exact與one-over，不以提高threshold讓測試通過。檔案size與mtime變化導致invalid，不計成普通內容差異；全部 core/safety tests pass。
 
-- [ ] **Step 7: 新增 CLI 安全輸出 tests**
+- [x] **Step 7: 新增 CLI 安全輸出 tests**
 
 `test_cli_exit_status_is_zero_three_or_two`、`test_cli_never_echoes_sensitive_input_or_paths` 覆蓋不合法argv、unreadable、unsafepath、manifest未知欄位sentinel；`test_cli_is_read_only_and_does_not_call_network_or_host` 用禁止呼叫guard與外部synthetictree前後比較。
 
@@ -151,15 +151,15 @@ def test_cli_never_echoes_sensitive_unknown_arguments():
 
 CLI 常數為 ROOT/scripts/verify_installation.py，ROOT 是 test file 的 parents[1]。
 
-- [ ] **Step 8: RED**
+- [x] **Step 8: RED**
 
 Run `python -m pytest -q tests/test_verify_installation_cli.py --basetemp <fresh-external-basetemp>`，期望未完成 CLI 安全行為而 assertion fail。
 
-- [ ] **Step 9: 實作 CLI 並 GREEN**
+- [x] **Step 9: 實作 CLI 並 GREEN**
 
 safe argparse allow_abbrev false；summary不同result即0或3，所有invalid只有固定訊息與exit2；不追查host、安裝位置或MCP，CLI tests全 pass。
 
-- [ ] **Step 10: 新增選用文件 tests**
+- [x] **Step 10: 新增選用文件 tests**
 
 在 `tests/test_public_core_docs.py` 加 `test_integrity_diagnostic_is_optional_and_cannot_verify_loaded_version`，檢查兩語comparison指令／manifest trust來源／loaded-not-verified／canonical非byteidentical／ignored bytecode限制，以及正常安裝仍不需Python。
 
@@ -175,18 +175,18 @@ def test_integrity_diagnostic_is_optional_and_cannot_verify_loaded_version(name)
 
 再按兩語說明核對 optional／no runtime dependency／bytecode caveat，不要求全文字面相同。
 
-- [ ] **Step 11: RED**
+- [x] **Step 11: RED**
 
 Run 新 docs test；期望缺工具／說明而 assertion fail。
 
-- [ ] **Step 12: 補雙語簡短章節與 README 連結**
+- [x] **Step 12: 補雙語簡短章節與 README 連結**
 
 不要預填新開發candidate hash、把main當已發布v0.8.0、或建議co-locatedreceipt作信任根。
 
-- [ ] **Step 13: Focused GREEN**
+- [x] **Step 13: Focused GREEN**
 
 Run `python -m pytest -q tests/test_verify_installation.py tests/test_verify_installation_cli.py tests/test_package_contract.py tests/test_install_local.py tests/test_public_core_docs.py --basetemp <fresh-external-basetemp>`、validate_skill、public_boundary、reproducible gate。期望全部pass／exit0。
 
-- [ ] **Step 14: Commit並交共同驗收**
+- [x] **Step 14: Commit並交共同驗收**
 
 Add新工具、測試及實際文件修改，commit `feat: add optional read-only installed skill verification`，再依索引跑完整gates與全分支review。成功只限contract/content checks；不merge、不push、不發布。
