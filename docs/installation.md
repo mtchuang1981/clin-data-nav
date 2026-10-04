@@ -290,6 +290,42 @@ refused. The packager and installer are contributor/release tooling, so this
 path requires Python 3.11 and the setup in
 [CONTRIBUTING.md](../CONTRIBUTING.md).
 
+## Optional read-only installation diagnosis
+
+Normal Skill installation and instruction-only use does not require Python.
+This optional contributor tool runs from a complete source checkout with the
+supported Python 3.11 environment. It is a development addition, not a change
+to the immutable published v0.8.0 assets. Select exactly one installed directory:
+
+```text
+python scripts/verify_installation.py --skill-dir <selected-directory> --manifest <trusted-external-manifest.json> --manifest-sha256 <published-manifest-sha256> --comparison bytes
+```
+
+Obtain the manifest and its raw-byte SHA-256 from a trusted publication. A
+self-created receipt beside mutable files is not a trust root. The manifest
+must be outside the selected Skill and source repository; do not copy the
+candidate hash or assume a locally generated manifest is an official release.
+Trusted historical manifests are supported. The tool does not download, install,
+overwrite, restart the host, call MCP or inspect other installation directories.
+
+Exit 0 reports `manifest-files-byte-identical`; exit 3 reports `content-differs`
+with missing/extra/different counts. Exit 2 means invalid or unsafe input, a
+limit, read error or detected concurrent change. `--comparison canonical-text`
+only normalizes CRLF/CR to LF for valid UTF-8 without NUL: success is
+`manifest-files-canonical-content-matches`, not byte-identical. Binary bytes,
+whitespace and Unicode are not otherwise normalized.
+
+Unlisted `__pycache__`, `.pyc` and `.pyo` files are counted as ignored (declared
+manifest members are always compared). Links/junctions/reparse points are
+rejected even in ignored caches. Empty directories are not manifest files.
+Limits: 1 MiB manifest, 256 records, 10 MiB/file, 40 MiB expected-file total,
+4,096 traversed entries, depth 32. Change detection is best-effort, not an atomic
+or malicious-race-proof snapshot. It does not verify an archive (no ZIP input),
+bytecode integrity or runtime integrity. Always `loaded_version: not-verified`:
+host discovery, duplicate Skill IDs and actual reloading require separate host
+confirmation. A successful comparison does not prove scientific correctness or
+deployment readiness.
+
 ## Troubleshooting
 
 Treat each failure at the stage where it occurs. Do not bypass verification or

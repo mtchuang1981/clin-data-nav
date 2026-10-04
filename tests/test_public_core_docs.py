@@ -77,3 +77,16 @@ def test_research_gaps_do_not_require_physical_execution_gates():
     research = text.split("## Research Design", 1)[1].split("\n## Implementation Specification", 1)[0]
     assert "design-appropriate review" in research
     assert "does not require metadata or fixtures" in research
+
+
+@pytest.mark.parametrize(("name", "optional", "python", "trust", "bytes_limit"), [
+    ("installation.md", "Optional read-only", "does not require Python", "trusted publication", "not byte-identical"),
+    ("installation.zh-TW.md", "選用的唯讀", "不需要 Python", "可信發布依據", "不代表逐位元組相同"),
+])
+def test_integrity_diagnostic_is_optional_and_cannot_verify_loaded_version(name, optional, python, trust, bytes_limit):
+    text = (ROOT / "docs" / name).read_text(encoding="utf-8")
+    for required in ("scripts/verify_installation.py", "--manifest-sha256", "--comparison", "canonical-text", "loaded_version: not-verified", "__pycache__", ".pyc", ".pyo", optional, python, trust, bytes_limit):
+        assert required in text
+    assert "self-created receipt" in text if name == "installation.md" else "自行產生的 receipt" in text
+    readme = (ROOT / ("README.md" if name == "installation.md" else "README.zh-TW.md")).read_text(encoding="utf-8")
+    assert "#optional-read-only-installation-diagnosis" in readme if name == "installation.md" else "#選用的唯讀安裝診斷" in readme

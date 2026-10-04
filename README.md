@@ -15,6 +15,8 @@ npx skills add mtchuang1981/clin-data-nav
 See the [installation guide](docs/installation.md) for Node.js prerequisites, updates, verified ZIP installation, and troubleshooting.
 Existing users should follow its [Skill ID migration procedure](docs/installation.md#migrate-from-the-previous-skill-id) before reinstalling.
 
+Contributors may use the [optional read-only installation diagnosis](docs/installation.md#optional-read-only-installation-diagnosis) to compare selected files with a trusted manifest; it cannot confirm the host's loaded version.
+
 ## First success
 
 Enter this prompt in Codex:

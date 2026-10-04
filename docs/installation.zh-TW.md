@@ -267,6 +267,37 @@ python scripts/install_local.py \
 路徑需要 Python 3.11 及
 [CONTRIBUTING.md](../CONTRIBUTING.md) 所述的環境。
 
+## 選用的唯讀安裝診斷
+
+正常安裝與指令型 Skill 的一般使用不需要 Python。這是選用的貢獻者工具，
+在完整 source checkout 與支援的 Python 3.11 環境執行；屬本機開發新增能力，
+沒有更動已發布、不可變的 v0.8.0 產物。每次只指定一個安裝目錄：
+
+```text
+python scripts/verify_installation.py --skill-dir <selected-directory> --manifest <trusted-external-manifest.json> --manifest-sha256 <published-manifest-sha256> --comparison bytes
+```
+
+manifest 與其原始位元組 SHA-256 必須來自可信發布依據。同一可修改目錄內
+自行產生的 receipt 不是信任根。manifest 須位於所選 Skill 及 source repository
+之外；不要預填開發候選套件的 hash，也不要把自製 manifest 當成官方產物。
+可使用可信歷史版本的 manifest。工具不下載、不安裝、不覆寫、不重啟 host、
+不呼叫 MCP，也不掃描其他安裝目錄。
+
+exit 0 回報 `manifest-files-byte-identical`；exit 3 回報 `content-differs`
+與 missing／extra／different 計數；exit 2 表示不合法或不安全輸入、超限、讀取
+錯誤或偵測到並行變動。`--comparison canonical-text` 只將無 NUL、有效 UTF-8
+檔案中的 CRLF／CR 轉為 LF；成功狀態為 `manifest-files-canonical-content-matches`，
+不代表逐位元組相同。不另行改寫二進位、去除空白或正規化 Unicode。
+
+未列在 manifest 的 `__pycache__`、`.pyc`、`.pyo` 計為 ignored；manifest 宣告
+的檔案仍須核對。即使在忽略的 cache 中，link／junction／reparse point 仍拒收。
+空目錄不屬於 manifest 檔案。限額為 manifest 1 MiB、256 筆、單檔 10 MiB、
+預期檔案合計 40 MiB、遍歷 4,096 entries、深度 32。並行變動偵測是 best-effort，
+不是原子快照，也不保證防住惡意競態。不接收 ZIP，不能宣稱 archive 已驗證，
+也不證明 bytecode 或執行環境完整性。固定回報 `loaded_version: not-verified`；
+同名 Skill、host discovery 與是否真的重新載入仍須由 host 另行確認。內容一致
+不代表科學正確或部署就緒。
+
 ## 疑難排解
 
 請在發生錯誤的階段處理原因。不要略過驗證，也不要在尚未釐清目的目錄內容前
