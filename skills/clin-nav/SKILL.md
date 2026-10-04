@@ -141,6 +141,12 @@ snippet, citation, user mention, or model memory remains `not-reviewed`.
 Use `null` when a stable source identifier is unknown; do not invent a DOI,
 URL, URN, or request-reference surrogate.
 
+Read `references/evidence-audit.md` only when the user requests source-freshness or citation review
+records. Produce its optional companion audit outside the Skill and repository,
+bound to the validated ledger. Record actual authorized review, not presumed
+checks; its offline checker validates consistency, not source truth, and cannot
+clear the ledger's existing review gaps. Quick explanations need no audit by default.
+
 ## Convert Evidence into a Data Contract for an Implementation Specification
 
 For an `implementation specification`, translate confirmed evidence into an

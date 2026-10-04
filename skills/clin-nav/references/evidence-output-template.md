@@ -50,6 +50,11 @@ in `evidence-ledger.md` as a separate repository-external artifact. The normal
 response remains readable prose; the ledger does not replace the evidence table
 or turn unreviewed sources into evidence.
 
+Only for requested source-freshness or citation review records, attach the
+optional companion defined in `evidence-audit.md` outside protected roots. It
+records human review; its offline consistency result cannot prove source truth
+or remove existing ledger gaps. Do not add it by default to ordinary answers.
+
 ## Research Design
 
 ```text

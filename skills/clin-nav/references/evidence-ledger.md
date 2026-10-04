@@ -1,5 +1,9 @@
 # Evidence Ledger Contract
 
+For requested source-freshness or citation review records, use the optional
+companion in `evidence-audit.md`. It binds to this unchanged schema `1` and unions
+all existing review items; it cannot turn unreviewed evidence into verified facts.
+
 Use this optional JSON ledger when the user requests a machine-auditable or
 repeatable evidence record for an evidence navigation, research design, or
 implementation specification. Keep quick explanations concise unless the user
