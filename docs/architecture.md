@@ -108,8 +108,11 @@ for checkout and validation; the workflow receives no project secrets.
 
 The validation workflow runs the same four-command verification set on Ubuntu
 and Windows with read-only repository permissions. The manually dispatched
-release workflow checks an existing annotated, version-matched tag that is
-reachable from `origin/main` and repeats both platform jobs against its pinned
+release workflow accepts dispatch only from `refs/heads/main`. Every job that
+executes repository code checks out the immutable dispatch commit `github.sha`.
+The tag is only a verification and publication identifier: the tag does not control checkout.
+It must be annotated, version-matched, point to that checkout HEAD, and be
+reachable from `origin/main`. Both platform jobs validate the same dispatch
 commit. A read-only build job creates and verifies the deterministic ZIP,
 manifest, static Release notes, and transit checksum file, then uploads that
 bundle under an immutable artifact ID. Only the dependent writer job has

@@ -116,7 +116,7 @@ npx skills update clin-nav --project --yes
 ## 目前已驗證的 v0.8.0 Release 產物核對
 
 目前已驗證且不可變的 Release 是 `v0.8.0`。確切的已發布產物為
-`clin-nav-0.7.0.zip` 與 `clin-nav-0.7.0.manifest.json`。下列指令會從同一個
+`clin-nav-0.8.0.zip` 與 `clin-nav-0.8.0.manifest.json`。下列指令會從同一個
 不可變 Release 下載兩個產物，先用已發布的 SHA-256 核對 manifest，再用
 已發布的 SHA-256 與 manifest 內的 `archive_sha256` 交叉核對 ZIP，通過後才
 安裝。這些值綁定可重現的 v0.8.0 產物，以及 tagged source 通過的

@@ -134,7 +134,7 @@ follow the stage-specific recovery below instead of reinstalling blindly.
 ## Current verified v0.8.0 Release artifact verification
 
 The current verified immutable Release is `v0.8.0`. Its exact published assets
-are `clin-nav-0.7.0.zip` and `clin-nav-0.7.0.manifest.json`. The commands below
+are `clin-nav-0.8.0.zip` and `clin-nav-0.8.0.manifest.json`. The commands below
 download both assets from that same immutable Release, verify the manifest
 against its published SHA-256, and then verify the ZIP against both its
 published SHA-256 and the manifest's `archive_sha256` before installation.
