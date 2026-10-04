@@ -18,8 +18,10 @@ from zipfile import ZipFile, ZipInfo
 
 try:
     from scripts.validate_skill import validate_skill
+    import scripts.package_contract as package_contract
 except ModuleNotFoundError:  # Direct execution from the scripts directory.
     from validate_skill import validate_skill
+    import package_contract
 
 
 SKILL_NAME = "clin-nav"
@@ -57,24 +59,14 @@ class InstallRollbackError(RuntimeError):
 
 def _validate_member(info: ZipInfo) -> None:
     name = info.filename
-    path = PurePosixPath(name)
-    windows_path = PureWindowsPath(name)
-    components = name.split("/")
+    try:
+        package_contract.validate_member_name(name, reject_windows_devices=False)
+    except ValueError:
+        raise ValueError(f"unsafe ZIP member: {name}") from None
     unix_mode = (info.external_attr >> 16) & 0xFFFF
     file_type = stat.S_IFMT(unix_mode)
     if (
-        not name
-        or "\\" in name
-        or windows_path.drive
-        or path.is_absolute()
-        or windows_path.is_absolute()
-        or any(component in {"", ".", ".."} for component in components)
-        or any(
-            component.endswith((".", " ")) or ":" in component
-            for component in components
-        )
-        or path.as_posix() != name
-        or info.is_dir()
+        info.is_dir()
         or bool(info.external_attr & 0x10)
         or file_type not in {0, stat.S_IFREG}
     ):
@@ -82,10 +74,7 @@ def _validate_member(info: ZipInfo) -> None:
 
 
 def _portable_path_key(name: str) -> tuple[str, ...]:
-    return tuple(
-        unicodedata.normalize("NFC", component).casefold()
-        for component in name.split("/")
-    )
+    return package_contract.portable_path_key(name)
 
 
 def _load_manifest(manifest_path: Path) -> dict:
@@ -109,45 +98,11 @@ def _load_manifest(manifest_path: Path) -> dict:
 
 
 def _manifest_records(manifest: dict) -> dict[str, dict]:
-    files = manifest.get("files")
-    if not isinstance(files, list):
-        raise ValueError("manifest files must be a list")
-    if len(files) > MAX_MANIFEST_FILE_COUNT:
-        raise ValueError("manifest member count limit exceeded")
-
-    records: dict[str, dict] = {}
-    for record in files:
-        if not isinstance(record, dict) or set(record) != {
-            "path",
-            "sha256",
-            "size",
-        }:
-            raise ValueError("invalid manifest file record")
-        path = record["path"]
-        digest = record["sha256"]
-        size = record["size"]
-        if (
-            not isinstance(path, str)
-            or not path
-            or not isinstance(digest, str)
-            or len(digest) != 64
-            or any(character not in "0123456789abcdef" for character in digest)
-            or not isinstance(size, int)
-            or isinstance(size, bool)
-            or size < 0
-        ):
-            raise ValueError("invalid manifest file record")
-        if path in records:
-            raise ValueError("duplicate manifest file path")
-        records[path] = record
-    return records
+    return package_contract.manifest_records(manifest, max_records=MAX_MANIFEST_FILE_COUNT)
 
 
 def _hash_stream(stream) -> str:
-    digest = hashlib.sha256()
-    while chunk := stream.read(READ_CHUNK_BYTES):
-        digest.update(chunk)
-    return digest.hexdigest()
+    return package_contract.hash_stream(stream, chunk_bytes=READ_CHUNK_BYTES)
 
 
 def _preflight_members(
