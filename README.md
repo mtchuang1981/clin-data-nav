@@ -70,11 +70,18 @@ publish a Plugin.
 | Provider-neutral synthetic model comparison | [Public simulation benchmark](evals/benchmark/README.md) |
 | Contribute and validate | [Contributing](CONTRIBUTING.md) |
 | Report a security concern | [Security](SECURITY.md) |
+| Share a safe installation or task-completion self-report | [Community usability feedback](https://github.com/mtchuang1981/clin-data-nav/issues/new?template=usability-feedback.yml) |
 | Prepare an approved release | [Release process](docs/release.md) |
 | Review v0.4.0 changes | [Static release notes](docs/releases/0.4.0.md) and [changelog](CHANGELOG.md) |
 | Check current product guidance | [OpenAI Skills in ChatGPT](https://help.openai.com/en/articles/20001066) and [Codex Skill documentation](https://learn.chatgpt.com/docs/build-skills) |
 
 ## Evidence, public boundary, and limitations
+
+Community feedback is an unverified self-report, never part of formal
+effectiveness aggregates. The problem description is optional when completed
+without a problem. Share only a brief public/synthetic workflow summary, never
+raw prompts, model responses, logs, attachments, patient data, private schema,
+or credentials; the form cannot guarantee sensitive content will be blocked.
 
 The Skill ranks governing sources ahead of implementation literature and keeps
 confirmed facts, assumptions, limitations, and provenance visible. The

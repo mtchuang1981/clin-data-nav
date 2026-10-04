@@ -74,20 +74,23 @@ body:
       value: >-
         **Sensitive-data warning:** Do not include patient data, private schema,
         an internal document, condition key, task pack, nonce, API key, access
-        token, credential, or any other sensitive content below.
+        token, credential, or any other sensitive content below. Do not include
+        raw prompts, model responses, logs, screenshots, or attachments.
   - type: textarea
     id: problem_reproduction
     attributes:
       label: Problem or reproduction description
-      description: Describe only the public workflow problem and safe reproduction steps, in at most 1000 characters.
+      description: Optional; describe a problem using only public or synthetic workflow steps, in at most 1000 characters. Leave blank when completed without a problem.
       placeholder: Brief safe description using synthetic or public context only
+      render: text
     validations:
-      required: true
+      required: false
   - type: checkboxes
     id: acknowledgement
     attributes:
       label: Sensitive-content acknowledgement
       options:
-        - label: I confirm this report contains no patient data, private schema, internal document, condition key, task pack, nonce, API key, access token, credential, or other sensitive content.
+        - label: I confirm this report contains no patient data, private schema, internal document, condition key, task pack, nonce, API key, access token, credential, other sensitive content, raw prompts, model responses, logs, screenshots, or attachments.
+          required: true
     validations:
       required: true
