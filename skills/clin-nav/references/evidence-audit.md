@@ -55,7 +55,9 @@ entries and explanatory notes. Current scope cannot use not-applicable. Other
 scopes may, but that never waives actual source, citation or correction review.
 
 URL syntax checks reject credentials, query, fragment, localhost, IP literals
-and single-label hosts. No DNS: an ordinary domain is NOT proof of public access.
+and single-label hosts. Host boundary checks follow IDNA/case/trailing-dot
+normalization; nonstandard numeric IPv4 aliases (short, octal, hex) are rejected
+too. No DNS: an ordinary domain is NOT proof of public access.
 Never provide private/login/signed URLs or tokens; use a non-secret public entry
 point. Null retrieval/status URL is allowed; absent status basis needs review.
 

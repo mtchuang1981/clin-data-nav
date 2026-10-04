@@ -389,3 +389,23 @@ def test_direct_api_still_bounds_serialized_ledger(core):
     ledger["claims"][0]["claim"] += "a"
     rebind(ledger, audit)
     assert core.validate_evidence_audit(ledger, audit, as_of=AS_OF)
+
+
+@pytest.mark.parametrize("slot", ["retrieval_url", "status_basis_url", "entry_points"])
+@pytest.mark.parametrize("url", ["https://１２７.０.０.１/x", "https://127.1/x", "https://0177.0.0.1/x", "https://0x7f.0.0.1/x", "https://example.ｌｏｃａｌｈｏｓｔ/x", "https://１２７.0x0.0.1/x"])
+def test_normalized_and_nonstandard_ip_or_localhost_rejected_in_every_url_slot(core, slot, url):
+    ledger, audit = complete_pair()
+    source = audit["sources"][0]
+    if slot == "entry_points":
+        source["newer_source_search"][slot] = [url]
+    else:
+        source[slot] = url
+    errors = core.validate_evidence_audit(ledger, audit, as_of=AS_OF)
+    assert errors and url not in json.dumps(errors)
+
+
+@pytest.mark.parametrize("url", ["https://bücher.example/x", "https://123.example/x", "https://example.org./x"])
+def test_normalized_ordinary_domains_remain_valid_without_dns(core, url):
+    ledger, audit = complete_pair()
+    audit["sources"][0]["retrieval_url"] = url
+    assert core.validate_evidence_audit(ledger, audit, as_of=AS_OF) == []

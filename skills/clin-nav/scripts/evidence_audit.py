@@ -68,7 +68,8 @@ def _url(value: object) -> bool:
         if (parsed.scheme != "https" or not host or parsed.username is not None or parsed.password is not None
                 or "?" in value or "#" in value or parsed.port == 0):
             return False
-        host = host.rstrip(".").lower()
+        # Normalize before boundary checks: IDNA can map fullwidth IP/localhost.
+        host = host.encode("idna").decode("ascii").rstrip(".").lower()
         if host == "localhost" or host.endswith(".localhost") or "." not in host:
             return False
         try:
@@ -76,7 +77,11 @@ def _url(value: object) -> bool:
             return False
         except ValueError:
             pass
-        labels = host.encode("idna").decode("ascii").split(".")
+        labels = host.split(".")
+        # Conservatively exclude numeric IPv4 aliases (short, octal, hex),
+        # without DNS or platform-dependent network address resolution.
+        if all(re.fullmatch(r"(?:[0-9]+|0x[0-9a-f]+)", label) for label in labels):
+            return False
         return all(re.fullmatch(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?", label) for label in labels)
     except (ValueError, UnicodeError):
         return False
