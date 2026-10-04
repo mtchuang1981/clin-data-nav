@@ -2,7 +2,7 @@
 
 日期：2026-10-04
 
-狀態：功能範圍已獲同意；本書面規格待使用者審閱
+狀態：書面規格已核准（2026-10-04）；實作計畫待使用者審閱
 
 隔離分支：`codex/public-core-usability`
 
@@ -245,7 +245,7 @@ git diff --check
 
 ## 實作前基線紀錄與剩餘風險
 
-本輪只新增本文件，沒有修改 Skill 或 Python 行為。針對 installer、ledger、Skill contract 的基線為 104 passed；validate-skill、public-boundary 與 reproducible-package 三項獨立 gate 通過。
+規格階段僅新增本文件，沒有修改 Skill 或 Python 行為。針對 installer、ledger、Skill contract 的基線為 104 passed；validate-skill、public-boundary 與 reproducible-package 三項獨立 gate 通過。
 
 預設 pytest 暫存目錄因 Windows ACL 無法使用；改用全新的專用路徑，不修改 ACL。第一次完整執行使用另一個 Git checkout 下的暫存目錄，結果為 1,367 passed、5 skipped、2 failed。兩項失敗都是 public-boundary 的 Git metadata failure 測試。
 
