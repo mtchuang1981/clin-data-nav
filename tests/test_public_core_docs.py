@@ -8,6 +8,29 @@ import re
 ROOT = Path(__file__).resolve().parents[1]
 
 
+@pytest.mark.parametrize(("name", "heading", "action"), [
+    ("README.md", "Documentation", "Review"),
+    ("README.zh-TW.md", "文件導覽", "查看"),
+])
+def test_readme_release_navigation_matches_latest_published_changelog(name, heading, action):
+    changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
+    # Dated release entries exclude Unreleased and prerelease headings.
+    versions = re.findall(r"(?m)^## ([0-9]+\.[0-9]+\.[0-9]+) - [0-9]{4}-[0-9]{2}-[0-9]{2}$", changelog)
+    assert versions, "CHANGELOG.md must contain a dated release"
+    latest = max(versions, key=lambda version: tuple(map(int, version.split("."))))
+    readme = (ROOT / name).read_text(encoding="utf-8")
+    navigation = readme.split(f"## {heading}\n", 1)[1].split("\n## ", 1)[0]
+    rows = [row for row in navigation.splitlines() if row.startswith(f"| {action} v")]
+    assert len(rows) == 1, f"{name}: expected one release navigation row"
+    row = rows[0]
+    assert re.findall(r"\bv([0-9]+\.[0-9]+\.[0-9]+)\b", row) == [latest], name
+    target = f"docs/releases/{latest}.md"
+    links = re.findall(r"\[[^\]]+\]\(([^)]+)\)", row)
+    assert [link for link in links if link.startswith("docs/releases/")] == [target], name
+    assert (ROOT / target).is_file(), f"{name}: release notes target must exist"
+    assert "CHANGELOG.md" in links, f"{name}: preserve complete release history"
+
+
 @pytest.mark.parametrize(("name", "heading"), [
     ("installation.md", "## Current verified v0.9.0 Release artifact verification"),
     ("installation.zh-TW.md", "## 目前已驗證的 v0.9.0 Release 產物核對"),
