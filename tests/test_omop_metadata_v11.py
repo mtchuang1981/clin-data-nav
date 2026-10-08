@@ -7,6 +7,8 @@ from pathlib import Path
 import subprocess
 import sys
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "skills/clin-nav/scripts"))
 
@@ -201,3 +203,225 @@ def test_v11_cli_keeps_incompatible_exit_three_with_accepted_evidence(tmp_path):
     assert result["status"] == "incompatible"
     assert result["dqd_foreign_key_evidence_status"] == "accepted-attestation"
     assert "snapshot_binding_sha256" not in result
+
+
+DUCKDB_LIMITATION = "duckdb-cyclic-fk-ddl-limited"
+
+
+def assess(capabilities, inspection):
+    return assess_connector(
+        lambda **kwargs: json.dumps(capabilities).encode(),
+        lambda request: json.dumps(inspection).encode(),
+        catalog=CATALOG, as_of=AS_OF, contract_version="1.1",
+    )
+
+
+def test_v11_duckdb_code_reports_attestation_without_fk_promotion():
+    capabilities, inspection = sample()
+    inspection["limitation_codes"] = [DUCKDB_LIMITATION]
+    for table in inspection["tables"]:
+        table["foreign_key_status"] = "missing"
+    rehash(inspection)
+    assert validate(capabilities, inspection) == ()
+    result = assess(capabilities, inspection)
+    assert result["limitation_codes"] == [DUCKDB_LIMITATION]
+    assert result["status"] == "incompatible"
+    assert result["foreign_key_mismatch_count"] == 13
+    assert result["dqd_foreign_key_evidence_status"] == "accepted-attestation"
+
+
+def test_v10_still_rejects_duckdb_code():
+    capabilities = json.loads((FIXTURES / "capabilities-safe.json").read_text())
+    inspection = json.loads((FIXTURES / "inspection-compatible.json").read_text())
+    inspection["limitation_codes"] = [DUCKDB_LIMITATION]
+    rehash(inspection)
+    assert "unknown-enum" in validate(capabilities, inspection)
+
+
+def test_v11_missing_fk_does_not_infer_duckdb_code():
+    capabilities, inspection = sample()
+    inspection["tables"][0]["foreign_key_status"] = "missing"
+    rehash(inspection)
+    result = assess(capabilities, inspection)
+    assert result["status"] == "incompatible"
+    assert DUCKDB_LIMITATION not in result["limitation_codes"]
+
+
+def test_v11_duckdb_code_does_not_hide_other_structural_differences():
+    capabilities, inspection = sample()
+    inspection["limitation_codes"] = [DUCKDB_LIMITATION]
+    inspection["tables"][0]["primary_key_status"] = "different"
+    rehash(inspection)
+    result = assess(capabilities, inspection)
+    assert result["status"] == "incompatible"
+    assert result["primary_key_mismatch_count"] == 1
+    assert result["foreign_key_mismatch_count"] == 0
+
+
+@pytest.mark.parametrize("evidence, expected", [(None, "unavailable"), (1, "failed-checks")])
+def test_v11_duckdb_code_does_not_supply_or_repair_evidence(evidence, expected):
+    capabilities, inspection = sample()
+    inspection["limitation_codes"] = [DUCKDB_LIMITATION]
+    if evidence is None:
+        inspection["dqd_foreign_key_evidence"] = None
+    else:
+        inspection["dqd_foreign_key_evidence"]["failed_fk_count"] = evidence
+    rehash(inspection)
+    result = assess(capabilities, inspection)
+    assert result["status"] == "compatible"
+    assert result["dqd_foreign_key_evidence_status"] == expected
+
+
+@pytest.mark.parametrize("scan", ["partial", "failed"])
+def test_v11_duckdb_code_cannot_repair_scan_or_leak_summary(scan):
+    capabilities, inspection = sample()
+    inspection["limitation_codes"] = [DUCKDB_LIMITATION]
+    inspection["scan_status"] = scan
+    rehash(inspection)
+    assert assess(capabilities, inspection) == {
+        "contract_version": "1.1", "status": "unavailable",
+        "validation_codes": [], "limitation_codes": [DUCKDB_LIMITATION],
+    }
+
+
+@pytest.mark.parametrize("codes, error", [
+    ([DUCKDB_LIMITATION, DUCKDB_LIMITATION], "duplicate-array"),
+    ([DUCKDB_LIMITATION, "constraint-metadata-limited"], "unsorted-array"),
+    ([DUCKDB_LIMITATION, "not-an-approved-code"], "unknown-enum"),
+    ([DUCKDB_LIMITATION] * 65, "array-too-long"),
+])
+def test_v11_duckdb_code_preserves_closed_array_checks(codes, error):
+    capabilities, inspection = sample()
+    inspection["limitation_codes"] = codes
+    rehash(inspection)
+    result = assess(capabilities, inspection)
+    assert result["status"] == "invalid-response"
+    assert error in result["validation_codes"]
+    assert "limitation_codes" not in result
+
+
+def test_v11_duckdb_code_is_hash_bound():
+    capabilities, inspection = sample()
+    inspection["limitation_codes"] = [DUCKDB_LIMITATION]
+    assert "summary-hash-mismatch" in validate(capabilities, inspection)
+    rehash(inspection)
+    assert validate(capabilities, inspection) == ()
+
+
+def test_v11_duckdb_code_cli_preserves_exit_three(tmp_path):
+    capabilities, inspection = sample()
+    inspection["limitation_codes"] = [DUCKDB_LIMITATION]
+    inspection["tables"][10]["foreign_key_status"] = "missing"
+    rehash(inspection)
+    cap_path, inspection_path = tmp_path / "cap.json", tmp_path / "inspection.json"
+    cap_path.write_text(json.dumps(capabilities), encoding="utf-8")
+    inspection_path.write_text(json.dumps(inspection), encoding="utf-8")
+    result = subprocess.run([
+        sys.executable, str(ROOT / "scripts/check_omop_metadata.py"),
+        "--capabilities", str(cap_path), "--input", str(inspection_path),
+        "--as-of", AS_OF, "--contract-version", "1.1",
+    ], capture_output=True, text=True, check=False)
+    assert result.returncode == 3
+    summary = json.loads(result.stdout)
+    assert summary["status"] == "incompatible"
+    assert summary["limitation_codes"] == [DUCKDB_LIMITATION]
+    assert summary["dqd_foreign_key_evidence_status"] == "accepted-attestation"
+    assert result.stderr == ""
+
+
+def test_portable_schema_declares_duckdb_code_only_in_v11():
+    schema = json.loads((ROOT / "skills/clin-nav/references/omop-metadata-response.schema.json").read_text())
+    summary = schema["$defs"]["inspectionSummary"]
+    # Read the portable version condition, independently of the Python enums.
+    version_rule = next((
+        rule for rule in summary["allOf"]
+        if "properties" in rule.get("then", {})
+        and "limitation_codes" in rule["then"]["properties"]
+    ), None)
+    assert version_rule is not None, "schema needs version-specific limitation enums"
+    assert version_rule["if"]["properties"]["contract_version"]["const"] == "1.1"
+    allowed_11 = version_rule["then"]["properties"]["limitation_codes"]["items"]["enum"]
+    allowed_10 = version_rule["else"]["properties"]["limitation_codes"]["items"]["enum"]
+    assert DUCKDB_LIMITATION in allowed_11
+    assert DUCKDB_LIMITATION not in allowed_10
+    assert set(allowed_10) == {
+        "constraint-metadata-limited", "metadata-permission-limited",
+        "snapshot-incomplete", "tbls-normalization-limited",
+    }
+    assert set(allowed_11) == set(allowed_10) | {DUCKDB_LIMITATION}
+    assert set(allowed_11) <= set(summary["properties"]["limitation_codes"]["items"]["enum"])
+
+
+@pytest.mark.parametrize("version", ["1.0", "1.1"])
+@pytest.mark.parametrize("failure", [
+    "capabilities-bytes", "capabilities-json", "capabilities-size", "unsafe",
+    "catalog", "inspection-exception", "inspection-bytes", "inspection-json",
+    "inspection-size", "inspection-invalid", "hard-max",
+])
+def test_requested_version_is_preserved_on_failures(version, failure):
+    capabilities, inspection = sample()
+    if version == "1.0":
+        capabilities = json.loads((FIXTURES / "capabilities-safe.json").read_text())
+        inspection = json.loads((FIXTURES / "inspection-compatible.json").read_text())
+    cap_raw, inspection_raw = json.dumps(capabilities).encode(), json.dumps(inspection).encode()
+    catalog, maximum = CATALOG, 262144
+    if failure == "capabilities-bytes":
+        cap_raw = None
+    elif failure == "capabilities-json":
+        cap_raw = b'{"SYNTHETIC_PRIVATE_MARKER":'
+    elif failure == "capabilities-size":
+        cap_raw = b" " * 262145
+    elif failure == "unsafe":
+        capabilities["row_access"] = True
+        cap_raw = json.dumps(capabilities).encode()
+    elif failure == "catalog":
+        catalog = {}
+    elif failure == "inspection-bytes":
+        inspection_raw = None
+    elif failure == "inspection-json":
+        inspection_raw = b'{"SYNTHETIC_PRIVATE_MARKER":'
+    elif failure == "inspection-size":
+        inspection_raw = b" " * 262145
+    elif failure == "inspection-invalid":
+        inspection["summary_sha256"] = "0" * 64
+        inspection_raw = json.dumps(inspection).encode()
+    elif failure == "hard-max":
+        maximum = 0
+
+    def inspect(request):
+        if failure == "inspection-exception":
+            raise RuntimeError("SYNTHETIC_PRIVATE_MARKER")
+        return inspection_raw
+
+    result = assess_connector(
+        lambda **kwargs: cap_raw, inspect,
+        catalog=catalog, as_of=AS_OF, contract_version=version, hard_max_bytes=maximum,
+    )
+    assert result["contract_version"] == version
+    assert result["status"] == ("unavailable" if failure == "inspection-exception" else "invalid-response")
+    assert set(result) == {"contract_version", "status", "validation_codes"}
+    assert "SYNTHETIC_PRIVATE_MARKER" not in json.dumps(result)
+
+
+@pytest.mark.parametrize("value", [[], {}, None])
+def test_malformed_inspection_version_fails_closed_without_exception(value):
+    capabilities = json.loads((FIXTURES / "capabilities-safe.json").read_text())
+    inspection = json.loads((FIXTURES / "inspection-compatible.json").read_text())
+    inspection["contract_version"] = value
+    rehash(inspection)
+    errors = validate(capabilities, inspection)
+    assert "invalid-type" in errors
+    assert "unsupported-contract-version" in errors
+    result = classify_inspection(inspection, catalog=CATALOG, capabilities=capabilities, as_of=AS_OF)
+    assert result["status"] == "invalid-response"
+
+
+@pytest.mark.parametrize("value", [[], {}, None])
+def test_malformed_dqd_binding_kind_fails_closed_without_exception(value):
+    capabilities, inspection = sample()
+    inspection["dqd_foreign_key_evidence"]["binding_kind"] = value
+    rehash(inspection)
+    assert "invalid-type" in validate(capabilities, inspection)
+    result = assess(capabilities, inspection)
+    assert result["status"] == "invalid-response"
+    assert "dqd_foreign_key_evidence_status" not in result

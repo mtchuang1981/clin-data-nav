@@ -309,6 +309,21 @@
           {"required": ["dqd_foreign_key_evidence"]},
           {"required": ["snapshot_binding_sha256"]}
         ]}}
+      }, {
+        "if": {"properties": {"contract_version": {"const": "1.1"}}},
+        "then": {"properties": {"limitation_codes": {"items": {"enum": [
+          "constraint-metadata-limited",
+          "duckdb-cyclic-fk-ddl-limited",
+          "metadata-permission-limited",
+          "snapshot-incomplete",
+          "tbls-normalization-limited"
+        ]}}}},
+        "else": {"properties": {"limitation_codes": {"items": {"enum": [
+          "constraint-metadata-limited",
+          "metadata-permission-limited",
+          "snapshot-incomplete",
+          "tbls-normalization-limited"
+        ]}}}}
       }],
       "required": [
         "contract_version",
@@ -383,6 +398,7 @@
             "type": "string",
             "enum": [
               "constraint-metadata-limited",
+              "duckdb-cyclic-fk-ddl-limited",
               "metadata-permission-limited",
               "snapshot-incomplete",
               "tbls-normalization-limited"

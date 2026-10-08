@@ -59,6 +59,41 @@ public repository neither diagnoses private scan internals nor stores raw DQD
 results, local identifiers, rows, or private diagnostic text. Report structural
 compatibility and evidence status as two distinct outcomes.
 
+### DuckDB cyclic-FK declaration limitation (1.1 only)
+
+An adapter may explicitly include `duckdb-cyclic-fk-ddl-limited` in the existing
+`limitation_codes` array when it has established that its DuckDB version cannot
+declare the cyclic foreign-key requirements of the public OMOP catalog. The
+code is an adapter-reported platform limitation, not an independently verified
+backend diagnosis. ClinNav does not infer it from missing FK metadata. Version
+1.0 continues to reject this code as an unknown enum; existing 1.0 codes remain
+valid in both versions.
+
+DuckDB supports ordinary foreign keys, but its current documentation states
+that `ALTER TABLE ADD CONSTRAINT` is unsupported. OMOP v5.4 includes reciprocal
+`CONCEPT.VOCABULARY_ID` to `VOCABULARY.VOCABULARY_ID` and
+`VOCABULARY.VOCABULARY_CONCEPT_ID` to `CONCEPT.CONCEPT_ID` references. These facts
+explain a cyclic-DDL limitation; they do not establish that every missing FK is
+caused by a cycle, or that every DuckDB dataset is unusable. The private owner
+must retain version-specific supporting evidence and reevaluate the limitation
+when backend capabilities change.
+
+Sources: [DuckDB foreign keys](https://duckdb.org/docs/current/sql/constraints),
+[DuckDB ALTER TABLE limitations](https://duckdb.org/docs/current/sql/statements/alter_table),
+and [OHDSI OMOP CDM v5.4](https://ohdsi.github.io/CommonDataModel/cdm54.html).
+
+The new code uses the same sorted, unique, bounded array and `summary_sha256`
+coverage as other limitation codes. It permits no private diagnostics or extra
+fields. It never changes `foreign_key_status`, structural `status`, mismatch
+counts, DQD evidence status, or checker exit codes. For example, a complete
+summary may report `incompatible`, this limitation code, and
+`dqd_foreign_key_evidence_status: accepted-attestation` together, with exit 3.
+This means declared constraints differ while the separate point-in-time DQD
+attestation satisfies the evidence contract. Neither result proves study
+fitness, automatic execution readiness, or governance approval. Incomplete,
+stale, invalid, or otherwise mismatched summaries retain their existing gates
+and failure-output restrictions; the code cannot waive them.
+
 ## Two-operation contract
 
 Call `get_capabilities` first and inspect its closed, bounded response before

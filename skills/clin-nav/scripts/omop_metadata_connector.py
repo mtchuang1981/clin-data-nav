@@ -61,12 +61,13 @@ def _reject_nonfinite_constant(value: str) -> object:
 
 
 def _parse_bytes(
-    raw: object, *, maximum: int, label: str
+    raw: object, *, maximum: int, label: str,
+    contract_version: str = CONTRACT_VERSION,
 ) -> tuple[object | None, dict[str, object] | None]:
     if not isinstance(raw, bytes):
-        return None, _result("invalid-response", f"{label}-invalid-bytes")
+        return None, _result("invalid-response", f"{label}-invalid-bytes", contract_version=contract_version)
     if len(raw) > maximum:
-        return None, _result("invalid-response", f"{label}-response-too-large")
+        return None, _result("invalid-response", f"{label}-response-too-large", contract_version=contract_version)
     try:
         text = raw.decode("utf-8", errors="strict")
         return (
@@ -78,7 +79,7 @@ def _parse_bytes(
             None,
         )
     except (UnicodeDecodeError, ValueError, RecursionError):
-        return None, _result("invalid-response", f"{label}-invalid-json")
+        return None, _result("invalid-response", f"{label}-invalid-json", contract_version=contract_version)
 
 
 def _safe_summary(
@@ -131,7 +132,7 @@ def assess_connector(
         or isinstance(hard_max_bytes, bool)
         or not 1 <= hard_max_bytes <= HARD_MAX_RESPONSE_BYTES
     ):
-        return _result("invalid-response", "invalid-hard-max-bytes")
+        return _result("invalid-response", "invalid-hard-max-bytes", contract_version=contract_version)
 
     if contract_version not in {CONTRACT_VERSION, EVIDENCE_CONTRACT_VERSION}:
         return _result("unavailable", "unsupported-contract-version", contract_version=contract_version)
@@ -145,7 +146,8 @@ def assess_connector(
         return _result("unavailable", "connector-unavailable", contract_version=contract_version)
 
     capabilities, parse_error = _parse_bytes(
-        capabilities_raw, maximum=hard_max_bytes, label="capabilities"
+        capabilities_raw, maximum=hard_max_bytes, label="capabilities",
+        contract_version=contract_version,
     )
     if parse_error is not None:
         return parse_error
@@ -154,7 +156,7 @@ def assess_connector(
     if capability_errors:
         if contract_version == EVIDENCE_CONTRACT_VERSION and "unsupported-contract-version" in capability_errors:
             return _result("unavailable", "unsupported-contract-version", contract_version=contract_version)
-        return _result("invalid-response", *capability_errors)
+        return _result("invalid-response", *capability_errors, contract_version=contract_version)
     assert isinstance(capabilities, Mapping)
     capability_limit = capabilities["max_response_bytes"]
     assert isinstance(capability_limit, int)
@@ -165,15 +167,16 @@ def assess_connector(
             contract_version=contract_version,
         )
     except (TypeError, ValueError, OverflowError):
-        return _result("invalid-response", "catalog-invalid")
+        return _result("invalid-response", "catalog-invalid", contract_version=contract_version)
 
     try:
         inspection_raw = inspect_omop_schema(request)
     except Exception:
-        return _result("unavailable", "connector-unavailable")
+        return _result("unavailable", "connector-unavailable", contract_version=contract_version)
 
     inspection, parse_error = _parse_bytes(
-        inspection_raw, maximum=accepted_bytes, label="inspection"
+        inspection_raw, maximum=accepted_bytes, label="inspection",
+        contract_version=contract_version,
     )
     if parse_error is not None:
         return parse_error
@@ -186,7 +189,7 @@ def assess_connector(
         raw_size_bytes=len(inspection_raw),
     )
     if errors:
-        return _result("invalid-response", *errors)
+        return _result("invalid-response", *errors, contract_version=contract_version)
     assert isinstance(inspection, Mapping)
     classification = classify_inspection(
         inspection,

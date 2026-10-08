@@ -158,6 +158,7 @@ _LIMITATION_CODES = frozenset(
         "constraint-metadata-limited",
     }
 )
+_LIMITATION_11_CODES = _LIMITATION_CODES | {"duckdb-cyclic-fk-ddl-limited"}
 
 _CANONICAL_NAME_RE = re.compile(r"^[A-Z][A-Z0-9_]{0,127}$")
 _PUBLIC_TOKEN_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{0,127}$")
@@ -591,7 +592,7 @@ def _validate_dqd_evidence(
     elif kind not in _BINDING_KINDS:
         errors.add("unknown-enum")
     digest = evidence.get("snapshot_binding_sha256")
-    if kind in {"content-sha256", "immutable-snapshot-id"}:
+    if isinstance(kind, str) and kind in {"content-sha256", "immutable-snapshot-id"}:
         _check_text(digest, errors, pattern=_SHA256_RE, max_length=64)
     elif digest is not None:
         errors.add("invalid-value")
@@ -756,7 +757,9 @@ def validate_inspection(
         return errors.result()
     assert isinstance(payload, Mapping)
 
-    if payload.get("contract_version") not in {CONTRACT_VERSION, EVIDENCE_CONTRACT_VERSION}:
+    if not isinstance(contract_version, str) or contract_version not in {
+        CONTRACT_VERSION, EVIDENCE_CONTRACT_VERSION
+    }:
         errors.add("unsupported-contract-version")
     _check_text(payload.get("contract_version"), errors, max_length=8)
     _check_text(
@@ -831,15 +834,19 @@ def validate_inspection(
     _check_nonnegative_int(payload.get("unexpected_table_count"), errors)
     _check_nonnegative_int(payload.get("unexpected_column_count"), errors)
 
+    allowed_limitations = (
+        _LIMITATION_11_CODES
+        if contract_version == EVIDENCE_CONTRACT_VERSION else _LIMITATION_CODES
+    )
     limitations = _check_string_array(
         payload.get("limitation_codes"),
         errors,
         max_items=64,
-        allowed=_LIMITATION_CODES,
+        allowed=allowed_limitations,
     )
     if limitations is not None:
         for code in limitations:
-            if code not in _LIMITATION_CODES:
+            if code not in allowed_limitations:
                 errors.add("unknown-enum")
 
     table_counts: list[int] = []
