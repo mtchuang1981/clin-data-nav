@@ -175,12 +175,15 @@ def _tracked_paths(root: Path) -> set[str] | None:
         return None
     try:
         repository = subprocess.run(
-            ["git", "rev-parse", "--is-inside-work-tree"],
+            ["git", "rev-parse", "--show-toplevel"],
             cwd=root,
             check=False,
             capture_output=True,
         )
-        if repository.returncode != 0 or repository.stdout.strip() != b"true":
+        if repository.returncode != 0:
+            raise TrackedPathQueryError
+        reported_root = Path(os.fsdecode(repository.stdout.removesuffix(b"\n")))
+        if not reported_root.is_absolute() or not reported_root.resolve().samefile(root):
             raise TrackedPathQueryError
         result = subprocess.run(
             ["git", "ls-files", "-z"],
@@ -188,7 +191,7 @@ def _tracked_paths(root: Path) -> set[str] | None:
             check=False,
             capture_output=True,
         )
-    except OSError as error:
+    except (OSError, ValueError) as error:
         raise TrackedPathQueryError from error
     if result.returncode != 0:
         raise TrackedPathQueryError

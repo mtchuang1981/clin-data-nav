@@ -1,0 +1,95 @@
+name: 社群使用回饋（繁體中文）
+description: 回報安裝或任務完成情形，不提供原始材料。
+title: "[社群使用回饋] "
+labels:
+  - community-reported
+body:
+  - type: markdown
+    attributes:
+      value: >-
+        這是未驗證的自陳。Issue 不會納入正式成效彙總，也不能證明具代表性的
+        真人使用效果、臨床有效性或部署適用性。
+  - type: input
+    id: repository_version
+    attributes:
+      label: 儲存庫版本或 tag
+      description: 僅填使用的公開版本。
+      placeholder: 不可變 tag 或 commit
+    validations:
+      required: true
+  - type: dropdown
+    id: installation_method
+    attributes:
+      label: 安裝方式
+      options:
+        - npx 專案安裝
+        - 已核對 ZIP 安裝
+        - 本機開發 checkout
+    validations:
+      required: true
+  - type: input
+    id: agent
+    attributes:
+      label: Agent 與版本
+      description: 僅填公開產品名稱與版本。
+      placeholder: Agent 名稱與版本
+    validations:
+      required: true
+  - type: dropdown
+    id: operating_system
+    attributes:
+      label: 作業系統
+      options:
+        - Linux
+        - macOS
+        - Windows
+        - 其他或混合
+    validations:
+      required: true
+  - type: dropdown
+    id: task_category
+    attributes:
+      label: 任務類別
+      options:
+        - 安裝或更新
+        - 快速解說
+        - 證據導覽
+        - 研究設計
+        - 實作規格
+        - repository benchmark 工具
+    validations:
+      required: true
+  - type: dropdown
+    id: completion_outcome
+    attributes:
+      label: 完成情形
+      options:
+        - 無問題完成
+        - 遇到問題但完成
+        - 未完成
+    validations:
+      required: true
+  - type: markdown
+    attributes:
+      value: >-
+        敏感資訊警語：請勿貼病人資料、私有機構 schema、內部文件、條件代碼、
+        任務包、nonce、API key、存取 token、憑證或其他敏感內容；也不要貼
+        原始提示、模型回答、日誌、螢幕截圖或附件。
+  - type: textarea
+    id: problem_reproduction
+    attributes:
+      label: 問題或重現步驟（選填）
+      description: 若遇到問題，請以約 1000 字元以內的公開或合成工作流程摘要說明；無問題完成可留白，不需填 N/A。
+      placeholder: 僅使用公開或合成情境的簡短說明
+      render: text
+    validations:
+      required: false
+  - type: checkboxes
+    id: acknowledgement
+    attributes:
+      label: 敏感內容確認
+      options:
+        - label: 我確認本回饋沒有病人資料、私有機構 schema、內部文件、條件代碼、任務包、nonce、API key、存取 token、憑證或其他敏感內容，也沒有原始提示、模型回答、日誌、截圖或附件。
+          required: true
+    validations:
+      required: true

@@ -15,6 +15,8 @@ npx skills add mtchuang1981/clin-data-nav
 Node.js 必要條件、更新、驗證 ZIP 安裝與疑難排解，請見[安裝指南](docs/installation.zh-TW.md)。
 既有使用者重新安裝前，請先依照其中的 [Skill ID 遷移程序](docs/installation.zh-TW.md#從先前的-skill-id-遷移)操作。
 
+貢獻者可使用[選用的唯讀安裝診斷](docs/installation.zh-TW.md#選用的唯讀安裝診斷)，核對所選檔案與可信 manifest；工具無法確認 host 實際載入的版本。
+
 ## 第一次成功使用
 
 請在 Codex 輸入：
@@ -67,11 +69,16 @@ OpenAI 官方文件說明，Skill 會封裝操作指引、資源與選用指令�
 | 不綁定供應商的合成模型比較 | [公開模擬 benchmark](evals/benchmark/README.md) |
 | 參與貢獻與驗證 | [貢獻指南](CONTRIBUTING.md) |
 | 回報安全性問題 | [安全性說明](SECURITY.md) |
+| 回饋安裝或任務完成情形 | [社群使用回饋](https://github.com/mtchuang1981/clin-data-nav/issues/new?template=usability-feedback.zh-TW.yml) |
 | 準備經核准的發布 | [發布流程](docs/release.md) |
-| 查看 v0.4.0 變更 | [靜態 Release notes](docs/releases/0.4.0.md)與[版本紀錄](CHANGELOG.zh-TW.md) |
+| 查看 v0.9.0 變更 | [靜態 Release notes](docs/releases/0.9.0.md)與[版本紀錄](CHANGELOG.zh-TW.md)（[英文完整紀錄](CHANGELOG.md)） |
 | 查核目前產品指引 | [OpenAI 的 ChatGPT Skills 說明](https://help.openai.com/en/articles/20001066)與[Codex Skill 文件](https://learn.chatgpt.com/docs/build-skills) |
 
 ## 證據、公開邊界與限制
+
+社群回饋是未驗證的自陳，不納入正式成效彙總。無問題完成可省略問題描述；
+僅填簡短的公開或合成工作流程摘要，不貼原始提示、模型回答、日誌、附件、
+病人資料、機構 schema 或憑證。表單不能保證攔截所有敏感內容。
 
 Skill 會優先採用主導來源，再參考實作文獻，並清楚區分已確認事實、假設、
 限制與來源。儲存庫的確定性 Evals 只檢查回覆契約，不能證明來源正確、臨床

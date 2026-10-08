@@ -2,8 +2,8 @@
 
 [English](installation.md)
 
-建議使用 `npx skills add`，把 Skill 安裝在要使用它的專案中。目前已驗證且
-不可變的 Release 是 `v0.8.0`；下方提供確切的 `clin-nav` 產物核對與安裝
+建議使用 `npx skills add`，把 Skill 安裝在要使用它的專案中。目前
+已驗證的 Release 是 `v0.9.0`；下方提供確切的 `clin-nav` 產物核對與安裝
 方式。不可變的 v0.6.0 Release 仍可作為前一版本取得；v0.4.0 ZIP 內容則僅
 供歷史驗證參考，不是安裝方式。開發或稽核本儲存庫時，才使用原始碼簽出安裝。
 
@@ -113,13 +113,18 @@ npx skills update clin-nav --project --yes
 接著再用 `/skills` 確認。若顯示的行為仍是舊版，請依下方對應階段排解，
 不要直接重複安裝。
 
-## 目前已驗證的 v0.8.0 Release 產物核對
+## 目前已驗證的 v0.9.0 Release 產物核對
 
-目前已驗證且不可變的 Release 是 `v0.8.0`。確切的已發布產物為
-`clin-nav-0.7.0.zip` 與 `clin-nav-0.7.0.manifest.json`。下列指令會從同一個
-不可變 Release 下載兩個產物，先用已發布的 SHA-256 核對 manifest，再用
+這些檢查識別已核對的發布位元組，不代表平台強制的 Release 不可變保護。
+2026-10-04 的 GitHub API 回報此 Release 為 `immutable: false`。
+Publisher 會拒絕既有 Release，本流程不移動已發布 tag 或取代附件；
+這是發布政策，不是平台鎖定。
+
+目前已驗證的 Release 是 `v0.9.0`。確切的已發布產物為
+`clin-nav-0.9.0.zip` 與 `clin-nav-0.9.0.manifest.json`。下列指令會從同一個
+已發布 Release 下載兩個產物，先用已發布的 SHA-256 核對 manifest，再用
 已發布的 SHA-256 與 manifest 內的 `archive_sha256` 交叉核對 ZIP，通過後才
-安裝。這些值綁定可重現的 v0.8.0 產物，以及 tagged source 通過的
+安裝。這些值綁定可重現的 v0.9.0 產物，以及 tagged source 通過的
 Linux／Windows 套件比對結果。
 
 不可變的 v0.6.0 Release 仍可作為前一版本取得。
@@ -128,11 +133,11 @@ v0.4.0 套件則保留於下方，僅供歷史驗證參考。
 PowerShell：
 
 ```powershell
-$releaseVersion = "0.8.0"
+$releaseVersion = "0.9.0"
 $archiveName = "clin-nav-$releaseVersion.zip"
 $manifestName = "clin-nav-$releaseVersion.manifest.json"
-$expectedArchiveSha256 = "3fcc35afd33c558ef0b7a4db8c479668b18bd8c471a10c60bd850e7ee1da1c31"
-$expectedManifestSha256 = "6e00fd887e4717c351f3e2071fc4761247a24563de646d2568dbefd2cca42298"
+$expectedArchiveSha256 = "884debb04144c7a1541ce78bfd4a722175f6ef01dc4aff498712b4eb929c3457"
+$expectedManifestSha256 = "09fbaeccbb3c4dcf3020cd49d7ef820ad9e80e91bd7dbe7b57fdc5a54477cb5b"
 $releaseBase = "https://github.com/mtchuang1981/clin-data-nav/releases/download/v$releaseVersion"
 Invoke-WebRequest "$releaseBase/$archiveName" -OutFile $archiveName
 Invoke-WebRequest "$releaseBase/$manifestName" -OutFile $manifestName
@@ -147,7 +152,7 @@ if ($actualArchiveSha256 -ne $expectedArchiveSha256) { throw "Archive SHA-256 mi
 
 $skillsRoot = Join-Path (Get-Location) ".agents/skills"
 $skillDirectory = Join-Path $skillsRoot "clin-nav"
-$stagingDirectory = Join-Path $skillsRoot ".clin-nav-v0.8.0-staged"
+$stagingDirectory = Join-Path $skillsRoot ".clin-nav-v0.9.0-staged"
 if (Test-Path $skillDirectory) { throw "Installation already exists" }
 if (Test-Path $stagingDirectory) { throw "Staging directory already exists" }
 New-Item -ItemType Directory -Path $skillsRoot -Force | Out-Null
@@ -160,11 +165,11 @@ Move-Item -LiteralPath $stagingDirectory -Destination $skillDirectory
 POSIX shell：
 
 ```bash
-release_version="0.8.0"
+release_version="0.9.0"
 archive_name="clin-nav-$release_version.zip"
 manifest_name="clin-nav-$release_version.manifest.json"
-expected_archive_sha256="3fcc35afd33c558ef0b7a4db8c479668b18bd8c471a10c60bd850e7ee1da1c31"
-expected_manifest_sha256="6e00fd887e4717c351f3e2071fc4761247a24563de646d2568dbefd2cca42298"
+expected_archive_sha256="884debb04144c7a1541ce78bfd4a722175f6ef01dc4aff498712b4eb929c3457"
+expected_manifest_sha256="09fbaeccbb3c4dcf3020cd49d7ef820ad9e80e91bd7dbe7b57fdc5a54477cb5b"
 release_base="https://github.com/mtchuang1981/clin-data-nav/releases/download/v$release_version"
 curl -fL "$release_base/$archive_name" -o "$archive_name"
 curl -fL "$release_base/$manifest_name" -o "$manifest_name"
@@ -185,7 +190,7 @@ test "$actual_archive_sha256" = "$expected_archive_sha256" || { echo "Archive SH
 
 skills_root="$PWD/.agents/skills"
 skill_directory="$skills_root/clin-nav"
-staging_directory="$skills_root/.clin-nav-v0.8.0-staged"
+staging_directory="$skills_root/.clin-nav-v0.9.0-staged"
 test ! -e "$skill_directory" || { echo "Installation already exists" >&2; exit 1; }
 test ! -e "$staging_directory" || { echo "Staging directory already exists" >&2; exit 1; }
 mkdir -p "$skills_root"
@@ -266,6 +271,37 @@ python scripts/install_local.py \
 既有目的目錄時會拒絕安裝。封裝與安裝程式屬於貢獻者／發布工具，因此這條
 路徑需要 Python 3.11 及
 [CONTRIBUTING.md](../CONTRIBUTING.md) 所述的環境。
+
+## 選用的唯讀安裝診斷
+
+正常安裝與指令型 Skill 的一般使用不需要 Python。這是選用的貢獻者工具，
+在完整 source checkout 與支援的 Python 3.11 環境執行；屬本機開發新增能力，
+不會更動已發布的 v0.9.0 產物。每次只指定一個安裝目錄：
+
+```text
+python scripts/verify_installation.py --skill-dir <selected-directory> --manifest <trusted-external-manifest.json> --manifest-sha256 <published-manifest-sha256> --comparison bytes
+```
+
+manifest 與其原始位元組 SHA-256 必須來自可信發布依據。同一可修改目錄內
+自行產生的 receipt 不是信任根。manifest 須位於所選 Skill 及 source repository
+之外；不要預填開發候選套件的 hash，也不要把自製 manifest 當成官方產物。
+可使用可信歷史版本的 manifest。工具不下載、不安裝、不覆寫、不重啟 host、
+不呼叫 MCP，也不掃描其他安裝目錄。
+
+exit 0 回報 `manifest-files-byte-identical`；exit 3 回報 `content-differs`
+與 missing／extra／different 計數；exit 2 表示不合法或不安全輸入、超限、讀取
+錯誤或偵測到並行變動。`--comparison canonical-text` 只將無 NUL、有效 UTF-8
+檔案中的 CRLF／CR 轉為 LF；成功狀態為 `manifest-files-canonical-content-matches`，
+不代表逐位元組相同。不另行改寫二進位、去除空白或正規化 Unicode。
+
+未列在 manifest 的 `__pycache__`、`.pyc`、`.pyo` 計為 ignored；manifest 宣告
+的檔案仍須核對。即使在忽略的 cache 中，link／junction／reparse point 仍拒收。
+空目錄不屬於 manifest 檔案。限額為 manifest 1 MiB、256 筆、單檔 10 MiB、
+預期檔案合計 40 MiB、遍歷 4,096 entries、深度 32。並行變動偵測是 best-effort，
+不是原子快照，也不保證防住惡意競態。不接收 ZIP，不能宣稱 archive 已驗證，
+也不證明 bytecode 或執行環境完整性。固定回報 `loaded_version: not-verified`；
+同名 Skill、host discovery 與是否真的重新載入仍須由 host 另行確認。內容一致
+不代表科學正確或部署就緒。
 
 ## 疑難排解
 

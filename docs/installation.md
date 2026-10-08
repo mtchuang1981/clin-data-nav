@@ -3,7 +3,7 @@
 [繁體中文](installation.zh-TW.md)
 
 The recommended path is a project-local installation with `npx skills add`.
-The current verified immutable Release is `v0.8.0`; its exact `clin-nav`
+The current verified Release is `v0.9.0`; its exact `clin-nav`
 artifact verification and installation path is below. The immutable v0.6.0
 Release remains available as the prior version, while the v0.4.0 ZIP material
 is a historical verification reference, not an installation path. Use the
@@ -131,14 +131,20 @@ npx skills update clin-nav --project --yes
 Confirm discovery again with `/skills`. If the displayed behavior is stale,
 follow the stage-specific recovery below instead of reinstalling blindly.
 
-## Current verified v0.8.0 Release artifact verification
+## Current verified v0.9.0 Release artifact verification
 
-The current verified immutable Release is `v0.8.0`. Its exact published assets
-are `clin-nav-0.7.0.zip` and `clin-nav-0.7.0.manifest.json`. The commands below
-download both assets from that same immutable Release, verify the manifest
+These checks identify the verified published bytes, not platform-enforced
+Release immutability. On 2026-10-04, GitHub's API reported `immutable: false`
+for this Release. The publisher refuses an existing Release, and this process
+does not move published tags or replace their assets; that policy is not a
+platform lock.
+
+The current verified Release is `v0.9.0`. Its exact published assets
+are `clin-nav-0.9.0.zip` and `clin-nav-0.9.0.manifest.json`. The commands below
+download both assets from that same Release, verify the manifest
 against its published SHA-256, and then verify the ZIP against both its
 published SHA-256 and the manifest's `archive_sha256` before installation.
-These values are bound to the reproducible v0.8.0 artifacts and the successful
+These values are bound to the reproducible v0.9.0 artifacts and the successful
 Linux/Windows package comparison for the tagged source.
 
 The immutable v0.6.0 Release remains available as the prior release. The
@@ -147,11 +153,11 @@ v0.4.0 bundle remains below as a historical verification reference only.
 PowerShell:
 
 ```powershell
-$releaseVersion = "0.8.0"
+$releaseVersion = "0.9.0"
 $archiveName = "clin-nav-$releaseVersion.zip"
 $manifestName = "clin-nav-$releaseVersion.manifest.json"
-$expectedArchiveSha256 = "3fcc35afd33c558ef0b7a4db8c479668b18bd8c471a10c60bd850e7ee1da1c31"
-$expectedManifestSha256 = "6e00fd887e4717c351f3e2071fc4761247a24563de646d2568dbefd2cca42298"
+$expectedArchiveSha256 = "884debb04144c7a1541ce78bfd4a722175f6ef01dc4aff498712b4eb929c3457"
+$expectedManifestSha256 = "09fbaeccbb3c4dcf3020cd49d7ef820ad9e80e91bd7dbe7b57fdc5a54477cb5b"
 $releaseBase = "https://github.com/mtchuang1981/clin-data-nav/releases/download/v$releaseVersion"
 Invoke-WebRequest "$releaseBase/$archiveName" -OutFile $archiveName
 Invoke-WebRequest "$releaseBase/$manifestName" -OutFile $manifestName
@@ -166,7 +172,7 @@ if ($actualArchiveSha256 -ne $expectedArchiveSha256) { throw "Archive SHA-256 mi
 
 $skillsRoot = Join-Path (Get-Location) ".agents/skills"
 $skillDirectory = Join-Path $skillsRoot "clin-nav"
-$stagingDirectory = Join-Path $skillsRoot ".clin-nav-v0.8.0-staged"
+$stagingDirectory = Join-Path $skillsRoot ".clin-nav-v0.9.0-staged"
 if (Test-Path $skillDirectory) { throw "Installation already exists" }
 if (Test-Path $stagingDirectory) { throw "Staging directory already exists" }
 New-Item -ItemType Directory -Path $skillsRoot -Force | Out-Null
@@ -179,11 +185,11 @@ Move-Item -LiteralPath $stagingDirectory -Destination $skillDirectory
 POSIX shell:
 
 ```bash
-release_version="0.8.0"
+release_version="0.9.0"
 archive_name="clin-nav-$release_version.zip"
 manifest_name="clin-nav-$release_version.manifest.json"
-expected_archive_sha256="3fcc35afd33c558ef0b7a4db8c479668b18bd8c471a10c60bd850e7ee1da1c31"
-expected_manifest_sha256="6e00fd887e4717c351f3e2071fc4761247a24563de646d2568dbefd2cca42298"
+expected_archive_sha256="884debb04144c7a1541ce78bfd4a722175f6ef01dc4aff498712b4eb929c3457"
+expected_manifest_sha256="09fbaeccbb3c4dcf3020cd49d7ef820ad9e80e91bd7dbe7b57fdc5a54477cb5b"
 release_base="https://github.com/mtchuang1981/clin-data-nav/releases/download/v$release_version"
 curl -fL "$release_base/$archive_name" -o "$archive_name"
 curl -fL "$release_base/$manifest_name" -o "$manifest_name"
@@ -204,7 +210,7 @@ test "$actual_archive_sha256" = "$expected_archive_sha256" || { echo "Archive SH
 
 skills_root="$PWD/.agents/skills"
 skill_directory="$skills_root/clin-nav"
-staging_directory="$skills_root/.clin-nav-v0.8.0-staged"
+staging_directory="$skills_root/.clin-nav-v0.9.0-staged"
 test ! -e "$skill_directory" || { echo "Installation already exists" >&2; exit 1; }
 test ! -e "$staging_directory" || { echo "Staging directory already exists" >&2; exit 1; }
 mkdir -p "$skills_root"
@@ -289,6 +295,42 @@ to replace it; the command above omits `--overwrite`, so an existing target is
 refused. The packager and installer are contributor/release tooling, so this
 path requires Python 3.11 and the setup in
 [CONTRIBUTING.md](../CONTRIBUTING.md).
+
+## Optional read-only installation diagnosis
+
+Normal Skill installation and instruction-only use does not require Python.
+This optional contributor tool runs from a complete source checkout with the
+supported Python 3.11 environment. It is a development addition, not a change
+to the verified published v0.9.0 assets. Select exactly one installed directory:
+
+```text
+python scripts/verify_installation.py --skill-dir <selected-directory> --manifest <trusted-external-manifest.json> --manifest-sha256 <published-manifest-sha256> --comparison bytes
+```
+
+Obtain the manifest and its raw-byte SHA-256 from a trusted publication. A
+self-created receipt beside mutable files is not a trust root. The manifest
+must be outside the selected Skill and source repository; do not copy the
+candidate hash or assume a locally generated manifest is an official release.
+Trusted historical manifests are supported. The tool does not download, install,
+overwrite, restart the host, call MCP or inspect other installation directories.
+
+Exit 0 reports `manifest-files-byte-identical`; exit 3 reports `content-differs`
+with missing/extra/different counts. Exit 2 means invalid or unsafe input, a
+limit, read error or detected concurrent change. `--comparison canonical-text`
+only normalizes CRLF/CR to LF for valid UTF-8 without NUL: success is
+`manifest-files-canonical-content-matches`, not byte-identical. Binary bytes,
+whitespace and Unicode are not otherwise normalized.
+
+Unlisted `__pycache__`, `.pyc` and `.pyo` files are counted as ignored (declared
+manifest members are always compared). Links/junctions/reparse points are
+rejected even in ignored caches. Empty directories are not manifest files.
+Limits: 1 MiB manifest, 256 records, 10 MiB/file, 40 MiB expected-file total,
+4,096 traversed entries, depth 32. Change detection is best-effort, not an atomic
+or malicious-race-proof snapshot. It does not verify an archive (no ZIP input),
+bytecode integrity or runtime integrity. Always `loaded_version: not-verified`:
+host discovery, duplicate Skill IDs and actual reloading require separate host
+confirmation. A successful comparison does not prove scientific correctness or
+deployment readiness.
 
 ## Troubleshooting
 

@@ -13,12 +13,14 @@ from zipfile import ZIP_DEFLATED, ZipFile, ZipInfo
 
 try:
     from scripts.validate_skill import validate_skill
+    from scripts.package_contract import canonical_package_bytes
 except ModuleNotFoundError:  # Direct execution from the scripts directory.
     from validate_skill import validate_skill
+    from package_contract import canonical_package_bytes
 
 
 SKILL_NAME = "clin-nav"
-PACKAGE_VERSION = "0.8.0"
+PACKAGE_VERSION = "0.9.0"
 ARCHIVE_NAME = f"{SKILL_NAME}-{PACKAGE_VERSION}.zip"
 MANIFEST_NAME = f"{SKILL_NAME}-{PACKAGE_VERSION}.manifest.json"
 INCLUDED_DIRECTORIES = ("agents", "references", "scripts", "assets")
@@ -50,14 +52,7 @@ def _package_files(skill_dir: Path) -> tuple[Path, ...]:
 
 def _canonical_package_bytes(path: Path) -> bytes:
     """Return checkout-independent bytes for UTF-8 text package files."""
-    data = path.read_bytes()
-    if b"\x00" in data:
-        return data
-    try:
-        text = data.decode("utf-8")
-    except UnicodeDecodeError:
-        return data
-    return text.replace("\r\n", "\n").replace("\r", "\n").encode("utf-8")
+    return canonical_package_bytes(path.read_bytes())
 
 
 def _package_names(package_version: str) -> tuple[str, str]:

@@ -1,0 +1,29 @@
+{
+  "schema_version": "1",
+  "ledger_id": "synthetic-rwd-review",
+  "ledger_sha256": "bca235e82887a5f5783e2161d5f88466b0d16bc0a1fd252601b4a744c6308d08",
+  "checked_on": "2026-09-10",
+  "sources": [{
+    "source_id": "source-official-1",
+    "retrieval_url": "https://example.org/synthetic-guidance",
+    "access_status": "opened",
+    "authority_role": "official-product",
+    "use_scope": "current",
+    "version_status": "current",
+    "status_basis_url": "https://example.org/synthetic-status",
+    "newer_source_search": {
+      "performed_on": "2026-09-10",
+      "entry_points": ["https://example.org/synthetic-search"],
+      "result": "no-newer-found",
+      "notes": "Synthetic assumed search; no actual search performed."
+    },
+    "notes": "Synthetic assumed current-scope review. No actual source or correction status verified."
+  }],
+  "claims": [{
+    "claim_id": "claim-rwd-definition",
+    "source_checks": [{"source_id": "source-official-1", "evidence_location": "Synthetic section 1", "locator_status": "verified"}],
+    "authority_fit": "appropriate",
+    "support_fit": "appropriate",
+    "notes": "Synthetic assumed locator and fit review; not real-world evidence."
+  }]
+}

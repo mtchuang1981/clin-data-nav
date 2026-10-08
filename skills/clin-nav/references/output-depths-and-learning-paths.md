@@ -38,6 +38,11 @@ analysis plan, and data limitations. For implementation specifications,
 include governing authority, the logical contract or mapping checklist,
 maturity, live-metadata and fixture gaps, and the execution-gate decision.
 
+For research and implementation, use the actionable gaps contract defined once
+in `evidence-output-template.md`. Keep unknowns, failures and pending approvals
+distinct, name safe next steps and responsible roles, and state work still
+possible. Do not add that mandatory table to quick or evidence-navigation answers.
+
 ## Common Header for Formal Deliverables
 
 Use this compact header before the mode-specific sections for evidence

@@ -141,6 +141,12 @@ snippet, citation, user mention, or model memory remains `not-reviewed`.
 Use `null` when a stable source identifier is unknown; do not invent a DOI,
 URL, URN, or request-reference surrogate.
 
+Read `references/evidence-audit.md` only when the user requests source-freshness or citation review
+records. Produce its optional companion audit outside the Skill and repository,
+bound to the validated ledger. Record actual authorized review, not presumed
+checks; its offline checker validates consistency, not source truth, and cannot
+clear the ledger's existing review gaps. Quick explanations need no audit by default.
+
 ## Convert Evidence into a Data Contract for an Implementation Specification
 
 For an `implementation specification`, translate confirmed evidence into an
@@ -194,7 +200,11 @@ passing fixture tests before using `executable` or `validated`. Otherwise emit:
 SPECIFICATION ONLY — NOT EXECUTABLE
 ```
 
-State the maturity label and list every unmet gate as a validation gap. Do not
+State the maturity label and list every unmet gate as a validation gap.
+Use the actionable gaps contract in `references/evidence-output-template.md`
+for implementation and research gaps. Completing one gap never automatically
+upgrades maturity; reassess all relevant execution gates before promotion.
+Metadata-only access remains metadata-only. Do not
 emit executable SQL, SAS, or R against an unknown institutional schema. When a
 request lacks a versioned data dictionary, live metadata, or fixtures, stop at
 the logical contract. Do not provide even placeholder SQL or SQL-shaped
