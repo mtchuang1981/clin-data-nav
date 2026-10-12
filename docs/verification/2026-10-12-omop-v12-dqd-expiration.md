@@ -67,6 +67,27 @@ included in this record or Git.
 
 ## Independent review
 
-One read-only whole-branch review is pending before delivery. No local merge is
-authorized by this record. Private conformance remains a separate handoff using
-fresh repository-external 1.2 summaries; never convert old 1.1 artifacts.
+One fresh-context read-only whole-branch review of base `5398003` through
+`19e6bb4` found no Critical or Important issue and judged the branch ready to
+merge. The reviewer reran 57 tests and 24 complete synthetic adversarial checks;
+it did not rerun full pytest or mutate files. No local merge is authorized by
+this record.
+
+Deferred non-blocking minors:
+
+1. New CLI tests exercise the repository wrapper and packaged source entry
+   point, not a newly unpacked installation, and compare selected safe fields
+   rather than complete stdout/stderr byte equality. Add that installed-artifact
+   comparison in a future test improvement; do not claim it was performed here.
+2. Standard JSON Schema integer semantics can accept integral `1.0`; the Python
+   contract validator rejects floating values. Schema-only success is not full
+   contract acceptance. Current strict execution paths reject these inputs;
+   future documentation should make the portable-schema limitation explicit.
+
+Final ruling on the reviewer's declined-to-judge item: private consistent-snapshot
+binding, DQD execution correctness and evidence invalidation remain private-owner
+audit duties — access was prohibited and public attestation cannot establish
+them — risk: only public contract readiness, not private conformance, is proven.
+
+Private conformance remains a separate handoff using fresh repository-external
+1.2 summaries; never convert old 1.1 artifacts.
