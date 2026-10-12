@@ -54,6 +54,28 @@ discover, install, or contact a connector. Public examples and fixtures are
 synthetic only. A metadata-only result cannot produce `executable` or
 `validated` status by itself.
 
+### Optional source-checkout 1.2 DQD policy
+
+The source-checkout checker supports explicit contract 1.2 with independent DQD
+expiration. This does not change the published v0.9.0 assets or imply that the
+private adapter already supports 1.2. Both capabilities and the hashed summary
+must declare the same `max_dqd_evidence_age_seconds`: `null` for non-expiring
+evidence, or a positive integer up to 31,536,000 for finite expiry.
+
+```text
+python scripts/check_omop_metadata.py --capabilities <external-capabilities.json> --input <external-inspection.json> --as-of <RFC-3339-timestamp> --contract-version 1.2 --allow-nonexpiring-dqd
+```
+
+The flag grants consent to a null policy; it does not override a finite limit.
+Without consent, the checker stops before reading the inspection. Default 1.0
+and explicit 1.1 keep their original behavior. Metadata freshness remains finite
+(for example, 86,400 seconds), even when DQD expiry is disabled. A changed
+snapshot or check specification requires new evidence; preserve `checked_at`.
+Report structural compatibility and DQD attestation separately. Accepted
+attestation is neither independently verified private content nor study fitness;
+an incompatible structure remains exit 3. See the
+[connector contract and private handoff](../skills/clin-nav/references/omop-metadata-connector.md#optional-12-independent-dqd-expiration).
+
 ## Check prerequisites
 
 The recommended installation needs Node.js with npm/npx and a Codex interface

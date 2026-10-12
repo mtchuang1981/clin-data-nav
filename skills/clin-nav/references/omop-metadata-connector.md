@@ -59,7 +59,70 @@ public repository neither diagnoses private scan internals nor stores raw DQD
 results, local identifiers, rows, or private diagnostic text. Report structural
 compatibility and evidence status as two distinct outcomes.
 
-### DuckDB cyclic-FK declaration limitation (1.1 only)
+## Optional 1.2 independent DQD expiration
+
+Version `1.2` is explicit opt-in; it does not replace the default `1.0` or
+reinterpret `1.1` evidence. Unsupported 1.2 is `unavailable`, without fallback
+or retries. The same two operations and six public inspection request fields
+remain in use.
+
+Capabilities and the top-level inspection summary must both carry
+`max_dqd_evidence_age_seconds`. The values must agree and the summary field is
+covered by canonical `summary_sha256`, closed validation, and byte limits:
+
+- `null`: no elapsed-time expiry for the same strongly bound snapshot.
+- Integer from 1 through 31,536,000: a separate finite DQD evidence age limit.
+
+Missing is not null. Booleans, floats, strings, zero, negatives and larger
+integers are invalid. Policy disagreement is `invalid-response` with
+`evidence-age-policy-mismatch`. Legacy contracts reject the extra field.
+
+`max_snapshot_age_seconds` still limits metadata `observed_at` freshness; it
+remains finite. For example, keep 86,400 seconds for metadata even when DQD
+expiry is disabled. Non-expiring evidence cannot rescue stale metadata, a
+partial scan, weak binding, incomplete exact coverage or failed checks. Future
+times are invalid; `checked_at` must be no later than `observed_at` in 1.2.
+
+Explicit local consent is also required for a null policy. Use
+`assess_connector(..., contract_version="1.2", allow_nonexpiring_dqd=True)`
+or the offline checker below. Without consent, stop after capabilities with
+`unavailable` / `nonexpiring-dqd-not-authorized`, before inspection. Consent is
+invalid for 1.0/1.1 and never overrides a finite adapter policy.
+
+```text
+python scripts/check_omop_metadata.py --capabilities <external-capabilities.json> --input <external-inspection.json> --as-of <RFC-3339-timestamp> --contract-version 1.2 --allow-nonexpiring-dqd
+```
+
+For valid reportable 1.2 summaries, output the effective
+`max_dqd_evidence_age_seconds` alongside `dqd_foreign_key_evidence_status`.
+`accepted-attestation` under a null policy is acceptance of point-in-time
+evidence for the named snapshot, not proof of a recent rerun, permanent data
+quality or independently verified private content. Structural status and
+checker exits stay independent: missing declared FKs remain incompatible / 3.
+
+### Private 1.2 implementation handoff
+
+The private owner must implement and audit the following outside this repository:
+
+1. Explicit 1.2 capabilities and matching policy in the hashed closed summary;
+   keep old-version behavior and finite metadata freshness unchanged.
+2. Establish the identity of the current consistent snapshot at each inspection.
+   Compare its content hash or governed immutable-ID digest with the DQD evidence.
+   Copying an old digest into a newly timestamped summary is not verification.
+3. If current identity cannot be established, return null DQD evidence rather
+   than reuse unverified results. File size/mtime remain weak binding.
+4. New data/relevant schema, a changed ETL-produced snapshot, public catalog/FK
+   set changes, or material private check-logic/environment changes invalidate
+   the old evidence. Recompute DQD; never rewrite the original `checked_at`.
+5. Retain binding provenance and per-requirement results privately. Return only
+   closed aggregates; never rows, SQL, physical names or private diagnostic text.
+
+The public checker validates the adapter's declaration and exact public check
+identity; it cannot independently verify private hashing, storage immutability
+or check-engine correctness. Private implementation and live acceptance are
+separate work, not accomplished by changing the public contract.
+
+### DuckDB cyclic-FK declaration limitation (1.1 and 1.2)
 
 An adapter may explicitly include `duckdb-cyclic-fk-ddl-limited` in the existing
 `limitation_codes` array when it has established that its DuckDB version cannot
@@ -82,6 +145,7 @@ Sources: [DuckDB foreign keys](https://duckdb.org/docs/current/sql/constraints),
 [DuckDB ALTER TABLE limitations](https://duckdb.org/docs/current/sql/statements/alter_table),
 and [OHDSI OMOP CDM v5.4](https://ohdsi.github.io/CommonDataModel/cdm54.html).
 
+The code is also accepted in explicit 1.2, without changing its meaning.
 The new code uses the same sorted, unique, bounded array and `summary_sha256`
 coverage as other limitation codes. It permits no private diagnostics or extra
 fields. It never changes `foreign_key_status`, structural `status`, mismatch

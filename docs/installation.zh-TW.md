@@ -43,6 +43,24 @@ python .agents/skills/clin-nav/scripts/check_omop_metadata.py --capabilities <ex
 封裝的檢查器會離線驗證這些外部檔案；它不會探索、安裝或連線至連接器。公開範例與
 測試資料僅使用合成資料。僅限中繼資料的結果本身不能產生 `executable` 或 `validated` 狀態。
 
+### 原始碼版本選配：1.2 DQD 期限
+
+原始碼版本的 checker 支援明確選用契約 1.2，將 DQD 期限與 metadata 時效分開。
+這不會改寫已發布的 v0.9.0 產物，也不代表私有 adapter 已支援 1.2。
+capabilities 與已雜湊的摘要須一致宣告 `max_dqd_evidence_age_seconds`：
+`null` 代表無時間期限；1 至 31,536,000 的正整數代表有限期限。
+
+```text
+python scripts/check_omop_metadata.py --capabilities <external-capabilities.json> --input <external-inspection.json> --as-of <RFC-3339-timestamp> --contract-version 1.2 --allow-nonexpiring-dqd
+```
+
+此旗標表示同意無期限政策，不能覆寫有限期限；未同意時，checker 不讀取 inspection。
+預設 1.0 與明確選用的 1.1 維持原行為。metadata 仍有有限時效，例如 86,400 秒。
+快照或檢查規格改變就須重驗，不得改寫原始 `checked_at`。
+結構相容與 DQD 證據須分開回報；採信 adapter 聲明不等於獨立驗證私有內容，也不證明
+研究適用性。結構不相容仍為退出碼 3。詳見
+[連接器契約與私有端交接要求](../skills/clin-nav/references/omop-metadata-connector.md#optional-12-independent-dqd-expiration)。
+
 ## 確認必要條件
 
 建議的安裝方式需要 Node.js 與 npm/npx，也需要支援 Skills 的 Codex 介面。
