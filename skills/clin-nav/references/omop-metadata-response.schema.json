@@ -13,8 +13,14 @@
   "$defs": {
     "contractVersion": {
       "type": "string",
-      "enum": ["1.0", "1.1"],
+      "enum": ["1.0", "1.1", "1.2"],
       "maxLength": 8
+    },
+    "dqdEvidenceAge": {
+      "oneOf": [
+        {"type": "null"},
+        {"type": "integer", "minimum": 1, "maximum": 31536000}
+      ]
     },
     "semanticVersion": {
       "type": "string",
@@ -76,6 +82,11 @@
     "capabilities": {
       "type": "object",
       "additionalProperties": false,
+      "allOf": [{
+        "if": {"properties": {"contract_version": {"const": "1.2"}}},
+        "then": {"required": ["max_dqd_evidence_age_seconds"]},
+        "else": {"not": {"required": ["max_dqd_evidence_age_seconds"]}}
+      }],
       "required": [
         "contract_version",
         "adapter_id",
@@ -138,6 +149,7 @@
           "minimum": 1,
           "maximum": 31536000
         },
+        "max_dqd_evidence_age_seconds": {"$ref": "#/$defs/dqdEvidenceAge"},
         "tbls_inspection_available": {
           "const": true
         },
@@ -303,14 +315,14 @@
       "type": "object",
       "additionalProperties": false,
       "allOf": [{
-        "if": {"properties": {"contract_version": {"const": "1.1"}}},
+        "if": {"properties": {"contract_version": {"enum": ["1.1", "1.2"]}}},
         "then": {"required": ["dqd_foreign_key_evidence", "snapshot_binding_sha256"]},
         "else": {"not": {"anyOf": [
           {"required": ["dqd_foreign_key_evidence"]},
           {"required": ["snapshot_binding_sha256"]}
         ]}}
       }, {
-        "if": {"properties": {"contract_version": {"const": "1.1"}}},
+        "if": {"properties": {"contract_version": {"enum": ["1.1", "1.2"]}}},
         "then": {"properties": {"limitation_codes": {"items": {"enum": [
           "constraint-metadata-limited",
           "duckdb-cyclic-fk-ddl-limited",
@@ -324,6 +336,10 @@
           "snapshot-incomplete",
           "tbls-normalization-limited"
         ]}}}}
+      }, {
+        "if": {"properties": {"contract_version": {"const": "1.2"}}},
+        "then": {"required": ["max_dqd_evidence_age_seconds"]},
+        "else": {"not": {"required": ["max_dqd_evidence_age_seconds"]}}
       }],
       "required": [
         "contract_version",
@@ -419,7 +435,8 @@
         },
         "snapshot_binding_sha256": {
           "oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]
-        }
+        },
+        "max_dqd_evidence_age_seconds": {"$ref": "#/$defs/dqdEvidenceAge"}
       }
     }
   }

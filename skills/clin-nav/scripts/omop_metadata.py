@@ -18,6 +18,8 @@ from typing import Any
 
 CONTRACT_VERSION = "1.0"
 EVIDENCE_CONTRACT_VERSION = "1.1"
+DQD_POLICY_CONTRACT_VERSION = "1.2"
+_EVIDENCE_VERSIONS = (EVIDENCE_CONTRACT_VERSION, DQD_POLICY_CONTRACT_VERSION)
 OMOP_CDM_VERSION = "5.4"
 ALLOWLIST_ID = "omop-v54-core-research-v1"
 ALLOWLIST_VERSION = "1.0.0"
@@ -75,6 +77,7 @@ _CAPABILITY_KEYS = frozenset(
     }
 )
 _ALLOWLIST_SUPPORT_KEYS = frozenset({"allowlist_id", "allowlist_version"})
+_CAPABILITY_12_KEYS = _CAPABILITY_KEYS | {"max_dqd_evidence_age_seconds"}
 _INSPECTION_KEYS = frozenset(
     {
         "contract_version",
@@ -96,6 +99,7 @@ _INSPECTION_KEYS = frozenset(
 _INSPECTION_11_KEYS = _INSPECTION_KEYS | {
     "snapshot_binding_sha256", "dqd_foreign_key_evidence"
 }
+_INSPECTION_12_KEYS = _INSPECTION_11_KEYS | {"max_dqd_evidence_age_seconds"}
 _DQD_EVIDENCE_KEYS = frozenset({
     "binding_kind", "snapshot_binding_sha256", "checked_at",
     "reference_sha256", "checked_fk_set_sha256",
@@ -368,7 +372,11 @@ def validate_capabilities(
     """Validate the closed safety handshake and fixed connector support."""
     errors = _Errors()
     _check_recursive_limits(payload, errors)
-    if not _closed_object(payload, _CAPABILITY_KEYS, errors):
+    keys = _CAPABILITY_12_KEYS if contract_version == DQD_POLICY_CONTRACT_VERSION else _CAPABILITY_KEYS
+    if (contract_version == DQD_POLICY_CONTRACT_VERSION and isinstance(payload, Mapping)
+            and payload.get("contract_version") != contract_version):
+        errors.add("unsupported-contract-version")
+    if not _closed_object(payload, keys, errors):
         return errors.result()
     assert isinstance(payload, Mapping)
 
@@ -451,6 +459,9 @@ def validate_capabilities(
         errors.add("invalid-type")
     elif not 1 <= snapshot_age <= 31_536_000:
         errors.add("invalid-value")
+
+    if contract_version == DQD_POLICY_CONTRACT_VERSION:
+        _check_dqd_age_policy(payload.get("max_dqd_evidence_age_seconds"), errors)
 
     byte_limit = payload.get("max_response_bytes")
     if not _is_int(byte_limit):
@@ -550,7 +561,7 @@ def build_inspection_request(
         or not 1 <= max_response_bytes <= HARD_MAX_RESPONSE_BYTES
     ):
         raise ValueError("invalid max_response_bytes")
-    if contract_version not in {CONTRACT_VERSION, EVIDENCE_CONTRACT_VERSION}:
+    if contract_version not in (CONTRACT_VERSION, *_EVIDENCE_VERSIONS):
         raise ValueError("unsupported contract version")
     return {
         "contract_version": contract_version,
@@ -575,6 +586,15 @@ def expected_fk_check_set(catalog: Mapping[str, object]) -> list[str]:
         if column["foreign_key"] is True
     ]
     return sorted(checks)
+
+
+def _check_dqd_age_policy(value: object, errors: _Errors) -> None:
+    if value is None:
+        return
+    if not _is_int(value):
+        errors.add("invalid-type")
+    elif not 1 <= value <= 31_536_000:
+        errors.add("invalid-value")
 
 
 def _validate_dqd_evidence(
@@ -619,7 +639,12 @@ def _dqd_evidence_status(
         return "unavailable"
     assert isinstance(evidence, Mapping)
     checked_at = datetime.fromisoformat(str(evidence["checked_at"]).replace("Z", "+00:00"))
-    if (as_of - checked_at).total_seconds() > capabilities["max_snapshot_age_seconds"]:
+    max_age = (
+        capabilities["max_dqd_evidence_age_seconds"]
+        if capabilities["contract_version"] == DQD_POLICY_CONTRACT_VERSION
+        else capabilities["max_snapshot_age_seconds"]
+    )
+    if max_age is not None and (as_of - checked_at).total_seconds() > max_age:
         return "stale"
     checks = expected_fk_check_set(catalog)
     expected_hash = hashlib.sha256(canonical_json_bytes({"checks": checks})).hexdigest()
@@ -752,13 +777,17 @@ def validate_inspection(
     catalog_data = _catalog_index(catalog, errors)
     as_of_value = _parse_rfc3339(as_of, errors)
 
-    keys = _INSPECTION_11_KEYS if contract_version == EVIDENCE_CONTRACT_VERSION else _INSPECTION_KEYS
+    keys = (
+        _INSPECTION_12_KEYS if contract_version == DQD_POLICY_CONTRACT_VERSION
+        else _INSPECTION_11_KEYS if contract_version == EVIDENCE_CONTRACT_VERSION
+        else _INSPECTION_KEYS
+    )
     if not _closed_object(payload, keys, errors):
         return errors.result()
     assert isinstance(payload, Mapping)
 
     if not isinstance(contract_version, str) or contract_version not in {
-        CONTRACT_VERSION, EVIDENCE_CONTRACT_VERSION
+        CONTRACT_VERSION, *_EVIDENCE_VERSIONS
     }:
         errors.add("unsupported-contract-version")
     _check_text(payload.get("contract_version"), errors, max_length=8)
@@ -801,7 +830,7 @@ def validate_inspection(
     observed_at = _parse_rfc3339(payload.get("observed_at"), errors)
     if observed_at is not None and as_of_value is not None and observed_at > as_of_value:
         errors.add("future-snapshot")
-    if contract_version == EVIDENCE_CONTRACT_VERSION:
+    if contract_version in _EVIDENCE_VERSIONS:
         snapshot_binding = payload.get("snapshot_binding_sha256")
         if snapshot_binding is not None:
             _check_text(snapshot_binding, errors, pattern=_SHA256_RE, max_length=64)
@@ -812,6 +841,16 @@ def validate_inspection(
             as_of=as_of_value,
             errors=errors,
         )
+    if contract_version == DQD_POLICY_CONTRACT_VERSION:
+        policy = payload.get("max_dqd_evidence_age_seconds")
+        _check_dqd_age_policy(policy, errors)
+        if policy != capabilities.get("max_dqd_evidence_age_seconds"):
+            errors.add("evidence-age-policy-mismatch")
+        evidence = payload.get("dqd_foreign_key_evidence")
+        if isinstance(evidence, Mapping):
+            checked_at = _parse_rfc3339(evidence.get("checked_at"), errors)
+            if checked_at is not None and observed_at is not None and checked_at > observed_at:
+                errors.add("evidence-time-order-invalid")
     _check_text(
         payload.get("tbls_version"),
         errors,
@@ -836,7 +875,7 @@ def validate_inspection(
 
     allowed_limitations = (
         _LIMITATION_11_CODES
-        if contract_version == EVIDENCE_CONTRACT_VERSION else _LIMITATION_CODES
+        if contract_version in _EVIDENCE_VERSIONS else _LIMITATION_CODES
     )
     limitations = _check_string_array(
         payload.get("limitation_codes"),
@@ -1097,11 +1136,13 @@ def classify_inspection(
         "summary_sha256": payload["summary_sha256"],
         "public_standard_gaps": public_standard_gaps,
     }
-    if payload["contract_version"] == EVIDENCE_CONTRACT_VERSION:
+    if payload["contract_version"] in _EVIDENCE_VERSIONS:
         result["dqd_foreign_key_evidence_status"] = _dqd_evidence_status(
             payload["dqd_foreign_key_evidence"],
             catalog=catalog,
             capabilities=capabilities,
             as_of=reference_time,
         )
+    if payload["contract_version"] == DQD_POLICY_CONTRACT_VERSION:
+        result["max_dqd_evidence_age_seconds"] = payload["max_dqd_evidence_age_seconds"]
     return result

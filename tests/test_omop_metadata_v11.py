@@ -137,12 +137,13 @@ def test_v11_missing_field_and_v10_extra_field_are_invalid():
     assert "unknown-key" in validate(capabilities, inspection)
 
 
-def test_v11_schema_requires_evidence_only_for_v11():
+def test_schema_requires_evidence_only_for_evidence_versions():
     schema = json.loads((ROOT / "skills/clin-nav/references/omop-metadata-response.schema.json").read_text())
     summary = schema["$defs"]["inspectionSummary"]
-    assert schema["$defs"]["contractVersion"]["enum"] == ["1.0", "1.1"]
+    assert schema["$defs"]["contractVersion"]["enum"] == ["1.0", "1.1", "1.2"]
     assert summary["properties"]["dqd_foreign_key_evidence"]["oneOf"]
     assert summary["allOf"][0]["then"] == {"required": ["dqd_foreign_key_evidence", "snapshot_binding_sha256"]}
+    assert summary["allOf"][0]["if"]["properties"]["contract_version"] == {"enum": ["1.1", "1.2"]}
     assert summary["allOf"][0]["else"]["not"]["anyOf"] == [
         {"required": ["dqd_foreign_key_evidence"]},
         {"required": ["snapshot_binding_sha256"]},
@@ -339,7 +340,7 @@ def test_portable_schema_declares_duckdb_code_only_in_v11():
         and "limitation_codes" in rule["then"]["properties"]
     ), None)
     assert version_rule is not None, "schema needs version-specific limitation enums"
-    assert version_rule["if"]["properties"]["contract_version"]["const"] == "1.1"
+    assert version_rule["if"]["properties"]["contract_version"]["enum"] == ["1.1", "1.2"]
     allowed_11 = version_rule["then"]["properties"]["limitation_codes"]["items"]["enum"]
     allowed_10 = version_rule["else"]["properties"]["limitation_codes"]["items"]["enum"]
     assert DUCKDB_LIMITATION in allowed_11
