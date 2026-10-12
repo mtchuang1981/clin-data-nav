@@ -2,7 +2,8 @@
 
 Date: 2026-10-11
 
-Status: conversational design approved; written specification awaiting review.
+Status: written specification approved by the user on 2026-10-12;
+implementation plan and execution method awaiting review.
 This document is a proposal, not an implemented contract or live acceptance.
 
 ## Purpose and approved intent
