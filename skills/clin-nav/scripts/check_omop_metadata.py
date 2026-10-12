@@ -62,13 +62,16 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--capabilities", required=True, type=Path)
     parser.add_argument("--input", required=True, type=Path)
     parser.add_argument("--as-of", required=True)
-    parser.add_argument("--contract-version", choices=("1.0", "1.1"), default="1.0")
+    parser.add_argument("--contract-version", choices=("1.0", "1.1", "1.2"), default="1.0")
+    parser.add_argument("--allow-nonexpiring-dqd", action="store_true")
     return parser
 
 
 def main() -> None:
     parser = _parser()
     args = parser.parse_args()
+    if args.allow_nonexpiring_dqd and args.contract_version != "1.2":
+        parser.exit(2, CLI_ERROR)
     inspection_read_failed = False
     try:
         capabilities_path = _external_path(args.capabilities)
@@ -90,6 +93,7 @@ def main() -> None:
             catalog=catalog,
             as_of=args.as_of,
             contract_version=args.contract_version,
+            allow_nonexpiring_dqd=args.allow_nonexpiring_dqd,
         )
     except Exception:
         parser.exit(2, CLI_ERROR)

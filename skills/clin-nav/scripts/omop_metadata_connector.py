@@ -8,6 +8,7 @@ import json
 from omop_metadata import (
     CONTRACT_VERSION,
     EVIDENCE_CONTRACT_VERSION,
+    DQD_POLICY_CONTRACT_VERSION,
     HARD_MAX_RESPONSE_BYTES,
     build_inspection_request,
     classify_inspection,
@@ -110,10 +111,12 @@ def _safe_summary(
     summary["limitation_codes"] = list(classification["limitation_codes"])
     summary["summary_sha256"] = inspection["summary_sha256"]
     summary["validation_codes"] = list(classification["validation_codes"])
-    if inspection["contract_version"] == EVIDENCE_CONTRACT_VERSION:
+    if inspection["contract_version"] in (EVIDENCE_CONTRACT_VERSION, DQD_POLICY_CONTRACT_VERSION):
         summary["dqd_foreign_key_evidence_status"] = classification[
             "dqd_foreign_key_evidence_status"
         ]
+    if inspection["contract_version"] == DQD_POLICY_CONTRACT_VERSION:
+        summary["max_dqd_evidence_age_seconds"] = classification["max_dqd_evidence_age_seconds"]
     return summary
 
 
@@ -125,6 +128,7 @@ def assess_connector(
     as_of: str,
     hard_max_bytes: int = HARD_MAX_RESPONSE_BYTES,
     contract_version: str = CONTRACT_VERSION,
+    allow_nonexpiring_dqd: bool = False,
 ) -> dict[str, object]:
     """Run the two-operation connector protocol and return only safe summary data."""
     if (
@@ -134,12 +138,16 @@ def assess_connector(
     ):
         return _result("invalid-response", "invalid-hard-max-bytes", contract_version=contract_version)
 
-    if contract_version not in {CONTRACT_VERSION, EVIDENCE_CONTRACT_VERSION}:
+    if not isinstance(allow_nonexpiring_dqd, bool) or (
+        allow_nonexpiring_dqd and contract_version != DQD_POLICY_CONTRACT_VERSION
+    ):
+        return _result("invalid-response", "invalid-nonexpiring-dqd-option", contract_version=contract_version)
+    if contract_version not in (CONTRACT_VERSION, EVIDENCE_CONTRACT_VERSION, DQD_POLICY_CONTRACT_VERSION):
         return _result("unavailable", "unsupported-contract-version", contract_version=contract_version)
     try:
         capabilities_raw = (
             get_capabilities(contract_version=contract_version)
-            if contract_version == EVIDENCE_CONTRACT_VERSION
+            if contract_version in (EVIDENCE_CONTRACT_VERSION, DQD_POLICY_CONTRACT_VERSION)
             else get_capabilities()
         )
     except Exception:
@@ -154,10 +162,14 @@ def assess_connector(
 
     capability_errors = validate_capabilities(capabilities, contract_version=contract_version)
     if capability_errors:
-        if contract_version == EVIDENCE_CONTRACT_VERSION and "unsupported-contract-version" in capability_errors:
+        if contract_version in (EVIDENCE_CONTRACT_VERSION, DQD_POLICY_CONTRACT_VERSION) and "unsupported-contract-version" in capability_errors:
             return _result("unavailable", "unsupported-contract-version", contract_version=contract_version)
         return _result("invalid-response", *capability_errors, contract_version=contract_version)
     assert isinstance(capabilities, Mapping)
+    if (contract_version == DQD_POLICY_CONTRACT_VERSION
+            and capabilities["max_dqd_evidence_age_seconds"] is None
+            and not allow_nonexpiring_dqd):
+        return _result("unavailable", "nonexpiring-dqd-not-authorized", contract_version=contract_version)
     capability_limit = capabilities["max_response_bytes"]
     assert isinstance(capability_limit, int)
     accepted_bytes = min(hard_max_bytes, capability_limit)
