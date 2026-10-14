@@ -757,8 +757,8 @@ def test_validation_workflow_uses_verified_node24_action_pins():
             "v7.0.2",
         ),
         "actions/download-artifact": (
-            "3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c",
-            "v8.0.1",
+            "9000827ccba6bdab643e8b6fd33ac0654aef8333",
+            "v8.0.2",
         ),
     }
     references = [
@@ -799,8 +799,8 @@ def test_release_workflow_uses_verified_node24_action_pins():
             "v7.0.2",
         ),
         "actions/download-artifact": (
-            "3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c",
-            "v8.0.1",
+            "9000827ccba6bdab643e8b6fd33ac0654aef8333",
+            "v8.0.2",
         ),
     }
     references = [
