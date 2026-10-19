@@ -8,6 +8,11 @@ This installable Agent Skill turns clinical-data questions into source-ranked gu
 
 ## Install in a project
 
+Development note: `0.10.0` is a local candidate, not a published release.
+It adds optional governed compiler routing and declaration checks, not a private
+compiler or execution permission. See [candidate notes](docs/releases/0.10.0.md).
+The verified public v0.9.0 instructions and hashes below remain unchanged.
+
 ```bash
 npx skills add mtchuang1981/clin-data-nav
 ```

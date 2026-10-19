@@ -11,6 +11,14 @@ source-checkout path only when developing or auditing this repository.
 
 ## Runtime boundary
 
+Source-checkout candidate: this branch prepares `0.10.0` locally; it has not
+been published. Its packager and strict installer target `0.10.0`, not the
+verified v0.9.0 ZIP. Use the scripts from the matching source version when
+installing a versioned ZIP; do not pair the candidate installer with old assets.
+The [candidate notes](releases/0.10.0.md) describe optional governed routing and
+its unverified private-operational boundary. The public v0.9.0 verification
+section below remains historical/current-public evidence, not candidate proof.
+
 The instruction-only installed Skill does not require Python. It consists of
 Markdown, YAML metadata, and references read by the supporting agent product.
 Python 3.11 is required only for this repository's contributor, validation,

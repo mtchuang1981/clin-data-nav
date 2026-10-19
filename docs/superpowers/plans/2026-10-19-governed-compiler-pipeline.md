@@ -10,6 +10,15 @@
 
 **Spec:** `docs/superpowers/specs/2026-10-19-governed-compiler-pipeline-design.md` (written approval 2026-10-19).
 
+## Execution scope update — 2026-10-19
+
+The user subsequently selected **local candidate only; publication paused**.
+This overrides the original publication authorization below: do not merge main,
+push, create a tag or publish a Release in this round. Tasks 1–4 are complete;
+Task 5 prepares and reviews a local candidate. Task 6 is deferred. Preserve the
+unexplained Windows cleanup failure as an unresolved publication blocker.
+The aggregate verification record documents actual checks and claim limits.
+
 ## Global Constraints
 
 - Keep `adapter_schema_version: "1"`, generic institutional contract revision `1.2`, capability `version: "1"`, and package version `0.10.0` independent. Do not fabricate a prior public generic contract 1.1.

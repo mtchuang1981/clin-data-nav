@@ -1,6 +1,6 @@
 # Governed compiler pipeline: local candidate verification
 
-Status: local candidate in preparation, **not published**. Updated 2026-10-19.
+Status: v0.10.0 local candidate, **not published**. Updated 2026-10-19.
 The user has paused push, tag creation and GitHub Release publication.
 
 ## Scope
@@ -63,6 +63,37 @@ paused pending diagnosis or a later explicit risk decision.
 
 ## Candidate gates
 
-Final local gates, independent branch review and reproducible package hashes
-will be recorded here after candidate preparation. No remote CI success,
-release asset or private acceptance is inferred from local checks.
+Official Python 3.11.9 on local Windows; no new dependency. Candidate release,
+installer, metadata and public-document tests: 284 passed. Final candidate
+`python -B -m pytest -q -p no:cacheprovider`: **1882 passed, 13 skipped**,
+204.72 seconds, exit 0. Skips reflect unavailable Windows symlink privileges,
+case-distinct/trailing-space paths and POSIX dir-fd semantics; they are not
+passes for those platform-specific behaviors. Independent branch review is pending.
+
+All following commands exited 0 against this candidate:
+
+```text
+python scripts/validate_skill.py
+python scripts/check_public_boundary.py
+python scripts/package_skill.py --check-reproducible
+python scripts/render_eval_summary.py --check
+python scripts/render_eval_summary.py --suite compiler-pipeline --check
+python scripts/render_omop_catalog.py --check
+python scripts/render_effectiveness_report.py --summary evals/effectiveness/examples/synthetic-summary.json --english evals/effectiveness/examples/synthetic-report.md --traditional-chinese evals/effectiveness/examples/synthetic-report.zh-TW.md --check
+python scripts/render_simulation_benchmark.py --summary evals/benchmark/examples/synthetic-summary.json --english evals/benchmark/examples/synthetic-report.md --traditional-chinese evals/benchmark/examples/synthetic-report.zh-TW.md --check
+git diff --check
+```
+
+Two builds in ignored `dist/v0.10.0-a` and `dist/v0.10.0-b` produced identical
+ZIP and manifest bytes. Each pair passed `scripts/verify_release.py artifacts`.
+All 24 archive members were inspected: only public Skill instructions,
+metadata, references and helpers; no tests, repository docs, raw responses,
+private adapter, private schema, credentials or bytecode.
+
+| Local candidate file | SHA-256 |
+| --- | --- |
+| `clin-nav-0.10.0.zip` | `b5a13e85205a56aaea326ed059e1e188f4a6a1868c7892cfa686786401c3b3b7` |
+| `clin-nav-0.10.0.manifest.json` | `ed1fa4ff43c35dd9474f49b4df983f4838142c52074398874dc6a6519118080c` |
+
+No remote CI success, release asset or private acceptance is inferred from
+local checks. Existing published v0.9.0 hashes and release records are unchanged.

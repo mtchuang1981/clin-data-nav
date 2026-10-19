@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.10.0 - 2026-10-19 (local candidate)
+
+Local candidate preparation date; not published. Push, tag and Release are paused.
+
+### Features
+
+- Add optional governed compiler routing, a pure closed capability-declaration
+  validator, logical concept provenance and explicit feasibility/index proposals.
+- Preserve exact specification/program bindings, all metadata/authority gates,
+  local artifact controls and pre-ingestion disclosure minimization. No compiler
+  or private tool client is implemented here.
+- Carry the opt-in OMOP 1.1/1.2 DQD evidence and explicit evidence-age policy
+  changes since 0.9.0; structural verdicts remain independent of DQD evidence.
+
+### Validation and limitations
+
+- Add a separate six-case synthetic suite using the existing evaluator, leaving
+  frozen benchmark inputs/results unchanged. A ten-answer guided model probe
+  supports only the observed index-proposal improvement in its fixed scenario.
+- No private compiler, mapping, institutional conformance, human effectiveness
+  or real-data execution was verified. The earlier Windows cleanup anomaly
+  remains unexplained and is not claimed fixed; publication stays paused.
+
 ## 0.9.0 - 2026-10-04
 
 ### Features
