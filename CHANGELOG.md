@@ -1,8 +1,8 @@
 # Changelog
 
-## 0.10.0 - 2026-10-19 (local candidate)
+## 0.10.0 - 2026-10-19
 
-Local candidate preparation date; not published. Push, tag and Release are paused.
+Publication authorized after all local, cross-platform CI and security gates pass.
 
 ### Features
 
@@ -21,7 +21,8 @@ Local candidate preparation date; not published. Push, tag and Release are pause
   supports only the observed index-proposal improvement in its fixed scenario.
 - No private compiler, mapping, institutional conformance, human effectiveness
   or real-data execution was verified. The earlier Windows cleanup anomaly
-  remains unexplained and is not claimed fixed; publication stays paused.
+  remains unexplained and is not claimed fixed. The user explicitly accepted
+  this known risk, conditional on all fresh local, CI and security gates passing.
 
 ## 0.9.0 - 2026-10-04
 

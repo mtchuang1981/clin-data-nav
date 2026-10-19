@@ -8,7 +8,7 @@
 
 ## 安裝到專案
 
-開發狀態：`0.10.0` 僅為本機候選版，尚未發布。新增的是選用的受治理編譯
+發布準備：`0.10.0` 已獲授權，仍待 CI 與公開產物核對。新增的是選用的受治理編譯
 路由與宣告檢查，不是私有編譯器或資料執行許可；詳見[候選版說明](docs/releases/0.10.0.md)。
 下方已驗證的公開 v0.9.0 安裝指引與雜湊維持不變。
 
@@ -75,7 +75,7 @@ OpenAI 官方文件說明，Skill 會封裝操作指引、資源與選用指令�
 | 回報安全性問題 | [安全性說明](SECURITY.md) |
 | 回饋安裝或任務完成情形 | [社群使用回饋](https://github.com/mtchuang1981/clin-data-nav/issues/new?template=usability-feedback.zh-TW.yml) |
 | 準備經核准的發布 | [發布流程](docs/release.md) |
-| 查看 v0.9.0 變更 | [靜態 Release notes](docs/releases/0.9.0.md)與[版本紀錄](CHANGELOG.zh-TW.md)（[英文完整紀錄](CHANGELOG.md)） |
+| 查看 v0.10.0 變更 | [靜態 Release notes](docs/releases/0.10.0.md)與[版本紀錄](CHANGELOG.zh-TW.md)（[英文完整紀錄](CHANGELOG.md)） |
 | 查核目前產品指引 | [OpenAI 的 ChatGPT Skills 說明](https://help.openai.com/en/articles/20001066)與[Codex Skill 文件](https://learn.chatgpt.com/docs/build-skills) |
 
 ## 證據、公開邊界與限制

@@ -12,6 +12,13 @@
 
 ## Execution scope update — 2026-10-19
 
+Later on 2026-10-19, the user explicitly accepted the known unexplained Windows
+cleanup risk, conditional on every fresh local check, Windows/Ubuntu CI,
+cross-platform package comparison and CodeQL passing, and reauthorized GitHub
+publication. Task 6 has resumed under that condition; this supersedes the hold
+below without claiming the old anomaly fixed or waiving a fresh failure. See
+`docs/verification/2026-10-19-v0.10.0-publication-preflight.md`.
+
 The user subsequently selected **local candidate only; publication paused**.
 This overrides the original publication authorization below: do not merge main,
 push, create a tag or publish a Release in this round. Tasks 1–4 are complete;

@@ -8,7 +8,7 @@ This installable Agent Skill turns clinical-data questions into source-ranked gu
 
 ## Install in a project
 
-Development note: `0.10.0` is a local candidate, not a published release.
+Release preparation: `0.10.0` is authorized, pending CI and publication verification.
 It adds optional governed compiler routing and declaration checks, not a private
 compiler or execution permission. See [candidate notes](docs/releases/0.10.0.md).
 The verified public v0.9.0 instructions and hashes below remain unchanged.
@@ -79,7 +79,7 @@ publish a Plugin.
 | Report a security concern | [Security](SECURITY.md) |
 | Share a safe installation or task-completion self-report | [Community usability feedback](https://github.com/mtchuang1981/clin-data-nav/issues/new?template=usability-feedback.yml) |
 | Prepare an approved release | [Release process](docs/release.md) |
-| Review v0.9.0 changes | [Static release notes](docs/releases/0.9.0.md) and [changelog](CHANGELOG.md) |
+| Review v0.10.0 changes | [Static release notes](docs/releases/0.10.0.md) and [changelog](CHANGELOG.md) |
 | Check current product guidance | [OpenAI Skills in ChatGPT](https://help.openai.com/en/articles/20001066) and [Codex Skill documentation](https://learn.chatgpt.com/docs/build-skills) |
 
 ## Evidence, public boundary, and limitations
