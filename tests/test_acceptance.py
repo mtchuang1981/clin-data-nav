@@ -124,6 +124,36 @@ def test_attached_feature_accepts_origin_defaulting_to_main(tmp_path):
     assert default_branch_is_main(repository)
 
 
+@pytest.mark.parametrize("remote_default", ["main", "release"])
+def test_validation_initializes_real_remote_default_before_pytest(tmp_path, remote_default):
+    """Consume the workflow setup without weakening the default-main gate."""
+    import shlex
+    import yaml
+
+    workflow = yaml.safe_load((ROOT / ".github/workflows/validate.yml").read_text(encoding="utf-8"))
+    steps = workflow["jobs"]["test"]["steps"]
+    setup = next((step for step in steps
+                  if step.get("name") == "Initialize remote default-branch metadata"), None)
+    assert setup is not None, "feature dispatch must initialize real origin/HEAD"
+    assert steps.index(setup) < next(i for i, step in enumerate(steps)
+                                    if step.get("run") == "python -m pytest -q")
+    command = shlex.split(setup["run"])
+    assert command == ["git", "remote", "set-head", "origin", "--auto"]
+    origin = tmp_path / "origin"
+    initialize_repository(origin, branch=remote_default)
+    repository = tmp_path / "repository"
+    initialize_repository(repository, branch="feature")
+    subprocess.run(["git", "remote", "add", "origin", str(origin)], cwd=repository, check=True)
+    subprocess.run(["git", "fetch", "origin"], cwd=repository, check=True, capture_output=True)
+    # Some local Git configurations fill this automatically on fetch; reproduce
+    # the observed fresh Actions checkout with no remote default-branch metadata.
+    subprocess.run(["git", "symbolic-ref", "--delete", "refs/remotes/origin/HEAD"],
+                   cwd=repository, check=False, capture_output=True)
+    assert not default_branch_is_main(repository)
+    subprocess.run(command, cwd=repository, check=True, capture_output=True)
+    assert default_branch_is_main(repository) is (remote_default == "main")
+
+
 def test_detached_checkout_with_local_main_ref_is_accepted(tmp_path):
     repository = tmp_path / "repository"
     initialize_repository(repository)
