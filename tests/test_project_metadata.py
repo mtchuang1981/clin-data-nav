@@ -2897,9 +2897,9 @@ def test_installation_guides_preserve_quick_update_verified_and_source_paths():
         (
             (ROOT / "docs/installation.md").read_text(encoding="utf-8"),
             ENGLISH_ONBOARDING_CONTRACT,
-            "## Current verified v0.9.0 Release artifact verification",
+            "## Current verified v0.10.0 Release artifact verification",
             "## Historical v0.4.0 Release artifact verification (reference only)",
-            "current verified Release is `v0.9.0`",
+            "current verified Release is `v0.10.0`",
             "The v0.4.0 bundle remains below as a historical verification reference only.",
             (
                 "current verified Release is `v0.4.0`",
@@ -2910,9 +2910,9 @@ def test_installation_guides_preserve_quick_update_verified_and_source_paths():
         (
             (ROOT / "docs/installation.zh-TW.md").read_text(encoding="utf-8"),
             TRADITIONAL_CHINESE_ONBOARDING_CONTRACT,
-            "## 目前已驗證的 v0.9.0 Release 產物核對",
+            "## 目前已驗證的 v0.10.0 Release 產物核對",
             "## 歷史 v0.4.0 Release 產物驗證（僅供參考）",
-            "目前已驗證的 Release 是 `v0.9.0`",
+            "目前已驗證的 Release 是 `v0.10.0`",
             "v0.4.0 套件則保留於下方，僅供歷史驗證參考。",
             (
                 "目前已驗證的 Release 是 `v0.4.0`",
@@ -2938,18 +2938,18 @@ def test_installation_guides_preserve_quick_update_verified_and_source_paths():
         for stale_claim in stale_claims:
             assert stale_claim not in normalized
         current = _markdown_section(text, current_heading, historical_heading)
-        assert 'releaseVersion = "0.9.0"' in current
-        assert 'release_version="0.9.0"' in current
+        assert 'releaseVersion = "0.10.0"' in current
+        assert 'release_version="0.10.0"' in current
         assert "clin-nav-$releaseVersion.zip" in current
         assert "clin-nav-$releaseVersion.manifest.json" in current
         assert "clin-nav-$release_version.zip" in current
         assert "clin-nav-$release_version.manifest.json" in current
         assert (
-            "884debb04144c7a1541ce78bfd4a722175f6ef01dc4aff498712b4eb929c3457"
+            "03fea5cf29d600d687a609f2114881c08c8194e1c410167baeb83e302740694a"
             in current
         )
         assert (
-            "09fbaeccbb3c4dcf3020cd49d7ef820ad9e80e91bd7dbe7b57fdc5a54477cb5b"
+            "a9d712362401e27d228aec3b2e3b3585d7e951eadab11197b4a89a4a479b5527"
             in current
         )
         assert "archive_sha256" in current

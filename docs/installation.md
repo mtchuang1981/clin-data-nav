@@ -3,21 +3,21 @@
 [繁體中文](installation.zh-TW.md)
 
 The recommended path is a project-local installation with `npx skills add`.
-The current verified Release is `v0.9.0`; its exact `clin-nav`
+The current verified Release is `v0.10.0`; its exact `clin-nav`
 artifact verification and installation path is below. The immutable v0.6.0
-Release remains available as the prior version, while the v0.4.0 ZIP material
+Release remains available as a historical version, while the v0.4.0 ZIP material
 is a historical verification reference, not an installation path. Use the
 source-checkout path only when developing or auditing this repository.
 
 ## Runtime boundary
 
-Source-checkout candidate: this branch prepares `0.10.0` locally; it has not
-been published. Its packager and strict installer target `0.10.0`, not the
-verified v0.9.0 ZIP. Use the scripts from the matching source version when
-installing a versioned ZIP; do not pair the candidate installer with old assets.
-The [candidate notes](releases/0.10.0.md) describe optional governed routing and
-its unverified private-operational boundary. The public v0.9.0 verification
-section below remains historical/current-public evidence, not candidate proof.
+Source-checkout tools target `0.10.0`, matching the verified public ZIP. Use
+scripts from the matching source version when installing a versioned ZIP;
+do not pair this strict installer with older assets. The
+[release notes](releases/0.10.0.md) describe governed routing and its unverified
+private-operational boundary. See the
+[publication record](verification/2026-10-19-v0.10.0-publication.md) for the
+downloaded artifact identity, verification and disclosed process limitations.
 
 The instruction-only installed Skill does not require Python. It consists of
 Markdown, YAML metadata, and references read by the supporting agent product.
@@ -161,33 +161,33 @@ npx skills update clin-nav --project --yes
 Confirm discovery again with `/skills`. If the displayed behavior is stale,
 follow the stage-specific recovery below instead of reinstalling blindly.
 
-## Current verified v0.9.0 Release artifact verification
+## Current verified v0.10.0 Release artifact verification
 
 These checks identify the verified published bytes, not platform-enforced
-Release immutability. On 2026-10-04, GitHub's API reported `immutable: false`
+Release immutability. On 2026-10-19, GitHub's API reported `immutable: false`
 for this Release. The publisher refuses an existing Release, and this process
 does not move published tags or replace their assets; that policy is not a
 platform lock.
 
-The current verified Release is `v0.9.0`. Its exact published assets
-are `clin-nav-0.9.0.zip` and `clin-nav-0.9.0.manifest.json`. The commands below
+The current verified Release is `v0.10.0`. Its exact published assets
+are `clin-nav-0.10.0.zip` and `clin-nav-0.10.0.manifest.json`. The commands below
 download both assets from that same Release, verify the manifest
 against its published SHA-256, and then verify the ZIP against both its
 published SHA-256 and the manifest's `archive_sha256` before installation.
-These values are bound to the reproducible v0.9.0 artifacts and the successful
+These values are bound to the reproducible v0.10.0 artifacts and the successful
 Linux/Windows package comparison for the tagged source.
 
-The immutable v0.6.0 Release remains available as the prior release. The
+Earlier releases, including [v0.9.0](https://github.com/mtchuang1981/clin-data-nav/releases/tag/v0.9.0), remain available with unchanged assets. The
 v0.4.0 bundle remains below as a historical verification reference only.
 
 PowerShell:
 
 ```powershell
-$releaseVersion = "0.9.0"
+$releaseVersion = "0.10.0"
 $archiveName = "clin-nav-$releaseVersion.zip"
 $manifestName = "clin-nav-$releaseVersion.manifest.json"
-$expectedArchiveSha256 = "884debb04144c7a1541ce78bfd4a722175f6ef01dc4aff498712b4eb929c3457"
-$expectedManifestSha256 = "09fbaeccbb3c4dcf3020cd49d7ef820ad9e80e91bd7dbe7b57fdc5a54477cb5b"
+$expectedArchiveSha256 = "03fea5cf29d600d687a609f2114881c08c8194e1c410167baeb83e302740694a"
+$expectedManifestSha256 = "a9d712362401e27d228aec3b2e3b3585d7e951eadab11197b4a89a4a479b5527"
 $releaseBase = "https://github.com/mtchuang1981/clin-data-nav/releases/download/v$releaseVersion"
 Invoke-WebRequest "$releaseBase/$archiveName" -OutFile $archiveName
 Invoke-WebRequest "$releaseBase/$manifestName" -OutFile $manifestName
@@ -202,7 +202,7 @@ if ($actualArchiveSha256 -ne $expectedArchiveSha256) { throw "Archive SHA-256 mi
 
 $skillsRoot = Join-Path (Get-Location) ".agents/skills"
 $skillDirectory = Join-Path $skillsRoot "clin-nav"
-$stagingDirectory = Join-Path $skillsRoot ".clin-nav-v0.9.0-staged"
+$stagingDirectory = Join-Path $skillsRoot ".clin-nav-v0.10.0-staged"
 if (Test-Path $skillDirectory) { throw "Installation already exists" }
 if (Test-Path $stagingDirectory) { throw "Staging directory already exists" }
 New-Item -ItemType Directory -Path $skillsRoot -Force | Out-Null
@@ -215,11 +215,11 @@ Move-Item -LiteralPath $stagingDirectory -Destination $skillDirectory
 POSIX shell:
 
 ```bash
-release_version="0.9.0"
+release_version="0.10.0"
 archive_name="clin-nav-$release_version.zip"
 manifest_name="clin-nav-$release_version.manifest.json"
-expected_archive_sha256="884debb04144c7a1541ce78bfd4a722175f6ef01dc4aff498712b4eb929c3457"
-expected_manifest_sha256="09fbaeccbb3c4dcf3020cd49d7ef820ad9e80e91bd7dbe7b57fdc5a54477cb5b"
+expected_archive_sha256="03fea5cf29d600d687a609f2114881c08c8194e1c410167baeb83e302740694a"
+expected_manifest_sha256="a9d712362401e27d228aec3b2e3b3585d7e951eadab11197b4a89a4a479b5527"
 release_base="https://github.com/mtchuang1981/clin-data-nav/releases/download/v$release_version"
 curl -fL "$release_base/$archive_name" -o "$archive_name"
 curl -fL "$release_base/$manifest_name" -o "$manifest_name"
@@ -240,7 +240,7 @@ test "$actual_archive_sha256" = "$expected_archive_sha256" || { echo "Archive SH
 
 skills_root="$PWD/.agents/skills"
 skill_directory="$skills_root/clin-nav"
-staging_directory="$skills_root/.clin-nav-v0.9.0-staged"
+staging_directory="$skills_root/.clin-nav-v0.10.0-staged"
 test ! -e "$skill_directory" || { echo "Installation already exists" >&2; exit 1; }
 test ! -e "$staging_directory" || { echo "Staging directory already exists" >&2; exit 1; }
 mkdir -p "$skills_root"
@@ -330,8 +330,8 @@ path requires Python 3.11 and the setup in
 
 Normal Skill installation and instruction-only use does not require Python.
 This optional contributor tool runs from a complete source checkout with the
-supported Python 3.11 environment. It is a development addition, not a change
-to the verified published v0.9.0 assets. Select exactly one installed directory:
+supported Python 3.11 environment. It does not change published assets or
+confirm the host's loaded version. Select exactly one installed directory:
 
 ```text
 python scripts/verify_installation.py --skill-dir <selected-directory> --manifest <trusted-external-manifest.json> --manifest-sha256 <published-manifest-sha256> --comparison bytes
