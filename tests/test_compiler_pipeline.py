@@ -145,9 +145,36 @@ def test_diagnostics_never_echo_synthetic_private_marker():
     payload["operations"][-1] = "SYNTH-PRIVATE-MARKER"
     payload["spec_format"] = "SYNTH-PRIVATE-MARKER\n"
     errors = validate(payload)
-    assert errors == ("invalid-value", "unknown-key")
+    assert errors == ("unknown-key",)  # Reject an oversized shape before lookups.
     assert "SYNTH-PRIVATE-MARKER" not in repr(errors)
     assert len(repr(errors)) < 256
+
+
+def test_bad_values_return_content_free_diagnostics_after_shape_validation():
+    payload = declaration()
+    payload["operations"][-1] = "SYNTH-PRIVATE-MARKER"
+    payload["spec_format"] = "SYNTH-PRIVATE-MARKER\n"
+    assert validate(payload) == ("invalid-value",)
+
+
+@pytest.mark.parametrize("oversized", [False, True])
+def test_nonordinary_key_is_rejected_before_its_comparison_runs(oversized):
+    calls = []
+
+    class UntrustedKey(str):
+        __hash__ = str.__hash__
+
+        def __eq__(self, other):
+            calls.append(other)
+            raise RuntimeError("SYNTH-PRIVATE-MARKER")
+
+    payload = declaration()
+    del payload["version"]
+    payload[UntrustedKey("version")] = "1"
+    if oversized:
+        payload["extra"] = True
+    assert validate(payload) == ("unknown-key",)
+    assert calls == []
 
 
 def test_string_and_list_subclasses_are_not_accepted():

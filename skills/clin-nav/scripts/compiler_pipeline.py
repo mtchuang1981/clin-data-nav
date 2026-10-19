@@ -20,14 +20,16 @@ def validate_compiler_pipeline_capability(payload: object) -> tuple[str, ...]:
     """
     if type(payload) is not dict:
         return ("invalid-type",)
-    errors: set[str] = set()
-    if any(field not in payload for field in _FIELDS):
-        errors.add("missing-key")
-    # Short-circuit oversized dictionaries before visiting unknown entries.
+    # Reject shape before dictionary lookups: a str-subclass key can execute
+    # custom equality during membership tests even in an ordinary dictionary.
+    # Size is checked before iterating keys; values are untouched on rejection.
     if len(payload) > len(_FIELDS) or any(
         type(field) is not str or field not in _FIELDS for field in payload
     ):
-        errors.add("unknown-key")
+        return ("unknown-key",)
+    errors: set[str] = set()
+    if any(field not in payload for field in _FIELDS):
+        errors.add("missing-key")
 
     for field, allowed, max_length in (
         ("version", {"1"}, 16),

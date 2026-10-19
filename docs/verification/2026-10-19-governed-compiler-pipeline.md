@@ -29,6 +29,8 @@ Protocol SHA-256: `8f75e4d940d7d1885fa0db5800350260543edd039822d482e14ba2bec0e85
 Runner SHA-256: `18f3e41292614831d88bf9ab62a03818aee7e3006991a67d0c4db2df99020d41`.
 Raw answers, provider logs, bindings and individual manual judgments stay
 outside Git. All ten complete answers were reviewed against the frozen criteria.
+External manual-review record SHA-256:
+`8f115c9e4dc6c8d746b8407e483841f531d1eacea47435efa49d8f170e8c5f40`.
 
 | Frozen criterion | Baseline | Candidate |
 | --- | ---: | ---: |
@@ -68,7 +70,8 @@ installer, metadata and public-document tests: 284 passed. Final candidate
 `python -B -m pytest -q -p no:cacheprovider`: **1882 passed, 13 skipped**,
 204.72 seconds, exit 0. Skips reflect unavailable Windows symlink privileges,
 case-distinct/trailing-space paths and POSIX dir-fd semantics; they are not
-passes for those platform-specific behaviors. Independent branch review is pending.
+passes for those platform-specific behaviors. This run preceded the review fix
+below; its post-fix full-suite result is recorded separately when complete.
 
 All following commands exited 0 against this candidate:
 
@@ -92,8 +95,81 @@ private adapter, private schema, credentials or bytecode.
 
 | Local candidate file | SHA-256 |
 | --- | --- |
-| `clin-nav-0.10.0.zip` | `b5a13e85205a56aaea326ed059e1e188f4a6a1868c7892cfa686786401c3b3b7` |
-| `clin-nav-0.10.0.manifest.json` | `ed1fa4ff43c35dd9474f49b4df983f4838142c52074398874dc6a6519118080c` |
+| `clin-nav-0.10.0.zip` | `03fea5cf29d600d687a609f2114881c08c8194e1c410167baeb83e302740694a` |
+| `clin-nav-0.10.0.manifest.json` | `a9d712362401e27d228aec3b2e3b3585d7e951eadab11197b4a89a4a479b5527` |
 
 No remote CI success, release asset or private acceptance is inferred from
 local checks. Existing published v0.9.0 hashes and release records are unchanged.
+
+## Independent branch review and correction
+
+One fresh-context read-only reviewer inspected `d2b84d2..b1ef8d1`, ran 146
+targeted tests and the relevant gates, verified both original package pairs,
+and compared all 24 archive members with the reviewed commit. No Critical or
+Minor issue was reported; one Important issue required correction.
+
+The validator queried required fields before rejecting nonordinary keys.
+An ordinary Python dictionary can hold a string-subclass key whose comparison
+raises an input-controlled exception. Two synthetic regressions (normal and
+oversized dictionaries) reproduced it before the fix. Shape/size rejection
+now occurs before any field lookup, with only controlled `unknown-key` output;
+bad-value diagnostics remain independently tested on valid-shaped dictionaries.
+No callback ran after the fix; 149 targeted tests passed. This is a direct
+Python-object API issue, not evidence of a remote JSON attack.
+
+The table above contains the rebuilt post-fix hashes, not the superseded
+pre-review package. Both rebuilt pairs passed the artifact verifier and byte
+comparison; three non-pytest gates and the separate Eval summary check passed.
+No second model campaign or second reviewer was used. No deferred Minor issue.
+
+The reviewer did not independently inspect private systems, current remote CI,
+the missing Windows failure scene, or the ten external raw model answers.
+These exclusions preserve the stated local-only and narrow-evidence boundary.
+
+## Execution rulings and their costs
+
+1. Use a project-local Git worktree because the native checkout was outside
+   writable roots; its App attachment was rejected. Cost: this checkout is
+   Git-managed, not managed by the App worktree UI; no older worktree was removed.
+2. Retry fetch only after normal interactive review became available. No
+   permission/capacity bypass. Cost if still blocked: synchronization must stop.
+3. Capture baseline probe inputs before guidance edits. Cost if provenance
+   fails: there is no defensible improvement claim and the comparison is discarded.
+4. Continue isolated development after a green integrated baseline while
+   keeping the unexplained cleanup failure as a publication blocker. Cost:
+   development progress is not permission to publish or a proven cleanup fix.
+5. Reuse the observed Task 1 full-suite result for bookkeeping instead of
+   running an identical suite solely through the helper. Cost: no helper-created
+   full log for that run; exact counts, exit status and session were retained.
+6. Test the published manifest through its real validator; use actual model
+   probes and case evaluation rather than new exact-prose assertions for every
+   semantic rule. Cost: keyword/static success cannot establish semantic safety;
+   manual review and explicit claim limits remain necessary.
+7. Remaining baseline sessions used bytes captured once at runner startup
+   while guidance editing proceeded. Cost if that binding is wrong: discard
+   both arms, never combine changed-input results.
+8. Keep the core catalog and historical benchmark bindings unchanged; add a
+   separate suite with the existing evaluator and closed renderer selector.
+   Cost: maintain one additional selector, with default/unknown-suite regressions.
+9. Reuse Task 4's just-completed full suite instead of duplicating it solely
+   for helper bookkeeping. Cost: no helper-created full log; exact result and
+   session retained, with a further full candidate run after version changes.
+10. Omit `CITATION.cff` release date for this unpublished candidate; record the
+    preparation date in explicitly marked candidate notes/changelogs. Cost:
+    a future real publication must add its actual release date and update tests.
+11. Retain verified-public v0.9.0 hashes/navigation and separately document the
+    local candidate. Cost: readers must distinguish the two version contexts
+    and use a matching strict installer rather than mixing versions.
+12. Private compiler/tool mappings and institutional conformance remain pending,
+    not assumed from declarations. Cost: no operational readiness claim.
+13. Remote CI/cross-platform equality/publication remain unverified under the
+    local-only instruction. Cost: future publication requires fresh reconciliation
+    and remote checks; preserved action pins do not imply current CI success.
+14. Preserve the Windows anomaly blocker after review. Cost: later passes do
+    not remove the requirement for diagnosis or an explicit future risk decision.
+15. The author reviewed all ten external model answers, but the independent
+    reviewer assessed only the aggregate record. Cost: no independent scoring
+    replication; keep the observed claim narrow and transparent.
+16. Fixtures and guided answers do not establish broad semantic safety,
+    adversarial robustness, human or clinical effectiveness. Cost: downstream
+    operational decisions need their own evidence; do not extrapolate.
