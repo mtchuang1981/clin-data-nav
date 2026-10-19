@@ -20,8 +20,11 @@ compiler-pipeline suite. Hand-authored fixture answers are not model evidence.
 Ten fresh sessions: five baseline and five candidate, Codex CLI 0.156.1,
 gpt-5.6-sol, medium reasoning. The fixed synthetic scenario explicitly identifies
 unsafe coworker requests; this is guided application, not adversarial testing.
-Guidance was captured once before each arm. No model tools were enabled, all
-ten audits record zero tool calls and unchanged disposable workspaces, and
+Guidance was captured once before each arm. The prompt prohibited tool use;
+browsing and optional app/plugin/hook features were disabled, user configuration
+was ignored, and the sandbox was read-only with escalation denied. This is not
+an assertion that every built-in tool was technically removed. All ten audits
+record zero tool calls and unchanged disposable workspaces, and
 answer hashes match the external audit records. Inference used the provider;
 no browsing, private MCP, private data or real institutional execution occurred.
 
@@ -66,12 +69,14 @@ paused pending diagnosis or a later explicit risk decision.
 ## Candidate gates
 
 Official Python 3.11.9 on local Windows; no new dependency. Candidate release,
-installer, metadata and public-document tests: 284 passed. Final candidate
-`python -B -m pytest -q -p no:cacheprovider`: **1882 passed, 13 skipped**,
-204.72 seconds, exit 0. Skips reflect unavailable Windows symlink privileges,
+installer, metadata and public-document tests: 284 passed before review.
+Final post-fix `python -B -m pytest -q -p no:cacheprovider`:
+**1885 passed, 13 skipped**, 168.83 seconds, exit 0, against source candidate
+`74f6b65cae45b5e6ba49d6525b4fbe6a80a1164b`.
+Skips reflect unavailable Windows symlink privileges,
 case-distinct/trailing-space paths and POSIX dir-fd semantics; they are not
-passes for those platform-specific behaviors. This run preceded the review fix
-below; its post-fix full-suite result is recorded separately when complete.
+passes for those platform-specific behaviors. The pre-review full candidate
+run also passed 1882 tests with 13 skips; it is not substituted for the final run.
 
 All following commands exited 0 against this candidate:
 
@@ -114,17 +119,31 @@ raises an input-controlled exception. Two synthetic regressions (normal and
 oversized dictionaries) reproduced it before the fix. Shape/size rejection
 now occurs before any field lookup, with only controlled `unknown-key` output;
 bad-value diagnostics remain independently tested on valid-shaped dictionaries.
-No callback ran after the fix; 149 targeted tests passed. This is a direct
+No callback ran after the fix; 149 targeted tests and the final 1885-test full
+suite passed. This is a direct
 Python-object API issue, not evidence of a remote JSON attack.
 
 The table above contains the rebuilt post-fix hashes, not the superseded
 pre-review package. Both rebuilt pairs passed the artifact verifier and byte
 comparison; three non-pytest gates and the separate Eval summary check passed.
+All generated checks passed again. Each of the 24 final archive members matches
+the canonical source bytes at `74f6b65`; independent CertUtil SHA-256 agrees with
+the table. The final record-only commit does not change package contents.
 No second model campaign or second reviewer was used. No deferred Minor issue.
 
 The reviewer did not independently inspect private systems, current remote CI,
 the missing Windows failure scene, or the ten external raw model answers.
 These exclusions preserve the stated local-only and narrow-evidence boundary.
+
+## Local handoff
+
+Keep `codex/governed-compiler-pipeline` and its worktree/packages in place.
+Primary `main` remains `d2b84d237a39a97452d89775204d3773f3e59386`; its unrelated
+untracked backlog is untouched. No main merge, push, tag or Release was made.
+Tasks 1–5 are locally complete; Task 6 is explicitly deferred. Future publication
+requires a new decision on the Windows blocker, fresh remote reconciliation,
+Windows/Ubuntu CI and cross-platform package comparison, then publication and
+independent verification. Local success does not waive any of those steps.
 
 ## Execution rulings and their costs
 
@@ -173,3 +192,7 @@ These exclusions preserve the stated local-only and narrow-evidence boundary.
 16. Fixtures and guided answers do not establish broad semantic safety,
     adversarial robustness, human or clinical effectiveness. Cost: downstream
     operational decisions need their own evidence; do not extrapolate.
+17. Describe the probe's no-tool rule separately from technical restrictions:
+    audits observed zero calls, but read-only sandboxing does not remove every
+    built-in tool. Cost: no claim that all possible tool access was disabled;
+    the evidence supports observed behavior, not a universal isolation guarantee.
