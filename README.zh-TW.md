@@ -8,9 +8,9 @@
 
 ## 安裝到專案
 
-發布準備：`0.10.0` 已獲授權，仍待 CI 與公開產物核對。新增的是選用的受治理編譯
-路由與宣告檢查，不是私有編譯器或資料執行許可；詳見[候選版說明](docs/releases/0.10.0.md)。
-下方已驗證的公開 v0.9.0 安裝指引與雜湊維持不變。
+已驗證的公開版本：[v0.10.0](https://github.com/mtchuang1981/clin-data-nav/releases/tag/v0.10.0)。
+新增的是選用的受治理編譯路由與宣告檢查，不是私有編譯器或資料執行許可；
+詳見[版本說明](docs/releases/0.10.0.md)與[發布驗證紀錄](docs/verification/2026-10-19-v0.10.0-publication.md)。
 
 ```bash
 npx skills add mtchuang1981/clin-data-nav
