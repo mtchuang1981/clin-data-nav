@@ -18,10 +18,21 @@ GENERATED_START = "<!-- BEGIN GENERATED EVAL SUMMARY -->"
 GENERATED_END = "<!-- END GENERATED EVAL SUMMARY -->"
 
 
-def render_summary(root: Path) -> str:
+def _suite_paths(root: Path, suite: str) -> tuple[Path, Path, Path]:
+    if suite == "core":
+        return root / "evals/cases.yaml", root / "tests/fixtures", root / "evals/README.md"
+    if suite == "compiler-pipeline":
+        return (root / "evals/compiler-pipeline/cases.yaml",
+                root / "tests/fixtures/compiler_pipeline",
+                root / "evals/compiler-pipeline/README.md")
+    raise ValueError("unknown Eval suite")
+
+
+def render_summary(root: Path, *, suite: str = "core") -> str:
     """Return the complete generated Eval result table in catalog order."""
+    catalog_path, fixtures, _ = _suite_paths(root, suite)
     catalog, rubric = load_catalog(
-        root / "evals/cases.yaml",
+        catalog_path,
         root / "evals/rubric.yaml",
     )
     rows = [
@@ -33,14 +44,14 @@ def render_summary(root: Path) -> str:
         baseline = evaluate_response(
             case,
             rubric,
-            (root / "tests/fixtures/baseline" / f"{case_id}.md").read_text(
+            (fixtures / "baseline" / f"{case_id}.md").read_text(
                 encoding="utf-8"
             ),
         )
         forward = evaluate_response(
             case,
             rubric,
-            (root / "tests/fixtures/forward" / f"{case_id}.md").read_text(
+            (fixtures / "forward" / f"{case_id}.md").read_text(
                 encoding="utf-8"
             ),
         )
@@ -79,6 +90,7 @@ def _generated_block_newline(data: bytes, start: int) -> bytes:
 
 def main(argv: list[str] | None = None, *, root: Path = ROOT) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--suite", choices=("core", "compiler-pipeline"), default="core")
     parser.add_argument(
         "--check",
         action="store_true",
@@ -86,12 +98,12 @@ def main(argv: list[str] | None = None, *, root: Path = ROOT) -> int:
     )
     args = parser.parse_args(argv)
 
-    readme_path = root / "evals/README.md"
+    _, _, readme_path = _suite_paths(root, args.suite)
     try:
         data = readme_path.read_bytes()
         start, end = _generated_block_bounds(data)
         newline = _generated_block_newline(data, start)
-        expected = ("\n" + render_summary(root) + "\n").encode("utf-8")
+        expected = ("\n" + render_summary(root, suite=args.suite) + "\n").encode("utf-8")
         if newline == b"\r\n":
             expected = expected.replace(b"\n", b"\r\n")
     except (OSError, ValueError, yaml.YAMLError) as error:
@@ -99,7 +111,7 @@ def main(argv: list[str] | None = None, *, root: Path = ROOT) -> int:
 
     if args.check:
         if data[start:end] != expected:
-            print("evals/README.md generated Eval summary is stale")
+            print(f"{readme_path.relative_to(root).as_posix()} generated Eval summary is stale")
             return 1
         return 0
 
