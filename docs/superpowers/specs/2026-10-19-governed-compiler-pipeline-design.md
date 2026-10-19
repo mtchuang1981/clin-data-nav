@@ -2,8 +2,8 @@
 
 Date: 2026-10-19
 
-Status: conversational design and four safety revisions approved by the user;
-written specification awaiting review. This is not an implemented capability,
+Status: written specification approved by the user on 2026-10-19;
+implementation plan and execution method awaiting review. This is not an implemented capability,
 an adapter conformance result, or permission to execute against private data.
 
 ## Purpose and scope
