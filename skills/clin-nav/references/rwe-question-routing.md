@@ -19,6 +19,37 @@ Preserve secondary intents, but do not let them silently change the primary
 question. A request for an implementation can still contain unresolved
 measurement or causal-design questions.
 
+## Feasibility-count requests
+
+Treat an initial "how many people meet these criteria" request before a
+protocol or ethics decision as feasibility scoping, not permission to execute
+and not automatically an analysis or causal question. Its default deliverable
+is a structured specification. Compiled aggregate counts are possible only
+when the approved Adapter supports the scope and institutional policy permits
+the purpose, processing, and disclosure under its controls.
+
+Decompose population and period, index event, groups, inclusion/exclusion
+criteria and their windows relative to index, and requested breakdowns. Ask
+investigator-only ambiguities rather than silently choosing definitions,
+washout/history windows, overlap rules, sites, or output thresholds.
+
+Use the stated index event. If none is stated, propose one suitable to the
+question, give a one-sentence reason, and mark it pending investigator
+confirmation; a proposed first qualifying exposure, procedure, or diagnosis
+is not an approved study parameter. Keep unresolved mappings as logical
+parameters, not remembered codes or invented physical schema.
+
+Outcome event counts, person-time, baseline tables, effect estimates, and
+power/sample-size calculations are outside this narrow feasibility-count
+route. State that boundary and route separately requested analysis to its
+design and approval requirements. Do not provide substitute code for an
+unsupported request, or imply every public methodological discussion requires
+institutional approval.
+
+For an authorized implementation request with an optional governed pipeline,
+use `institutional-adapter-contract.md`; no declaration or a fixture pass
+alone grants execution or disclosure. Keep all existing maturity gates.
+
 ## Frame intervention or exposure questions
 
 For an intervention or exposure question, record:

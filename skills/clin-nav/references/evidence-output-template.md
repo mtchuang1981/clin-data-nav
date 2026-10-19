@@ -118,6 +118,14 @@ Without the required Adapter, current metadata, parameters, and fixtures,
 retain the specification-only marker and do not emit SQL-, SAS-, R-, or
 Python-shaped placeholders that could be mistaken for physical objects.
 
+If a governed compiler pipeline is relevant, report its declaration/scope and
+compatibility status in the Data contract, the supported maturity in Code
+maturity, and every unresolved provenance, parameter, metadata, authorization,
+digest-binding, fixture, or disclosure gate in Validation gaps. Cite approved
+local artifact identities/digests only where permitted; do not open full private
+artifacts automatically. Follow `institutional-adapter-contract.md` for the
+pipeline semantics; do not infer promotion from the last operation performed.
+
 ### Actionable gaps contract
 
 For Implementation Validation gaps and Research Bias and validation gaps,

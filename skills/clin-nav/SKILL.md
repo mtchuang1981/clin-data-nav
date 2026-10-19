@@ -159,6 +159,12 @@ Specify:
 - types, time precision, code systems, concept or value-set parameters;
 - allowed outputs, sensitivity constraints, and lineage;
 - expected fixtures, edge cases, and acceptance checks.
+- concept sets as logical ingredient, class, diagnosis, or procedure families
+  for governed Adapter resolution, not code lists written from memory.
+
+Never put diagnosis, drug, procedure, or laboratory codes from memory into a
+contract or specification. Use the Adapter's resolution output with provenance,
+or leave named, unresolved logical parameters.
 
 Use placeholders for missing local values. Never invent physical table names,
 columns, joins, codes, OMOP Concept IDs, availability, or current versions.
@@ -204,6 +210,18 @@ State the maturity label and list every unmet gate as a validation gap.
 Use the actionable gaps contract in `references/evidence-output-template.md`
 for implementation and research gaps. Completing one gap never automatically
 upgrades maturity; reassess all relevant execution gates before promotion.
+
+When an approved versioned Adapter declares a valid governed compiler pipeline
+and the request is within its scope, follow the optional capability contract in
+`references/institutional-adapter-contract.md`: resolve concepts, write the
+structured specification, validate, compile, and test approved fixtures only
+when authorized. Do not write replacement SQL, SAS, R, Python, or other program
+code, or edit the generated program. Report the supported maturity and every
+unmet gate; fixture success never bypasses the existing execution requirements.
+If unavailable, incompatible, or out of scope, say so and retain the logical
+contract rather than improvising code. A declaration does not authorize tools,
+real-data execution, disclosure, or automatic reading of private artifacts.
+
 Metadata-only access remains metadata-only. Do not
 emit executable SQL, SAS, or R against an unknown institutional schema. When a
 request lacks a versioned data dictionary, live metadata, or fixtures, stop at
@@ -253,6 +271,11 @@ Load only the directly relevant one-hop reference:
 ## Common Failure Modes
 
 - **Starting with code:** Build the evidence record and contract first.
+- **Bypassing an in-scope governed compiler:** Do not hand-write institution-
+  specific code or edit the generated program instead of following the pipeline.
+- **Listing codes from memory:** Require governed resolution and provenance.
+- **Treating an untested program as passed:** `unavailable`, skipped/failed
+  fixtures, or a missing/mismatched specification/program digest is not a pass.
 - **Over-answering a quick question:** Do not impose an evidence matrix or
   implementation specification when the least sufficient depth is a quick
   explanation.

@@ -1,6 +1,8 @@
 from pathlib import Path
 import re
 
+import yaml
+
 ROOT = Path(__file__).resolve().parents[1]
 SKILL = ROOT / "skills/clin-nav"
 OUTPUT_DEPTHS = {
@@ -16,6 +18,24 @@ COMMON_HEADER_FIELDS = (
     "Limitations:",
     "Sources actually consulted:",
 )
+
+
+def test_institutional_pipeline_manifest_example_is_usable(monkeypatch):
+    """The published optional declaration must work with its real validator."""
+    monkeypatch.syspath_prepend(str(SKILL / "scripts"))
+    from compiler_pipeline import validate_compiler_pipeline_capability
+
+    reference = (SKILL / "references/institutional-adapter-contract.md").read_text(encoding="utf-8")
+    manifests = [yaml.safe_load(block) for block in re.findall(r"```yaml\s*\n(.*?)```", reference, re.S)]
+    declarations = [manifest["capabilities"]["compiler_pipeline"] for manifest in manifests
+                    if isinstance(manifest, dict)
+                    and isinstance(manifest.get("capabilities"), dict)
+                    and "compiler_pipeline" in manifest["capabilities"]]
+    assert declarations, "no usable governed compiler declaration is published"
+    for capability in declarations:
+        assert validate_compiler_pipeline_capability(capability) == ()
+        invalid = dict(capability, operations=["resolve_concept", "validate_spec", "compile_spec", "run_real_data"])
+        assert "invalid-value" in validate_compiler_pipeline_capability(invalid)
 
 
 def test_skill_routes_all_six_references():
