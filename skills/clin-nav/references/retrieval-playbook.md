@@ -45,9 +45,21 @@ When network search is available:
 2. Open the specific paper from `https://www.lexjansen.com/` or its linked
    original source. Do not treat an index record, result title, or snippet as a
    reviewed paper.
-3. Record the actual query, search date, paper title, authors, conference,
-   publication year, stable paper URL, access date, relevant section or page,
-   applicability, SAS platform or version caveats, and limitations.
+3. Record these evidence fields:
+
+   - actual query
+   - search date
+   - paper title
+   - authors
+   - conference
+   - publication year
+   - stable paper URL
+   - access date
+   - relevant section or page
+   - applicability
+   - SAS platform or version caveats
+   - limitations
+
 4. For any code fragment, record its paper and page provenance, whether it is
    quoted, adapted, or independently reimplemented, and the stated copyright,
    license, or reuse terms.

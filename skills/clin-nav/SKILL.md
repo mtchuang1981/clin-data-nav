@@ -211,16 +211,32 @@ Use the actionable gaps contract in `references/evidence-output-template.md`
 for implementation and research gaps. Completing one gap never automatically
 upgrades maturity; reassess all relevant execution gates before promotion.
 
-When an approved versioned Adapter declares a valid governed compiler pipeline
-and the request is within its scope, follow the optional capability contract in
-`references/institutional-adapter-contract.md`: resolve concepts, write the
-structured specification, validate, compile, and test approved fixtures only
-when authorized. Do not write replacement SQL, SAS, R, Python, or other program
-code, or edit the generated program. Report the supported maturity and every
-unmet gate; fixture success never bypasses the existing execution requirements.
-If unavailable, incompatible, or out of scope, say so and retain the logical
-contract rather than improvising code. A declaration does not authorize tools,
-real-data execution, disclosure, or automatic reading of private artifacts.
+Use the optional governed compiler route only when all these conditions hold:
+
+- The Adapter is approved and versioned.
+- The Adapter declares a valid governed compiler pipeline.
+- The request is within the pipeline's scope.
+
+For this route, follow the optional capability contract in
+`references/institutional-adapter-contract.md`.
+Before any tool use, verify the local mapping and authorization.
+For authorized pipeline work, use this sequence:
+
+1. Resolve concepts.
+2. Write the structured specification.
+3. Validate the specification.
+4. Compile the accepted specification.
+5. Test the exact compiled program on approved fixtures only when authorized.
+
+Do not write replacement SQL, SAS, R, Python, or other program code.
+Do not edit the generated program.
+Report the supported maturity and every unmet gate.
+Fixture success never bypasses the existing execution requirements.
+
+If the pipeline is unavailable, incompatible, or out of scope, report that status.
+Retain the logical contract rather than improvising code.
+A declaration does not authorize tools, real-data execution, disclosure,
+or automatic reading of private artifacts.
 
 Metadata-only access remains metadata-only. Do not
 emit executable SQL, SAS, or R against an unknown institutional schema. When a
