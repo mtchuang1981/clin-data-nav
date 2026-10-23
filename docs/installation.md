@@ -370,64 +370,121 @@ delete an unresolved destination blindly.
 <a id="troubleshoot-missing-node"></a>
 ### `node`, `npm`, or `npx` is missing
 
-Diagnosis: run the prerequisite checks again and inspect `PATH`. Recovery:
-install a supported Node.js distribution that includes npm/npx, restart the
-terminal so `PATH` is refreshed, then rerun all three version checks before
-install.
+Diagnosis:
+
+1. Run the prerequisite checks again.
+2. Inspect `PATH`.
+
+Recovery:
+
+1. Install a supported Node.js distribution that includes npm and npx.
+2. Restart the terminal to refresh `PATH`.
+3. Run all three version checks again.
+4. If all three checks pass, retry the installation.
 
 <a id="troubleshoot-install-command-failure"></a>
 ### `npx skills add` fails
 
-Diagnosis: retain the full diagnostic, confirm the repository spelling and
-current network access, and distinguish a registry/tool failure from a GitHub
-access failure. Recovery: correct the identified cause, then retry the same
-command from the intended project root; do not switch to an unverified ZIP.
+Diagnosis:
+
+1. Retain the full diagnostic.
+2. Confirm the repository spelling.
+3. Confirm current network access.
+4. Distinguish a registry or tool failure from a GitHub access failure.
+
+Recovery:
+
+1. Correct the identified cause.
+2. From the intended project root, retry the same command.
+
+Do not switch to an unverified ZIP.
 
 <a id="troubleshoot-activation-failure"></a>
 ### The installed Skill is not discovered or activation fails
 
-Diagnosis: confirm you are in the same project root, verify
-`.agents/skills/clin-nav/SKILL.md` exists, and check
-`/skills`. Recovery: open the intended project, restart Codex once, and check
-`/skills` again. Do not move the directory until its actual install location
-is understood.
+Diagnosis:
+
+1. Confirm you are in the same project root.
+2. Verify that `.agents/skills/clin-nav/SKILL.md` exists.
+3. Inspect `/skills`.
+
+Recovery:
+
+1. Open the intended project.
+2. Restart Codex once.
+3. Inspect `/skills` again.
+
+Until you understand the actual install location, do not move the directory.
 
 <a id="troubleshoot-stale-after-update"></a>
 ### Discovery is stale after update
 
-Diagnosis: confirm `npx skills update` ran in the same project and use
-`/skills` to inspect discovery. Recovery: close and restart Codex for that
-project, then recheck before attempting another update.
+Diagnosis:
+
+1. Confirm that `npx skills update` ran in the same project.
+2. Use `/skills` to inspect discovery.
+
+Recovery:
+
+1. Close Codex for that project.
+2. Restart Codex for the same project.
+3. Inspect `/skills` again before attempting another update.
 
 <a id="troubleshoot-download-failure"></a>
 ### ZIP or manifest download fails
 
-Diagnosis: confirm the requested tag has a published Release and that both
-asset names exist. Recovery: retry only when the ZIP and manifest can be
-downloaded from the same release; do not mix assets across tags or use a
-partial download.
+Diagnosis:
+
+1. Confirm that the requested tag has a published Release.
+2. Confirm that both asset names exist.
+
+Recovery:
+
+1. Only when both assets are available from the same Release, retry the downloads.
+
+Do not mix assets across tags. Do not use a partial download.
 
 <a id="troubleshoot-manifest-mismatch"></a>
 ### The manifest and ZIP do not match
 
 Diagnosis: a SHA-256 mismatch means the ZIP does not match the selected
-manifest. Recovery: do not extract it; remove only the two downloaded files,
-then download both again from the same verified Release. If the mismatch
-persists, stop and report it.
+manifest.
+
+Recovery:
+
+1. Do not extract the ZIP.
+2. Remove only the two downloaded files.
+3. Download both files again from the same verified Release.
+4. If the mismatch persists, stop.
+5. Report the persistent mismatch.
 
 <a id="troubleshoot-existing-target"></a>
 ### The target already exists
 
 Diagnosis: the safe examples refuse to overwrite an existing installation.
-Recovery: inspect the exact target and decide whether it is the installation
-you intend to keep; use a different destination for comparison. Use the strict
-installer's `--overwrite` only for a deliberate, reviewed replacement.
+
+Recovery:
+
+1. Inspect the exact target.
+2. Decide whether it is the installation you intend to keep.
+3. For comparison, use a different destination.
+
+Only for a deliberate, reviewed replacement, use the strict installer's
+`--overwrite` option.
 
 <a id="troubleshoot-python-setup-failure"></a>
 ### Python contributor setup fails
 
-Diagnosis: run `python --version` and confirm Python 3.11, the active virtual
-environment, and the first dependency installation error. Recovery: recreate
-the virtual environment only after identifying the cause, then repeat the
-editable install from [CONTRIBUTING.md](../CONTRIBUTING.md). Python failure
-does not block normal use of the installed instruction-only Skill.
+Diagnosis:
+
+1. Run `python --version`.
+2. Confirm Python 3.11.
+3. Confirm the active virtual environment.
+4. Identify the first dependency installation error.
+
+Recovery:
+
+1. Only after identifying the cause, recreate the virtual environment.
+2. Repeat the editable install from [CONTRIBUTING.md](../CONTRIBUTING.md).
+
+Python failure does not block normal use of the installed instruction-only Skill.
