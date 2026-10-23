@@ -57,6 +57,13 @@ or remove existing ledger gaps. Do not add it by default to ordinary answers.
 
 ## Research Design
 
+The template below uses the default legacy English headings. When
+`research-bilingual-v1` is explicitly selected, each of its five required
+headings may instead use the exact Traditional Chinese alias in
+`research-heading-contract.json`. English and Chinese headings may be mixed.
+Keep common header labels and the optional `Handoff status` unchanged.
+Aliases change heading recognition only, not content or safety requirements.
+
 ```text
 ## Primary intent and design route
 [descriptive, predictive, causal-comparative, measurement, or phenotype route]

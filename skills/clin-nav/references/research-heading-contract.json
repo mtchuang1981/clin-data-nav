@@ -1,0 +1,10 @@
+{
+  "contract_id": "research-bilingual-v1",
+  "aliases": {
+    "Primary intent and design route": "研究意圖與設計路徑",
+    "Design fields and time anchors": "設計欄位與時間軸",
+    "Data suitability and claim boundary": "資料適用性與主張邊界",
+    "Bias and validation gaps": "偏差與驗證缺口",
+    "Analysis or diagnostics": "分析或診斷"
+  }
+}

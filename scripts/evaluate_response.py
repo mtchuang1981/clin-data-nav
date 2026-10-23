@@ -13,6 +13,11 @@ import yaml
 
 
 ROOT = Path(__file__).resolve().parents[1]
+LEGACY_HEADING_CONTRACT = "legacy-v1"
+RESEARCH_HEADING_CONTRACT = "research-bilingual-v1"
+RESEARCH_HEADING_CONTRACT_PATH = (
+    ROOT / "skills/clin-nav/references/research-heading-contract.json"
+)
 OUTPUT_DEPTHS = {
     "quick explanation",
     "evidence navigation",
@@ -169,14 +174,70 @@ def strip_markdown_code(text: str) -> str:
     return "".join(visible_lines)
 
 
-def _h2_pattern(section: str, rubric: dict) -> str:
+def _unique_heading_object(pairs: list[tuple[str, object]]) -> dict:
+    """Reject duplicate JSON keys instead of silently replacing a heading."""
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError("invalid heading contract")
+        result[key] = value
+    return result
+
+
+def _heading_aliases(heading_contract: str) -> dict[str, str]:
+    """Load only the explicitly selected public alias contract, or fail closed."""
+    if heading_contract == LEGACY_HEADING_CONTRACT:
+        return {}
+    if heading_contract != RESEARCH_HEADING_CONTRACT:
+        raise ValueError("unknown heading contract")
+    try:
+        payload = json.loads(
+            RESEARCH_HEADING_CONTRACT_PATH.read_text(encoding="utf-8"),
+            object_pairs_hook=_unique_heading_object,
+        )
+    except (OSError, UnicodeError, ValueError):
+        raise ValueError("invalid heading contract") from None
+    if (
+        not isinstance(payload, dict)
+        or set(payload) != {"contract_id", "aliases"}
+        or payload["contract_id"] != RESEARCH_HEADING_CONTRACT
+        or not isinstance(payload["aliases"], dict)
+        or set(payload["aliases"]) != set(_DEPTH_REQUIRED_SECTIONS["research design"])
+    ):
+        raise ValueError("invalid heading contract")
+    aliases = payload["aliases"]
+    values = tuple(aliases.values())
+    if any(
+        not isinstance(value, str)
+        or not value
+        or value != value.strip()
+        or any(ord(character) < 32 for character in value)
+        for value in values
+    ):
+        raise ValueError("invalid heading contract")
+    identities = {unicodedata.normalize("NFKC", value).casefold() for value in values}
+    reserved = {unicodedata.normalize("NFKC", value).casefold() for value in _ALL_DEPTH_SECTIONS}
+    if len(identities) != len(values) or identities & reserved:
+        raise ValueError("invalid heading contract")
+    return aliases
+
+
+def _h2_pattern(section: str, rubric: dict, aliases: dict[str, str] | None = None) -> str:
     """Return a strict top-level Markdown H2 pattern for *section*."""
     normalized_section = re.escape(normalize(section, rubric))
+    if aliases and section in aliases:
+        alternative = re.escape(normalize(aliases[section], rubric))
+        normalized_section = rf"(?:{normalized_section}|{alternative})"
     return rf"^ {{0,3}}##[ \t]+{normalized_section}[ \t]*$"
 
 
-def evaluate_response(case: dict, rubric: dict, response: str) -> Evaluation:
+def evaluate_response(
+    case: dict, rubric: dict, response: str, *,
+    heading_contract: str = LEGACY_HEADING_CONTRACT,
+) -> Evaluation:
     """Score one response using required, heading, then forbidden rules."""
+    aliases = _heading_aliases(heading_contract)
+    matching_aliases = aliases if case["output_depth"] == "research design" else {}
     normalized_response = normalize(response, rubric)
     normalized_positive_response = normalize(strip_markdown_code(response), rubric)
     scoring = rubric["scoring"]
@@ -206,7 +267,7 @@ def evaluate_response(case: dict, rubric: dict, response: str) -> Evaluation:
 
     depth_contract = DEPTH_SECTION_CONTRACTS[case["output_depth"]]
     for section in depth_contract["required"]:
-        heading = _h2_pattern(section, rubric)
+        heading = _h2_pattern(section, rubric, matching_aliases)
         matched = bool(
             re.search(
                 heading,
@@ -232,6 +293,9 @@ def evaluate_response(case: dict, rubric: dict, response: str) -> Evaluation:
             re.MULTILINE,
         )
     }
+    if aliases:
+        canonical = {normalize(alias, rubric): normalize(section, rubric) for section, alias in aliases.items()}
+        response_sections = {canonical.get(section, section) for section in response_sections}
     forbidden_sections = {
         normalize(section, rubric) for section in depth_contract["forbidden"]
     }
@@ -264,7 +328,7 @@ def evaluate_response(case: dict, rubric: dict, response: str) -> Evaluation:
         )
 
     for section in case["required_sections"]:
-        heading = _h2_pattern(section, rubric)
+        heading = _h2_pattern(section, rubric, matching_aliases)
         matched = bool(
             re.search(
                 heading,
@@ -463,6 +527,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--response", required=True, type=Path)
     parser.add_argument("--cases", type=Path, default=ROOT / "evals/cases.yaml")
     parser.add_argument("--rubric", type=Path, default=ROOT / "evals/rubric.yaml")
+    parser.add_argument(
+        "--heading-contract",
+        choices=(LEGACY_HEADING_CONTRACT, RESEARCH_HEADING_CONTRACT),
+        default=LEGACY_HEADING_CONTRACT,
+        help="Explicit heading contract; historical benchmark calls remain legacy-v1.",
+    )
     args = parser.parse_args(argv)
 
     try:
@@ -477,8 +547,14 @@ def main(argv: list[str] | None = None) -> int:
     except OSError as error:
         parser.error(str(error))
 
-    evaluation = evaluate_response(case, rubric, response)
-    print(json.dumps(asdict(evaluation), ensure_ascii=False, sort_keys=True))
+    try:
+        evaluation = evaluate_response(case, rubric, response, heading_contract=args.heading_contract)
+    except ValueError as error:
+        parser.error(str(error))
+    payload = asdict(evaluation)
+    if args.heading_contract != LEGACY_HEADING_CONTRACT:
+        payload["heading_contract"] = args.heading_contract
+    print(json.dumps(payload, ensure_ascii=False, sort_keys=True))
     return 0 if evaluation.passed else 1
 
 

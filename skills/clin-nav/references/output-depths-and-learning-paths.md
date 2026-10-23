@@ -92,6 +92,12 @@ section.
 
 ## Research Design
 
+The required shape below remains the default `legacy-v1` shape. Only when
+`research-bilingual-v1` is explicitly selected, use the exact heading pairs in
+`research-heading-contract.json` for the five required sections. The shared
+reference is the authoritative alias list. This option does not translate
+common headers, other output depths, or the optional `Handoff status`.
+
 Required shape:
 
 ```text
