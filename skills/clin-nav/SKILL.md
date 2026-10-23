@@ -56,6 +56,13 @@ Start every formal response with a compact common header containing `Decision:`,
 Read `references/output-depths-and-learning-paths.md` for the decision table,
 detailed shapes, and beginner learning paths.
 
+Only when `research-bilingual-v1` is explicitly selected, the five required
+`research design` headings may use the exact English or Traditional Chinese
+names in `references/research-heading-contract.json`. Otherwise retain the
+existing English headings for the legacy contract. Do not translate common
+header labels, other depth headings, or `Handoff status` under this option.
+Heading equivalence does not establish sufficient content or bypass safety gates.
+
 ## Complete the Selected Shape
 
 Fill every slot below that applies to the request. State requested deliverables
