@@ -3,7 +3,7 @@
 [English](learning-paths.md)
 
 請選擇最接近目前決策需求的路徑。得到足夠的說明或完成證據審查後，就可以
-停下來；不是每條路徑都要以程式碼收尾。若需求確實進入實作階段，仍須通過
+停止。不是每條路徑都要以程式碼收尾。若需求確實進入實作階段，仍須通過
 執行閘門。
 
 <a id="learn-the-terms"></a>
@@ -29,8 +29,8 @@ ADaM](./glossary.zh-TW.md#cdisc)、[安裝指南](./installation.zh-TW.md)、合
 的 [TEAE-to-SAS 範例](../examples/teae-to-sas-spec.md)，以及 Skill 的[輸出深度
 指南](../skills/clin-nav/references/output-depths-and-learning-paths.md)。
 
-**停止或升級條件：** 名詞與限制已足以回答問題時即可停止。要選擇版本或提交
-規則前，應升級為證據導覽；只有需要對應或衍生規格時，才升級為實作規格。
+**停止或升級條件：** 名詞與限制已足以回答問題時，即可停止。選擇版本或提交
+規則前，應升級為證據導覽。只有需要對應或衍生規格時，才升級為實作規格。
 不得從通用標準推測機構內的資料對應。
 
 <a id="assess-the-evidence"></a>
@@ -40,7 +40,7 @@ ADaM](./glossary.zh-TW.md#cdisc)、[安裝指南](./installation.zh-TW.md)、合
 描述性設計，或因果比較研究設計。
 
 **先備條件：** 說明研究目的、預定用途、族群或情境，以及考慮中的 RWD
-來源類型；尚不確定的內容可以明列為未知。
+來源類型。尚不確定的內容可以明列為未知。
 
 **起始提示：**「請用 `evidence navigation` 深度找出這項 RWD 問題的主導
 來源、區分 RWD 與預定 RWE 主張，並列出尚缺的設計資訊。」
@@ -59,7 +59,7 @@ ADaM](./glossary.zh-TW.md#cdisc)、[安裝指南](./installation.zh-TW.md)、合
 以及 Skill 的 [RWE 問題路由
 參考](../skills/clin-nav/references/rwe-question-routing.md)。
 
-**停止或升級條件：** 如果任務只需尋找或比較來源，完成證據導覽即可停止；
+**停止或升級條件：** 如果任務只需尋找或比較來源，完成證據導覽即可停止。
 需要明確界定研究問題時，再升級為研究設計。混雜、測量、資料來源或驗證缺口尚未
 處理前，不得宣稱已具因果效度、資料已適用，或分析已完成。
 
@@ -69,7 +69,7 @@ ADaM](./glossary.zh-TW.md#cdisc)、[安裝指南](./installation.zh-TW.md)、合
 **目標：** 把公開證據與已定義的決策轉成邏輯資料契約，不臆造機構的實體
 資料表結構。
 
-**先備條件：** 準備已定義的決策、主導證據，以及獲准可公開討論的邏輯需求；
+**先備條件：** 準備已定義的決策、主導證據，以及獲准可公開討論的邏輯需求。
 機構自有詮釋資料仍須留在核准的私有流程。
 
 **起始提示：**「請用 `implementation specification` 深度，只使用公開合成
@@ -89,5 +89,5 @@ ADaM](./glossary.zh-TW.md#cdisc)、[安裝指南](./installation.zh-TW.md)、合
 以及[實作輸出範本](../skills/clin-nav/references/evidence-output-template.md#implementation-specification)。
 
 **停止或升級條件：** 執行閘門未完備時，應停在邏輯規格。只有在取得授權，
-且確實需要現行詮釋資料或 fixture 時，才透過核准的私有流程升級處理；不得把
+且確實需要現行詮釋資料或 fixture 時，才透過核准的私有流程升級處理。不得把
 這些內容複製到公開儲存庫。必要檢查通過後，才能提高程式成熟度。

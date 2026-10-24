@@ -7,7 +7,7 @@ adapter conformance, clinical validity, or human effectiveness evidence.
 
 Run `python scripts/render_eval_summary.py --suite compiler-pipeline --check`.
 Raw model-probe answers and logs remain outside this repository. Keyword
-matches cannot prove semantic correctness; review real responses separately.
+matches cannot prove semantic correctness. Review real responses separately.
 
 <!-- BEGIN GENERATED EVAL SUMMARY -->
 | Case | Output depth | Baseline | Forward |

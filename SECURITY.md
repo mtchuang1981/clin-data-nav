@@ -23,7 +23,7 @@ material in a public issue.
 On 2026-08-09 (Asia/Taipei), GitHub's read-only repository API reported that
 private vulnerability reporting is enabled for this repository. Submit a
 private report through
-`https://github.com/mtchuang1981/clin-data-nav/security/advisories/new`; do not
+`https://github.com/mtchuang1981/clin-data-nav/security/advisories/new`. Do not
 put vulnerability details, samples, or sensitive payloads in a public issue.
 If the private form is unavailable to a reporter, open a public issue
 containing only a non-sensitive request for private coordination. A maintainer
@@ -31,14 +31,14 @@ can then arrange a private channel before details are exchanged. An ordinary
 security concern that contains no sensitive material may be reported in a
 public issue.
 
-Repository state can change. Maintainers must re-read the setting rather than
-treat this dated observation as current proof.
+Repository state can change. Maintainers must re-read the setting.
+They must not treat this dated observation as current proof.
 
 ## Accidental private-data response
 
 Do not submit private institutional data, credentials, Adapter contents, or
 login-gated documents to this repository. If such material is submitted or
-suspected, treat the event as an incident and follow this response immediately:
+suspected, treat the event as an incident. Immediately use this response:
 
 1. Stop merge and distribution of the affected material.
 2. Remove branch or pull request access where possible.
@@ -47,5 +47,5 @@ suspected, treat the event as an incident and follow this response immediately:
 5. Use GitHub's sensitive-data removal procedure.
 6. Do not rely on a later deletion commit to erase history.
 
-Coordinate disclosure and remediation with the governing data owner before
-resuming normal review or distribution.
+Before resuming normal review or distribution, coordinate disclosure and
+remediation with the governing data owner.

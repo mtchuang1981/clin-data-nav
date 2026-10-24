@@ -5,7 +5,7 @@
 The source repository is the governance and development surface. It contains
 the installable source at `skills/clin-nav/`, validation
 scripts, tests, documentation, and packaging tools. Packaging produces a
-minimal ZIP; installation expands that ZIP into a user-selected destination as
+minimal ZIP. Installation expands that ZIP into a user-selected destination as
 the installed Skill. Repository tests can run against the source Skill without
 performing an installation.
 
@@ -38,17 +38,21 @@ ClinNav request + explicit authorization
   -> logical mapping gaps; never automatic execution
 ```
 
-The private owner first confirms the declared read-only capabilities, runs tbls
-only in its governed environment against the fixed public allowlist, retains
-the raw result, and exports only a closed redacted summary for an authorized
-offline check. Public example files are synthetic only. The packaged checker
-validates external exported responses offline; it neither starts nor contacts a
-connector and is not required for ordinary Skill invocation.
+For an authorized offline check, the private owner follows this sequence:
+
+1. Confirm the declared read-only capabilities.
+2. Run tbls only in its governed environment against the fixed public allowlist.
+3. Retain the raw result.
+4. Export only a closed redacted summary for an authorized offline check.
+
+Public example files are synthetic only. The packaged checker
+validates external exported responses offline. It neither starts nor contacts a
+connector. Ordinary Skill invocation does not require the checker.
 
 The summary may identify logical mapping gaps observed at one time. It does not
 prove data population, quality, vocabulary currency, study fitness, governance
 approval, clinical validity, or causal validity. A metadata-only result cannot
-produce `executable` or `validated` status by itself; the existing Adapter,
+produce `executable` or `validated` status by itself. The existing Adapter,
 study-parameter, and target-environment fixture requirements remain in force.
 
 ## Validation and packaging flow
@@ -63,25 +67,27 @@ flowchart TD
 ```
 
 The static validator, boundary scanner, and evaluator are independent verification gates.
-The static validator checks Skill structure and metadata; the boundary scanner
-checks the repository for prohibited private material and likely secrets; and
-the evaluator applies the repository's offline rubric to supplied responses.
-For packaging, only validator is the packager's direct dependency: the packager
-validates the Skill and creates a deterministic archive plus manifest.
+The static validator checks Skill structure and metadata.
+The boundary scanner checks the repository for prohibited private material and likely secrets.
+The evaluator applies the repository's offline rubric to supplied responses.
+For packaging, only validator is the packager's direct dependency.
+The packager validates the Skill. It then creates a deterministic archive plus manifest.
+
 Before hashing and archiving, it canonicalizes CRLF and CR to LF for files
 that are valid UTF-8 text and contain no NUL byte. Opaque or binary files keep
 their original bytes when they contain a NUL byte or are not valid UTF-8.
 Manifest file hashes and sizes describe these canonical archive bytes, so a
 Windows or POSIX checkout does not change a text file's packaged representation.
-Producing a ZIP does not imply that the boundary scan or evaluator passed; run
-those gates separately before accepting or distributing an artifact.
+
+Producing a ZIP does not imply that the boundary scan or evaluator passed.
+Before accepting or distributing an artifact, run those gates separately.
 
 ## Independent effectiveness-evaluation flow
 
 The [effectiveness evaluation framework](../evals/effectiveness/README.md) is
 independent from the existing deterministic response-contract Evals. It uses
-synthetic tasks and external study inputs to evaluate product task performance;
-it does not change the response-contract gate or turn an exploratory pilot into
+synthetic tasks and external study inputs to evaluate product task performance.
+It does not change the response-contract gate or turn an exploratory pilot into
 clinical-validity evidence.
 
 ```mermaid
@@ -110,14 +116,26 @@ The validation workflow runs the same four-command verification set on Ubuntu
 and Windows with read-only repository permissions. The manually dispatched
 release workflow accepts dispatch only from `refs/heads/main`. Every job that
 executes repository code checks out the immutable dispatch commit `github.sha`.
-The tag is only a verification and publication identifier: the tag does not control checkout.
+The tag is only a verification and publication identifier. The tag does not control checkout.
 It must be annotated, version-matched, point to that checkout HEAD, and be
 reachable from `origin/main`. Both platform jobs validate the same dispatch
-commit. A read-only build job creates and verifies the deterministic ZIP,
-manifest, static Release notes, and transit checksum file, then uploads that
-bundle under an immutable artifact ID. Only the dependent writer job has
-`contents: write`; it has no source checkout, Python setup, dependency install,
-or repository code execution. It downloads the verified bundle, checks both
-the checksum-file digest and every bundled file, immediately rechecks the
-remote annotated tag object, peeled commit, and absence of an existing Release,
-then creates a new Release. It cannot edit an existing Release.
+commit.
+
+A read-only build job creates and verifies these files:
+
+- The deterministic ZIP
+- The manifest
+- The static Release notes
+- The transit checksum file
+
+The build job then uploads that bundle under an immutable artifact ID.
+Only the dependent writer job has
+`contents: write`. It has no source checkout, Python setup, dependency install,
+or repository code execution. The writer job follows this sequence:
+
+1. Download the verified bundle.
+2. Check the checksum-file digest and every bundled file.
+3. Immediately recheck the remote annotated tag object, peeled commit, and absence of an existing Release.
+4. Create a new Release.
+
+It cannot edit an existing Release.

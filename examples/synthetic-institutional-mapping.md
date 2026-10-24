@@ -21,22 +21,24 @@ dictionary supplies logical roles, not live availability or execution authority.
 ## Data contract
 
 - Grain: one logical record per approved encounter occurrence.
-- Keys: encounter/person identity are logical roles; physical names and
+- Keys: encounter/person identity are logical roles. Physical names and
   nullability remain pending owner confirmation.
-- Join: many encounters to one person; non-null person keys match at most one
-  person and the join must not multiply encounter records.
-- Time precision: day-level is a synthetic assumption; an approved Adapter must
+- Join: many encounters to one person. Non-null person keys match at most one
+  person. The join must not multiply encounter records.
+- Time precision: day-level is a synthetic assumption. An approved Adapter must
   establish actual precision and start/end precedence.
-- Coverage: require a dated site/coverage snapshot; missing/out-of-scope values
+- Coverage: require a dated site/coverage snapshot. Missing/out-of-scope values
   remain unknown, not absent.
-- Sensitivity/output: restricted inputs and approved aggregates only; no
+- Sensitivity/output: restricted inputs and approved aggregates only. No
   row-level identifiers or direct-identifier output.
 - Lineage: retain approved Adapter, dictionary, governance and transformation
   version identifiers outside the public repository.
 - Acceptance: unique/orphan keys, multiplying joins, boundary dates and
   prohibited outputs. Compare presence, types, nullability, precision and
-  coverage to approved current metadata; stop on discrepancies, request
-  owner-approved corrections and retest.
+  coverage to approved current metadata. If there are discrepancies, use this sequence:
+  1. Stop.
+  2. Request owner-approved corrections.
+  3. Retest.
 
 ## Code maturity
 
@@ -57,7 +59,7 @@ guessing physical objects, obtaining patient rows or executing joins.
 
 ## Execution gate
 
-Unmet. Reassess all relevant execution gates before promotion; closing one gap
+Unmet. Before promotion, reassess all relevant execution gates. Closing one gap
 does not upgrade maturity or expand metadata-only permission.
 
 SPECIFICATION ONLY — NOT EXECUTABLE

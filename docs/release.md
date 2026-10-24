@@ -19,11 +19,11 @@ GitHub publishing is given.
    `docs/releases/X.Y.Z.md`.
 3. Confirm `git status` is clean.
 4. Generate the package and manifest with `python scripts/package_skill.py`.
-5. Run `python scripts/verify_release.py artifacts` against those two files and
-   manually review the public contents.
+5. Run `python scripts/verify_release.py artifacts` against those two files.
+   Manually review the public contents.
 
 The packager canonicalizes UTF-8 text line endings to LF before hashing and
-archiving; files containing a NUL byte or invalid UTF-8 retain their original
+archiving. Files containing a NUL byte or invalid UTF-8 retain their original
 bytes. The manifest therefore records the bytes inside the ZIP, which may
 intentionally differ from CRLF text bytes in a Windows checkout.
 
@@ -40,19 +40,22 @@ After approval:
 2. Require the exact merged commit's Ubuntu and Windows `validate` matrix jobs,
    cross-platform package comparison, and CodeQL to succeed.
    Confirm that no verification step was skipped.
-3. Create an annotated `vX.Y.Z` tag at that commit and push only that new tag.
+3. Create an annotated `vX.Y.Z` tag at that commit.
+   Push only that new tag.
 4. Manually dispatch `.github/workflows/release.yml` from `main` with the
    annotated tag. Wait for every Release job to succeed.
 5. Confirm the public Release points to the intended tag and contains exactly
    `clin-nav-X.Y.Z.zip` and `clin-nav-X.Y.Z.manifest.json`.
-6. Download both assets and independently confirm the ZIP SHA-256 equals
+6. Download both assets.
+   Independently confirm the ZIP SHA-256 equals
    `archive_sha256` in the manifest.
 7. Record the verified main commit, annotated tag object and peeled commit,
    validation and Release workflow URLs, public Release URL, asset IDs, sizes,
    and SHA-256 values in a new dated verification report under
    `docs/verification/`. Clearly separate verified public facts from external
    settings that remain disabled or unevaluated.
-8. Submit the report through a normal pull request.
+8. After approval, commit and push the report branch.
+   Submit the report through a normal pull request.
    Merge only after the required checks pass. Do not move the published tag or
    edit the Release.
 

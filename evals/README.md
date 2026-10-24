@@ -31,10 +31,10 @@ coverage.
 These deterministic Evals test response contracts and remain independent from
 the [effectiveness evaluation framework](effectiveness/README.md). That
 framework supports an offline dry run and a separately authorized exploratory
-human pilot; its existence does not prove real-use effectiveness or imply that
+human pilot. Its existence does not prove real-use effectiveness or imply that
 a pilot has been conducted.
 
 The [public simulation benchmark](benchmark/README.md) applies the same twelve
 contracts to a provider-neutral, external 72-cell comparison of control and an
-exact released Skill. It produces aggregate simulation evidence only; no model
+exact released Skill. It produces aggregate simulation evidence only. No model
 call or real run material enters CI or this repository.

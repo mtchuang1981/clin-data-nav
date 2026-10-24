@@ -4,7 +4,7 @@
 
 Use this optional, read-only route only to compare a private Adapter's redacted
 OMOP CDM v5.4 structural summary with the pinned public catalog. It improves a
-logical mapping checklist and reports validation gaps; it does not read rows,
+logical mapping checklist and reports validation gaps. It does not read rows,
 execute SQL, establish study fitness, or authorize an analysis.
 
 The connector is considered only when the current request is for a local
@@ -34,7 +34,7 @@ It currently contains 79 requirements. Hash the canonical JSON object
 sorted-key, compact, trailing-LF rule as `summary_sha256`. Merely reporting
 13 checked tables or 79 checked items is not sufficient: the exact set digest
 must match. All 1.1 fields are covered by `summary_sha256` and size limits.
-The 1.1 summary also carries `snapshot_binding_sha256`; the evidence digest
+The 1.1 summary also carries `snapshot_binding_sha256`. The evidence digest
 must equal it. This equality checks that both attestations name the same
 snapshot token, but does not let the public checker prove how the private
 token was produced. For weak binding both digests are `null`.
@@ -44,7 +44,7 @@ The separate `dqd_foreign_key_evidence_status` is one of
 `failed-checks`, or `unavailable`. Strong binding requires a content SHA-256 or
 an immutable snapshot-ID digest; size and modification time are only
 `weak-binding`. `accepted-attestation` means the *declared* binding and exact
-coverage pass public contract checks; the public checker cannot independently
+coverage pass public contract checks. The public checker cannot independently
 inspect the private snapshot or prove the adapter's attestation. Private
 operators must retain auditable binding and per-requirement DQD results outside
 this repository. DQD checks are point-in-time referential-integrity evidence,
@@ -61,7 +61,7 @@ compatibility and evidence status as two distinct outcomes.
 
 ## Optional 1.2 independent DQD expiration
 
-Version `1.2` is explicit opt-in; it does not replace the default `1.0` or
+Version `1.2` is explicit opt-in. It does not replace the default `1.0` or
 reinterpret `1.1` evidence. Unsupported 1.2 is `unavailable`, without fallback
 or retries. The same two operations and six public inspection request fields
 remain in use.
@@ -77,11 +77,11 @@ Missing is not null. Booleans, floats, strings, zero, negatives and larger
 integers are invalid. Policy disagreement is `invalid-response` with
 `evidence-age-policy-mismatch`. Legacy contracts reject the extra field.
 
-`max_snapshot_age_seconds` still limits metadata `observed_at` freshness; it
+`max_snapshot_age_seconds` still limits metadata `observed_at` freshness. It
 remains finite. For example, keep 86,400 seconds for metadata even when DQD
 expiry is disabled. Non-expiring evidence cannot rescue stale metadata, a
 partial scan, weak binding, incomplete exact coverage or failed checks. Future
-times are invalid; `checked_at` must be no later than `observed_at` in 1.2.
+times are invalid. In 1.2, `checked_at` must be no later than `observed_at`.
 
 Explicit local consent is also required for a null policy. Use
 `assess_connector(..., contract_version="1.2", allow_nonexpiring_dqd=True)`
@@ -111,9 +111,14 @@ The private owner must implement and audit the following outside this repository
    Copying an old digest into a newly timestamped summary is not verification.
 3. If current identity cannot be established, return null DQD evidence rather
    than reuse unverified results. File size/mtime remain weak binding.
-4. New data/relevant schema, a changed ETL-produced snapshot, public catalog/FK
-   set changes, or material private check-logic/environment changes invalidate
-   the old evidence. Recompute DQD; never rewrite the original `checked_at`.
+4. The following changes invalidate the old evidence:
+
+   - new data/relevant schema;
+   - a changed ETL-produced snapshot;
+   - public catalog/FK set changes;
+   - material private check-logic/environment changes.
+
+   After any such change, recompute DQD. Never rewrite the original `checked_at`.
 5. Retain binding provenance and per-requirement results privately. Return only
    closed aggregates; never rows, SQL, physical names or private diagnostic text.
 
@@ -223,7 +228,7 @@ fields above.
 ## Claim and execution boundary
 
 The connector is metadata-only. It can confirm only redacted structural facts
-observed at one time; it cannot prove data population, vocabulary currency,
+observed at one time. It cannot prove data population, vocabulary currency,
 quality, study fitness, governance approval, clinical validity, or causal
 validity. A metadata-only result cannot produce `executable` or `validated`.
 Retain the institutional Adapter, study-parameter, and target-environment

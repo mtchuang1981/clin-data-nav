@@ -35,16 +35,17 @@ synthetic opt-in after the renderer CLI proves all three resolved example paths.
 
 The object has only `archive`, `archive_sha256`, `commit`, `manifest`,
 `manifest_sha256`, `member_set_sha256`, `tag`, `tag_object`, and `version`.
-Names must agree with the semantic `version`; all three SHA-256 fields are
-lowercase 64-character digests; `commit` and `tag_object` are lowercase
-40-character Git object IDs; `tag` identifies an annotated release tag. The
+Names must agree with the semantic `version`.
+All three SHA-256 fields are lowercase 64-character digests.
+`commit` and `tag_object` are lowercase 40-character Git object IDs.
+`tag` identifies an annotated release tag. The
 whole object must satisfy the public released-Skill binding validator.
 
 ## Model and execution provenance
 
 `model` has only `provider`, `id`, `snapshot`, `seed_policy`,
 `temperature`, `top_p`, and `max_output_tokens`. Identity values are bounded
-single-line identifiers. `temperature` and `top_p` are finite JSON numbers;
+single-line identifiers. `temperature` and `top_p` are finite JSON numbers.
 the renderer formats them to six decimal places. `max_output_tokens` is a
 nonnegative integer and not a boolean.
 
@@ -52,11 +53,11 @@ nonnegative integer and not a boolean.
 `model_provider`, `model_id`, `model_snapshot`, `runner_name`,
 `runner_version`, `plan_followed`, `fresh_sessions`, `offline`, and
 `shared_configuration_unchanged`. `assertion_basis` is exactly
-`externally-asserted`; `completed_at` is a timezone-aware timestamp; model
-identities exactly repeat `model`; runner values are bounded identifiers; and
-each controlled boolean is literal `true`. Although the summary validator
+`externally-asserted`. `completed_at` is a timezone-aware timestamp.
+Model identities exactly repeat `model`. Runner values are bounded identifiers.
+Each controlled boolean is literal `true`. Although the summary validator
 accepts any single-character ISO date/time separator, the Markdown renderer
-fails closed when a displayed string contains CR, LF, or `|`; therefore a
+fails closed when a displayed string contains CR, LF, or `|`. Therefore a
 renderable `completed_at` uses a table-safe ISO separator such as `T`. These
 declarations are not provider verification.
 

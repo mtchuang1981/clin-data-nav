@@ -1,8 +1,8 @@
 # Contributing
 
 Contributions must preserve the public Core boundary and remain useful across
-institutions. Installing and using the instruction-only Skill does not require
-this Python environment; these steps are for repository development and
+institutions. The instruction-only Skill does not require
+this Python environment. These steps are for repository development and
 release tooling.
 
 ## Before you contribute
@@ -15,8 +15,8 @@ release tooling.
   login-gated documents as evidence.
 - Do not include a private Adapter, credentials, institutional data, or a
   login-gated document.
-- Add or update a failing test before changing behavior, confirm the expected
-  failure, and then make it pass.
+- Before changing behavior, add or update a failing test.
+  Confirm the expected failure. Then make the test pass.
 - If `SKILL.md` changes, review the associated Evals, UI metadata in
   `agents/openai.yaml`, and references for consistency.
 
@@ -25,13 +25,13 @@ Effectiveness-evaluation development follows the public command map in
 Do not place human data anywhere under the repository checkout. Keep assignments,
 participant rows, human answers, score files, ratings locks, condition keys,
 nonces, confidential task packs, consent records, and other study-private
-material in an approved external location; use only synthetic examples in
+material in an approved external location. Use only synthetic examples in
 tests and documentation.
 
 ## Contributor setup with Python 3.11
 
-The repository's development and release tools support Python 3.11. Create a
-virtual environment and use an editable install so tests run against the
+The repository's development and release tools support Python 3.11.
+Create a virtual environment. Use an editable install so tests run against the
 current checkout.
 
 POSIX shell:
@@ -53,7 +53,7 @@ python -m pip install -e ".[dev]"
 ```
 
 If environment creation or dependency installation fails, stop at the first
-error and use the [stage-specific Python setup
+error. Use the [stage-specific Python setup
 troubleshooting](docs/installation.md#troubleshoot-python-setup-failure).
 
 ## Required validation gates
@@ -68,8 +68,8 @@ python scripts/package_skill.py --check-reproducible
 ```
 
 All four gates are independent. A successful package build does not imply the
-test suite, Skill validator, or public-boundary scan passed. Review `git diff`
-after validation and before committing.
+test suite, Skill validator, or public-boundary scan passed.
+After validation and before committing, review `git diff`.
 
 The boundary scan is required before every pull request. Explain any change to
 the public/private boundary in the pull request description. Release

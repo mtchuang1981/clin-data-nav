@@ -3,8 +3,8 @@
 [English](glossary.md)
 
 這份詞彙表用來快速入門，不能取代現行標準、指引、試驗計畫書、統計分析計畫
-（SAP）或經核准的機構詮釋資料。模型說明資訊可以如何呈現；實際導入時，仍要
-審查來源、決定對應方式並完成驗證。
+（SAP）或經核准的機構詮釋資料。模型說明資訊可以如何呈現。實際導入時，仍要審查
+來源、決定對應方式並完成驗證。
 
 <a id="clinical-research"></a>
 ## 臨床研究（clinical research）
@@ -175,15 +175,15 @@ artifact](../skills/clin-nav/references/retrieval-playbook.md)
 <a id="key-and-join-cardinality"></a>
 ## 鍵值與連結基數（key and join cardinality）
 
-鍵值用來識別邏輯紀錄；連結基數說明紀錄預期是一對一、一對多或多對多，並
+鍵值用來識別邏輯紀錄。連結基數說明紀錄預期是一對一、一對多或多對多，並
 指出要檢查的筆數膨脹或遺失。欄位名稱本身不能證明它具有唯一性或可安全連結。
 
 <a id="time-zero"></a>
 ## 起始時間點（time zero）
 
 Time zero 是讓納入資格、治療或暴露分派與追蹤起點對齊的明確時點。對齊錯誤
-可能造成選擇偏差或不死時間偏差；設計需要時必須先定義，不能拿任一現成日期
-代替。
+可能造成選擇偏差或不死時間偏差。設計需要時，必須先定義 time zero，不能拿任一
+現成日期代替。
 
 <a id="specification-only-versus-executable"></a>
 ## 僅規格與可執行輸出（specification-only versus executable）
@@ -204,6 +204,6 @@ Time zero 是讓納入資格、治療或暴露分派與追蹤起點對齊的明�
 ## 驗證缺口（validation gap）
 
 [驗證缺口](../skills/clin-nav/references/evidence-output-template.md#implementation-specification)
-是尚缺的來源、決策、詮釋資料、檢查或驗收結果；在補齊之前，不能提高主張
+是尚缺的來源、決策、詮釋資料、檢查或驗收結果。在補齊之前，不能提高主張
 強度或程式成熟度。列出缺口不等於證明工作無效，而是明確交代哪些事項尚未
 驗證，以及需要什麼證據才能補上。

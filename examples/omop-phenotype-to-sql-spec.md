@@ -22,24 +22,24 @@ an institutional schema or a clinically valid phenotype.
 ## Data contract
 
 - Logical roles: person, observation period, qualifying event and exclusion event.
-- Grain, keys, allowed joins and date semantics: pending owner confirmation;
-  no physical names inferred from these roles.
-- Concept set/vocabulary version: require clinically reviewed versioned input;
-  never substitute numeric identifiers or model-memory codes.
+- Grain, keys, allowed joins and date semantics: pending owner confirmation.
+  No physical names are inferred from these roles.
+- Concept set/vocabulary version: require clinically reviewed versioned input.
+  Never substitute numeric identifiers or model-memory codes.
 - Time anchors: index, lookback, minimum observation and exclusion windows
-  need protocol values; unknowns remain natural-language requirements.
-- Mapping: source codes use only an approved mapping version; preserve unmapped
+  need protocol values. Unknowns remain natural-language requirements.
+- Mapping: source codes use only an approved mapping version. Preserve unmapped
   status rather than treating it as a negative event.
-- Missingness/coverage: assess observation gaps and incomplete event capture;
-  zero recorded events do not prove absence of disease.
+- Missingness/coverage: assess observation gaps and incomplete event capture.
+  Zero recorded events do not prove absence of disease.
 - Outputs/lineage: approved aggregates tied to protocol, concept set, mapping
-  and transformation versions; no row-level identifiers.
+  and transformation versions. No row-level identifiers.
 - Acceptance: positive, negative, boundary-window, unmapped-code and zero-result
   synthetic cases with protocol-derived expectations.
 
 ## Code maturity
 
-`conceptual`; the concept set and required parameters are absent.
+`conceptual`. The concept set and required parameters are absent.
 
 ## Validation gaps
 
@@ -56,7 +56,7 @@ without SQL-shaped placeholders or a claim of phenotype validation.
 
 ## Execution gate
 
-Unmet. Reassess all relevant execution gates before promotion; concept-set
+Unmet. Before promotion, reassess all relevant execution gates. Concept-set
 approval or metadata-only results cannot independently permit SQL.
 
 SPECIFICATION ONLY — NOT EXECUTABLE

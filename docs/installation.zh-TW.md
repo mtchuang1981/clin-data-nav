@@ -9,7 +9,7 @@
 
 ## 執行環境界線
 
-原始碼封裝器與嚴格安裝器以 `0.10.0` 為目標，與已驗證的公開 ZIP 相符。
+原始碼封裝器與嚴格安裝器以 `0.11.0` 候選版為目標，不是已驗證的 `0.10.0` ZIP。
 安裝版本化 ZIP 時，須使用相符版本的工具，不要搭配舊產物。
 [版本說明](releases/0.10.0.md)列出受治理路由與尚未驗證的私有端界線；
 [發布紀錄](verification/2026-10-19-v0.10.0-publication.md)提供實際下載的產物
@@ -32,11 +32,13 @@
 擁有者可在不公開端點、伺服器命令、DSN 或私有設定的情況下執行一致性確認：
 
 1. 確認 `get_capabilities` 宣告必要的唯讀界線。
-2. tbls 僅在受治理的私有環境執行，只檢查固定允許清單，並遮蔽為封閉的
-   中繼資料摘要契約。
-3. 保留原始輸出與診斷資訊於私有端；只有已授權的工作流程需要離線驗證時，才輸出
+2. 僅在受治理的私有環境執行 tbls。
+3. 只檢查固定允許清單。
+4. 依封閉的中繼資料摘要契約遮蔽結果。
+5. 保留原始輸出與診斷資訊於私有端。
+6. 只有已授權的工作流程需要離線驗證時，才輸出
    封閉且已遮蔽的回應。
-4. 將所得狀態視為邏輯對應缺口檢查，絕不作為自動執行或研究適用性的證明。
+7. 將所得狀態視為邏輯對應缺口檢查，絕不作為自動執行或研究適用性的證明。
 
 若要選用離線檢查，請在 `npx skills add` 安裝 ClinNav 後，於專案根目錄執行下列命令。
 只有此檢查器需要 Python；它使用保存在本儲存庫與已安裝 Skill 之外、且已輸出的遮蔽 JSON
@@ -60,10 +62,10 @@ capabilities 與已雜湊的摘要須一致宣告 `max_dqd_evidence_age_seconds`
 python scripts/check_omop_metadata.py --capabilities <external-capabilities.json> --input <external-inspection.json> --as-of <RFC-3339-timestamp> --contract-version 1.2 --allow-nonexpiring-dqd
 ```
 
-此旗標表示同意無期限政策，不能覆寫有限期限；未同意時，checker 不讀取 inspection。
+此旗標表示同意無期限政策，不能覆寫有限期限。未同意時，checker 不讀取 inspection。
 預設 1.0 與明確選用的 1.1 維持原行為。metadata 仍有有限時效，例如 86,400 秒。
-快照或檢查規格改變就須重驗，不得改寫原始 `checked_at`。
-結構相容與 DQD 證據須分開回報；採信 adapter 聲明不等於獨立驗證私有內容，也不證明
+快照或檢查規格改變時，須重新驗證。不得改寫原始 `checked_at`。
+結構相容與 DQD 證據須分開回報。採信 adapter 聲明不等於獨立驗證私有內容，也不證明
 研究適用性。結構不相容仍為退出碼 3。詳見
 [連接器契約與私有端交接要求](../skills/clin-nav/references/omop-metadata-connector.md#optional-12-independent-dqd-expiration)。
 
@@ -87,7 +89,7 @@ npx skills add mtchuang1981/clin-data-nav
 ```
 
 這個指令會把 Skill 安裝到目前專案的 `.agents/skills`。第三方 Skill 會使用
-代理程式的權限執行，使用前請先審閱內容。
+代理程式的權限執行。使用前，請先審閱內容。
 
 `/skills` 與 `$clin-nav` 要輸入在 Codex 對話中，
 不是終端機指令。先用 `/skills` 確認已找到 Skill，再明確叫用。若實作輸入
@@ -96,9 +98,9 @@ npx skills add mtchuang1981/clin-data-nav
 
 在 Codex CLI 或 IDE 擴充功能中，請用 `/skills` 確認是否已找到 Skill，再用
 `$clin-nav` 明確叫用。ChatGPT 桌面版採用另一套安裝
-介面：請依 **Plugins → Skills → Create → Upload from computer** 開啟 `Skills`
-並從電腦上傳。介面可能不同，且會受方案、工作區權限或分批推出影響；只有在
-方案與工作區允許上傳時才繼續。請
+介面。只有在方案與工作區允許上傳時，才依
+**Plugins → Skills → Create → Upload from computer** 開啟 `Skills`，再從電腦上傳。
+介面可能不同，且會受方案、工作區權限或分批推出影響。請
 同時查核 OpenAI 的 [Help Center Skills
 說明](https://help.openai.com/en/articles/20001066-skills-in-chatgpt)與[建立 Skills
 文件](https://learn.chatgpt.com/docs/build-skills)。專案內的 `npx` 指令只會
@@ -122,9 +124,11 @@ Plugin 目錄。
 npx skills add mtchuang1981/clin-data-nav
 ```
 
-確認 `.agents/skills/clin-nav/SKILL.md` 存在。需要時重新啟動 Skill host。
-請用 `/skills` 確認 `clinical-data-research-navigator` 已不存在，且 `clin-nav`
-是這個 Skill 唯一的已安裝項目。再叫用 `$clin-nav`。
+1. 確認 `.agents/skills/clin-nav/SKILL.md` 存在。
+2. 需要時重新啟動 Skill host。
+3. 請用 `/skills` 確認 `clinical-data-research-navigator` 已不存在，且 `clin-nav`
+   是這個 Skill 唯一的已安裝項目。
+4. 叫用 `$clin-nav`。
 
 ## 更新專案內的安裝
 
@@ -224,9 +228,14 @@ test -f "$staging_directory/SKILL.md"
 mv "$staging_directory" "$skill_directory"
 ```
 
-安裝後請確認 `.agents/skills/clin-nav/SKILL.md`，需要時重新啟動 Skill host，
-用 `/skills` 確認已找到 Skill，再叫用 `$clin-nav`。範例遇到既有安裝或 staging
-目錄時會拒絕繼續；請先檢查既有路徑，不要直接刪除或覆寫。
+範例遇到既有安裝或 staging 目錄時會拒絕繼續。請先檢查既有路徑，不要直接刪除或覆寫。
+
+安裝後：
+
+1. 確認 `.agents/skills/clin-nav/SKILL.md` 存在。
+2. 需要時，重新啟動 Skill host。
+3. 用 `/skills` 確認已找到 Skill。
+4. 叫用 `$clin-nav`。
 
 ## 歷史 v0.4.0 Release 產物驗證（僅供參考）
 
@@ -335,57 +344,116 @@ exit 0 回報 `manifest-files-byte-identical`；exit 3 回報 `content-differs`
 <a id="troubleshoot-missing-node"></a>
 ### 找不到 `node`、`npm` 或 `npx`
 
-診斷：重新執行必要條件檢查，並檢查 `PATH`。處理：安裝包含 npm/npx 的
-Node.js 發行版，重新啟動終端機讓 `PATH` 重新載入，再確認三個版本指令後
-才安裝。
+診斷：
+
+1. 重新執行必要條件檢查。
+2. 檢查 `PATH`。
+
+處理：
+
+1. 安裝包含 npm/npx 的 Node.js 發行版。
+2. 重新啟動終端機，讓 `PATH` 重新載入。
+3. 重新執行三個版本指令。
+4. 三個檢查都通過後，才重試安裝。
 
 <a id="troubleshoot-install-command-failure"></a>
 ### `npx skills add` 失敗
 
-診斷：保留完整錯誤訊息，確認儲存庫拼字及目前網路連線，並區分工具／
-registry 與 GitHub 存取問題。處理：修正已辨識的原因後，回到預定的專案
-根目錄重新執行同一個指令；不要改用未驗證的 ZIP。
+診斷：
+
+1. 保留完整錯誤訊息。
+2. 確認儲存庫拼字。
+3. 確認目前網路連線。
+4. 區分工具或 registry 問題與 GitHub 存取問題。
+
+處理：
+
+1. 修正已辨識的原因。
+2. 在預定的專案根目錄重新執行同一個指令。
+
+不要改用未驗證的 ZIP。
 
 <a id="troubleshoot-activation-failure"></a>
 ### 安裝後找不到 Skill 或無法啟用
 
-診斷：確認目前位於相同的專案根目錄，並檢查
-`.agents/skills/clin-nav/SKILL.md` 是否存在，再查看
-`/skills`。處理：開啟預定專案，重新啟動 Codex 一次後再查 `/skills`；尚未
-查清實際安裝位置前，不要移動目錄。
+診斷：
+
+1. 確認目前位於相同的專案根目錄。
+2. 檢查 `.agents/skills/clin-nav/SKILL.md` 是否存在。
+3. 查看 `/skills`。
+
+處理：
+
+1. 開啟預定專案。
+2. 重新啟動 Codex 一次。
+3. 再查看 `/skills`。
+
+尚未查清實際安裝位置前，不要移動目錄。
 
 <a id="troubleshoot-stale-after-update"></a>
 ### 更新後仍顯示舊內容
 
-診斷：確認 `npx skills update` 在同一個專案執行，再用 `/skills` 查看
-偵測結果。處理：針對該專案關閉並重新啟動 Codex，再次檢查後判斷是否需要
-更新。
+診斷：
+
+1. 確認 `npx skills update` 在同一個專案執行。
+2. 用 `/skills` 查看偵測結果。
+
+處理：
+
+1. 關閉該專案的 Codex。
+2. 重新啟動同一專案的 Codex。
+3. 再查看 `/skills`，確認是否需要更新。
 
 <a id="troubleshoot-download-failure"></a>
 ### ZIP 或 manifest 下載失敗
 
-診斷：確認指定 tag 有已建立的 Release，且兩個資產名稱都存在。處理：只有
-能從同一個 Release 取得 ZIP 與 manifest 時才重新下載；不得混用不同 tag
-的資產，也不要使用未完整下載的檔案。
+診斷：
+
+1. 確認指定 tag 有已建立的 Release。
+2. 確認兩個資產名稱都存在。
+
+處理：只有能從同一個 Release 取得 ZIP 與 manifest 時，才重新下載。
+不得混用不同 tag 的資產。不要使用未完整下載的檔案。
 
 <a id="troubleshoot-manifest-mismatch"></a>
 ### manifest 與 ZIP 不相符
 
-診斷：SHA-256 mismatch 表示 ZIP 與指定 manifest 不相符。處理：不要解壓縮；
-只移除這次下載的兩個檔案，再從同一個已驗證 Release 重新下載。若仍不相符，
-請停止並回報。
+診斷：SHA-256 mismatch 表示 ZIP 與指定 manifest 不相符。
+
+處理：
+
+1. 不要解壓縮 ZIP。
+2. 只移除這次下載的兩個檔案。
+3. 從同一個已驗證 Release 重新下載兩個檔案。
+4. 若仍不相符，請停止。
+5. 若仍不相符，請回報問題。
 
 <a id="troubleshoot-existing-target"></a>
 ### 目的目錄已存在
 
-診斷：安全範例會拒絕覆寫既有安裝。處理：先檢查確切目錄，判斷是否要保留；
-若要比較，請使用另一個目的目錄。
+診斷：安全範例會拒絕覆寫既有安裝。
+
+處理：
+
+1. 檢查確切目錄。
+2. 判斷是否要保留該安裝。
+3. 若要比較，請使用另一個目的目錄。
+
 只有經審閱且確定要取代時，才使用嚴格安裝程式的 `--overwrite`。
 
 <a id="troubleshoot-python-setup-failure"></a>
 ### Python 貢獻者環境設定失敗
 
-診斷：執行 `python --version`，確認 Python 3.11、已啟用的虛擬環境，以及
-第一個相依套件安裝錯誤。處理：先辨識原因，再重建虛擬環境，並依
-[CONTRIBUTING.md](../CONTRIBUTING.md) 重新執行 editable install。Python 設定
-失敗不影響已安裝 Skill 的一般使用。
+診斷：
+
+1. 執行 `python --version`。
+2. 確認 Python 3.11。
+3. 確認已啟用的虛擬環境。
+4. 找出第一個相依套件安裝錯誤。
+
+處理：
+
+1. 辨識原因後，才重建虛擬環境。
+2. 依 [CONTRIBUTING.md](../CONTRIBUTING.md) 重新執行 editable install。
+
+Python 設定失敗不影響已安裝 Skill 的一般使用。

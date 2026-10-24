@@ -14,7 +14,7 @@ ADaM, the protocol, the statistical analysis plan (SAP), and implementation
 evidence.
 
 **Prerequisites:** Bring one clinical-trial term, deliverable, or decision you
-want to understand; no programming or institutional data is required.
+want to understand. No programming or institutional data is required.
 
 **Starting prompt:** “In `quick explanation` depth, what is SDTM, how does it
 relate to ADaM, and what does neither standard prove about source-data
@@ -34,9 +34,9 @@ Skill's [output-depth
 guide](../skills/clin-nav/references/output-depths-and-learning-paths.md).
 
 **Stop or escalate when:** Stop when the definitions and limits answer your
-question. Escalate to evidence navigation before choosing a version or
-submission rule, and to implementation specification only when you need a
-mapping or derivation contract. Do not infer a local mapping from a standard.
+question. Before choosing a version or submission rule, escalate to evidence navigation.
+Only when you need a mapping or derivation contract, escalate to implementation specification.
+Do not infer a local mapping from a standard.
 
 <a id="assess-the-evidence"></a>
 ## assess-the-evidence — RWD, RWE, and study design
@@ -46,7 +46,7 @@ then decide whether a descriptive or causal-comparative research design is
 warranted.
 
 **Prerequisites:** State the research intent, intended use, population or
-setting, and the type of RWD source being considered; unknowns may remain
+setting, and the type of RWD source being considered. Unknowns may remain
 explicit.
 
 **Starting prompt:** “In `evidence navigation` depth, identify the governing
@@ -67,10 +67,9 @@ synthetic [OMOP phenotype example](../examples/omop-phenotype-to-sql-spec.md),
 and the Skill's [RWE question-routing
 reference](../skills/clin-nav/references/rwe-question-routing.md).
 
-**Stop or escalate when:** Stop after evidence navigation if the task is only
-to find or compare sources. Escalate to research design when a study question
-must be framed. Do not claim causal validity, data fitness, or a completed
-analysis when confounding, measurement, provenance, or validation gaps remain.
+**Stop or escalate when:** If the task is only to find or compare sources, stop after evidence navigation.
+When a study question must be framed, escalate to research design.
+When confounding, measurement, provenance, or validation gaps remain, do not claim causal validity, data fitness, or a completed analysis.
 
 <a id="prepare-an-implementation"></a>
 ## prepare-an-implementation — Institutional implementation
@@ -102,8 +101,6 @@ example](../examples/synthetic-institutional-mapping.md), the Skill's
 and [implementation output
 template](../skills/clin-nav/references/evidence-output-template.md#implementation-specification).
 
-**Stop or escalate when:** Stop at a logical specification whenever the
-execution gate is incomplete. Escalate only through an approved private
-workflow when authorized current metadata or fixtures are needed; do not copy
-them into this public repository. Raise code maturity only after the required
-checks pass.
+**Stop or escalate when:** Whenever the execution gate is incomplete, stop at a logical specification.
+When authorized current metadata or fixtures are needed, escalate only through an approved private workflow.
+Do not copy them into this public repository. Only after the required checks pass, raise code maturity.

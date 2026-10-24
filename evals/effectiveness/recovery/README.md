@@ -35,7 +35,7 @@ python scripts/validate_effectiveness_recovery.py restart-check --recovery-recor
 ```
 
 Only `authorized-for-fresh-batch` satisfies this command. It permits preparation
-of new bindings under separate authorization; it does not authorize people or
+of new bindings under separate authorization. It does not authorize people or
 reuse of the affected batch.
 
 ## 5. Collection check
@@ -61,7 +61,7 @@ python scripts/validate_effectiveness_recovery.py rating-check --recovery-record
 ```
 
 `eligible-for-locked-unlock` means the existing completion and agreement gates
-pass. It permits only a separately authorized explicit unlock; low agreement
+pass. It permits only a separately authorized explicit unlock. Low agreement
 requires a new independent rating round and lock.
 
 ## 7. Terminal green check
@@ -83,7 +83,7 @@ causal, patient-outcome, or general-population validation.
 Use the [English checklist](checklist.md) or
 [Traditional Chinese checklist](checklist.zh-TW.md) for the six ordered states,
 responsible roles, and action boundaries. Exit `0` means the requested stage is
-satisfied; only `green-check` at `evaluation-green` is terminal. Exit `3` means
+satisfied. Only `green-check` at `evaluation-green` is terminal. Exit `3` means
 valid evidence is incomplete or blocked. Exit `2` means invalid arguments,
 unsafe paths, invalid input, cross-file mismatch, or attempted bypass. No state
 replaces external authority.
@@ -91,15 +91,19 @@ replaces external authority.
 ## 9. Replacement incident recursion
 
 Any environment change, task-pack leakage, or reportable incident in a
-replacement batch stops that batch. Keep it in approved external audit custody,
-exclude it from effectiveness inference, close the new incident externally,
-and begin again with another entirely new batch, task pack, nonce, commitment,
-assignment, and environment binding. No favorable result overrides this stop.
+replacement batch stops that batch. If any such incident occurs:
+
+1. Keep the affected batch in approved external audit custody.
+2. Exclude it from effectiveness inference.
+3. Close the new incident externally.
+4. Begin again with another entirely new batch, task pack, nonce, commitment, assignment, and environment binding.
+
+No favorable result overrides this stop.
 
 ## 10. Reporting and power-analysis boundary
 
 Only aggregate, bilingual reporting becomes eligible after
-`evaluation-green`; raw inputs stay external. No real replacement pilot was
+`evaluation-green`. Raw inputs stay external. No real replacement pilot was
 performed by adding this workflow, so observed human `evaluation-green` remains
 pending. The first power analysis is deferred until the first valid replacement
 batch reaches `evaluation-green`, uses only that batch, and retains the

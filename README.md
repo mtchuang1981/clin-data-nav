@@ -2,7 +2,8 @@ English | [繁體中文](README.zh-TW.md)
 
 # Clinical Data Research Navigator
 
-This installable Agent Skill turns clinical-data questions into source-ranked guidance without supplying private schemas or claiming validated clinical conclusions.
+This installable Agent Skill turns clinical-data questions into source-ranked guidance.
+It does not supply private schemas or claim validated clinical conclusions.
 
 [![Validation](https://github.com/mtchuang1981/clin-data-nav/actions/workflows/validate.yml/badge.svg?branch=main)](https://github.com/mtchuang1981/clin-data-nav/actions/workflows/validate.yml?query=branch%3Amain)
 
@@ -21,7 +22,8 @@ npx skills add mtchuang1981/clin-data-nav
 See the [installation guide](docs/installation.md) for Node.js prerequisites, updates, verified ZIP installation, and troubleshooting.
 Existing users should follow its [Skill ID migration procedure](docs/installation.md#migrate-from-the-previous-skill-id) before reinstalling.
 
-Contributors may use the [optional read-only installation diagnosis](docs/installation.md#optional-read-only-installation-diagnosis) to compare selected files with a trusted manifest; it cannot confirm the host's loaded version.
+Contributors may use the [optional read-only installation diagnosis](docs/installation.md#optional-read-only-installation-diagnosis) to compare selected files with a trusted manifest.
+It cannot confirm the host's loaded version.
 
 ## First success
 
@@ -45,7 +47,7 @@ Expected shape: a short natural-language answer without a fixed header.
 | `research design` | Framing descriptive, predictive, or causal-comparative studies | A completed SAP, estimand, or causal result |
 | `implementation specification` | Data contracts, mappings, derivations, and validation rules | Executable institutional code when the execution gate is incomplete |
 
-An explicit depth request is honored unless it conflicts with a safety gate.
+Unless it conflicts with a safety gate, the Skill honors an explicit depth request.
 Otherwise, the Skill selects the least intensive depth that fully answers the
 request and offers a deeper next step instead of combining every depth.
 
@@ -61,7 +63,7 @@ OpenAI's documentation says a Skill packages instructions, resources, and
 optional scripts so ChatGPT or Codex can follow a workflow. A Plugin is a
 separate distribution package for reusable Skills and connectors. This
 repository distributes an installable Agent Skill from GitHub and does not
-claim a public Plugin-directory listing; installing it does not create or
+claim a public Plugin-directory listing. Installing it does not create or
 publish a Plugin.
 
 ## Documentation
@@ -80,16 +82,16 @@ publish a Plugin.
 | Report a security concern | [Security](SECURITY.md) |
 | Share a safe installation or task-completion self-report | [Community usability feedback](https://github.com/mtchuang1981/clin-data-nav/issues/new?template=usability-feedback.yml) |
 | Prepare an approved release | [Release process](docs/release.md) |
-| Review v0.10.0 changes | [Static release notes](docs/releases/0.10.0.md) and [changelog](CHANGELOG.md) |
+| Review v0.11.0 candidate changes | [Static release notes](docs/releases/0.11.0.md) and [changelog](CHANGELOG.md) |
 | Check current product guidance | [OpenAI Skills in ChatGPT](https://help.openai.com/en/articles/20001066) and [Codex Skill documentation](https://learn.chatgpt.com/docs/build-skills) |
 
 ## Evidence, public boundary, and limitations
 
 Community feedback is an unverified self-report, never part of formal
-effectiveness aggregates. The problem description is optional when completed
-without a problem. Share only a brief public/synthetic workflow summary, never
+effectiveness aggregates. If you completed the workflow without a problem,
+the problem description is optional. Share only a brief public/synthetic workflow summary. Never share
 raw prompts, model responses, logs, attachments, patient data, private schema,
-or credentials; the form cannot guarantee sensitive content will be blocked.
+or credentials. The form cannot guarantee that it will block sensitive content.
 
 The Skill ranks governing sources ahead of implementation literature and keeps
 confirmed facts, assumptions, limitations, and provenance visible. The
@@ -136,6 +138,6 @@ Without an approved Adapter, current metadata, parameters, and fixtures, an
 implementation request remains `SPECIFICATION ONLY — NOT EXECUTABLE` and must
 not invent local tables, columns, joins, codes, or production-ready logic.
 Incomplete requests receive question clarification and a missing-information
-list rather than fabricated certainty. Using the installed instruction-only
-Skill does not require Python; Python 3.11 is for repository contributor and
+list rather than fabricated certainty. The installed instruction-only
+Skill does not require Python. Python 3.11 is for repository contributor and
 release tooling described in [CONTRIBUTING.md](CONTRIBUTING.md).

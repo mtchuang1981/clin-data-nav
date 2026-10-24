@@ -24,8 +24,9 @@ When cues conflict, route by the requested deliverable, not by isolated words:
 | Convert settled evidence into mapping, derivation, validation, or execution-readiness requirements | `implementation specification` |
 
 Honor an explicit safe choice. Otherwise choose the least sufficient depth that
-fully answers the request. Ask one concise question only when ambiguity would
-materially change the deliverable. For `quick explanation`, keep the selected
+fully answers the request.
+Only when ambiguity would materially change the deliverable, ask one concise question.
+For `quick explanation`, keep the selected
 depth internal and use natural short prose unless the user requests a format.
 For every formal depth, print exactly one `Output depth: ` line. Offer a deeper
 depth only as an optional follow-up.
@@ -33,15 +34,16 @@ depth only as an optional follow-up.
 Before sending the response, fill each applicable slot in the selected shape.
 For evidence navigation, include source identity, provenance, access or network
 status, reuse constraints, and unreviewed gaps. For research design, include
-the data and claim boundary; causal work also includes readiness, estimand,
+the data and claim boundary. Causal work also includes readiness, estimand,
 analysis plan, and data limitations. For implementation specifications,
 include governing authority, the logical contract or mapping checklist,
 maturity, live-metadata and fixture gaps, and the execution-gate decision.
 
 For research and implementation, use the actionable gaps contract defined once
 in `evidence-output-template.md`. Keep unknowns, failures and pending approvals
-distinct, name safe next steps and responsible roles, and state work still
-possible. Do not add that mandatory table to quick or evidence-navigation answers.
+distinct. Name safe next steps and responsible roles.
+State work still possible.
+Do not add that mandatory table to quick or evidence-navigation answers.
 
 ## Common Header for Formal Deliverables
 
