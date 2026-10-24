@@ -9,10 +9,10 @@ It does not supply private schemas or claim validated clinical conclusions.
 
 ## Install in a project
 
-Verified public release: [v0.10.0](https://github.com/mtchuang1981/clin-data-nav/releases/tag/v0.10.0).
-It adds optional governed compiler routing and declaration checks, not a private
-compiler or execution permission. See [release notes](docs/releases/0.10.0.md).
-The [publication record](docs/verification/2026-10-19-v0.10.0-publication.md)
+Verified public release: [v0.11.0](https://github.com/mtchuang1981/clin-data-nav/releases/tag/v0.11.0).
+It clarifies English and Traditional Chinese guidance with STE-inspired principles
+and includes opt-in research heading aliases. See [release notes](docs/releases/0.11.0.md).
+The [publication record](docs/verification/2026-10-24-v0.11.0-publication.md)
 records downloaded asset hashes, exact source/tag identities and process limitations.
 
 ```bash
@@ -82,7 +82,7 @@ publish a Plugin.
 | Report a security concern | [Security](SECURITY.md) |
 | Share a safe installation or task-completion self-report | [Community usability feedback](https://github.com/mtchuang1981/clin-data-nav/issues/new?template=usability-feedback.yml) |
 | Prepare an approved release | [Release process](docs/release.md) |
-| Review v0.11.0 candidate changes | [Static release notes](docs/releases/0.11.0.md) and [changelog](CHANGELOG.md) |
+| Review v0.11.0 changes | [Static release notes](docs/releases/0.11.0.md) and [changelog](CHANGELOG.md) |
 | Check current product guidance | [OpenAI Skills in ChatGPT](https://help.openai.com/en/articles/20001066) and [Codex Skill documentation](https://learn.chatgpt.com/docs/build-skills) |
 
 ## Evidence, public boundary, and limitations

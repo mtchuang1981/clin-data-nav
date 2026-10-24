@@ -9,9 +9,9 @@
 
 ## 安裝到專案
 
-已驗證的公開版本：[v0.10.0](https://github.com/mtchuang1981/clin-data-nav/releases/tag/v0.10.0)。
-新增的是選用的受治理編譯路由與宣告檢查，不是私有編譯器或資料執行許可；
-詳見[版本說明](docs/releases/0.10.0.md)與[發布驗證紀錄](docs/verification/2026-10-19-v0.10.0-publication.md)。
+已驗證的公開版本：[v0.11.0](https://github.com/mtchuang1981/clin-data-nav/releases/tag/v0.11.0)。
+本版依 STE 原則整理中英文指引，並納入須明確選用的研究章節標題別名；
+詳見[版本說明](docs/releases/0.11.0.md)與[發布驗證紀錄](docs/verification/2026-10-24-v0.11.0-publication.md)。
 
 ```bash
 npx skills add mtchuang1981/clin-data-nav
@@ -77,7 +77,7 @@ OpenAI 官方文件說明，Skill 會封裝操作指引、資源與選用指令�
 | 回報安全性問題 | [安全性說明](SECURITY.md) |
 | 回饋安裝或任務完成情形 | [社群使用回饋](https://github.com/mtchuang1981/clin-data-nav/issues/new?template=usability-feedback.zh-TW.yml) |
 | 準備經核准的發布 | [發布流程](docs/release.md) |
-| 查看 v0.11.0 候選版變更 | [靜態 Release notes](docs/releases/0.11.0.md)與[版本紀錄](CHANGELOG.zh-TW.md)（[英文完整紀錄](CHANGELOG.md)） |
+| 查看 v0.11.0 變更 | [靜態 Release notes](docs/releases/0.11.0.md)與[版本紀錄](CHANGELOG.zh-TW.md)（[英文完整紀錄](CHANGELOG.md)） |
 | 查核目前產品指引 | [OpenAI 的 ChatGPT Skills 說明](https://help.openai.com/en/articles/20001066)與[Codex Skill 文件](https://learn.chatgpt.com/docs/build-skills) |
 
 ## 證據、公開邊界與限制

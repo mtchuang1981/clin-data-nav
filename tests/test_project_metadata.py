@@ -1339,8 +1339,8 @@ def test_current_security_preserves_v050_publication_history():
     assert "`clin-nav-0.5.0.zip`" in publication
     assert "`clin-nav-0.5.0.manifest.json`" in publication
     assert release_notes.startswith("# Clinical Data Research Navigator v0.5.0\n")
-    assert "`0.9.x` | Yes" in " ".join(security.split())
-    assert "`< 0.9` | No" in " ".join(security.split())
+    assert "`0.11.x` | Yes" in " ".join(security.split())
+    assert "`< 0.11` | No" in " ".join(security.split())
     assert "`0.6.x` | Yes" not in " ".join(security.split())
 
 
@@ -2897,9 +2897,9 @@ def test_installation_guides_preserve_quick_update_verified_and_source_paths():
         (
             (ROOT / "docs/installation.md").read_text(encoding="utf-8"),
             ENGLISH_ONBOARDING_CONTRACT,
-            "## Current verified v0.10.0 Release artifact verification",
+            "## Current verified v0.11.0 Release artifact verification",
             "## Historical v0.4.0 Release artifact verification (reference only)",
-            "current verified Release is `v0.10.0`",
+            "current verified Release is `v0.11.0`",
             "The v0.4.0 bundle remains below as a historical verification reference only.",
             (
                 "current verified Release is `v0.4.0`",
@@ -2910,9 +2910,9 @@ def test_installation_guides_preserve_quick_update_verified_and_source_paths():
         (
             (ROOT / "docs/installation.zh-TW.md").read_text(encoding="utf-8"),
             TRADITIONAL_CHINESE_ONBOARDING_CONTRACT,
-            "## 目前已驗證的 v0.10.0 Release 產物核對",
+            "## 目前已驗證的 v0.11.0 Release 產物核對",
             "## 歷史 v0.4.0 Release 產物驗證（僅供參考）",
-            "目前已驗證的 Release 是 `v0.10.0`",
+            "目前已驗證的 Release 是 `v0.11.0`",
             "v0.4.0 套件則保留於下方，僅供歷史驗證參考。",
             (
                 "目前已驗證的 Release 是 `v0.4.0`",
@@ -2938,18 +2938,18 @@ def test_installation_guides_preserve_quick_update_verified_and_source_paths():
         for stale_claim in stale_claims:
             assert stale_claim not in normalized
         current = _markdown_section(text, current_heading, historical_heading)
-        assert 'releaseVersion = "0.10.0"' in current
-        assert 'release_version="0.10.0"' in current
+        assert 'releaseVersion = "0.11.0"' in current
+        assert 'release_version="0.11.0"' in current
         assert "clin-nav-$releaseVersion.zip" in current
         assert "clin-nav-$releaseVersion.manifest.json" in current
         assert "clin-nav-$release_version.zip" in current
         assert "clin-nav-$release_version.manifest.json" in current
         assert (
-            "03fea5cf29d600d687a609f2114881c08c8194e1c410167baeb83e302740694a"
+            "1cf42f68f1ac960a2304579498f89ed359d59c789ce4c722159eff4c8fbb2e9b"
             in current
         )
         assert (
-            "a9d712362401e27d228aec3b2e3b3585d7e951eadab11197b4a89a4a479b5527"
+            "5dae33ec243bef00c1c6ad16375427472dc32608b70f43696616bb3b99fdfd3e"
             in current
         )
         assert "archive_sha256" in current
@@ -3285,8 +3285,8 @@ def test_security_policy_has_supported_versions_and_safe_confidential_reporting(
     normalized = " ".join(security.split())
 
     assert "| Version | Supported |" in security
-    assert "`0.9.x` | Yes" in normalized
-    assert "`< 0.9` | No" in normalized
+    assert "`0.11.x` | Yes" in normalized
+    assert "`< 0.11` | No" in normalized
     assert "`0.4.x` | Yes" not in normalized
     assert "`0.3.x` | Yes" not in normalized
     assert "`0.2.x` | Yes" not in normalized
@@ -3297,7 +3297,7 @@ def test_security_policy_has_supported_versions_and_safe_confidential_reporting(
     ):
         assert prohibited_public_material in normalized
     assert "public issue" in normalized
-    assert "As of 2026-10-04, that line is `0.9.x`." in normalized
+    assert "As of 2026-10-24, that line is `0.11.x`." in normalized
     assert "On 2026-08-09 (Asia/Taipei)" in normalized
     assert "private vulnerability reporting is enabled" in normalized
     assert "security/advisories/new" in normalized
