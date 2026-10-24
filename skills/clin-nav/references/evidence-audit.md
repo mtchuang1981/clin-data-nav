@@ -12,22 +12,40 @@ does not browse URLs, call MCP, interpret notes or write inputs. The v0.8.0
 
 ## Binding and limits
 
-Top-level keys are exactly schema_version, ledger_id, ledger_sha256, checked_on,
-sources, claims. Audit schema_version is string `1`; ledger_id must match.
+Top-level keys are exactly:
+
+- schema_version;
+- ledger_id;
+- ledger_sha256;
+- checked_on;
+- sources;
+- claims.
+
+Audit schema_version is string `1`. ledger_id must match.
 Hash the structurally valid ledger as UTF-8 JSON with ensure_ascii=False,
 sort_keys=True, separators=(",", ":"), then SHA-256. Object-key order and file
-formatting are irrelevant; array order and text are preserved without Unicode
-normalization. Each ledger source and claim has exactly one audit row, no extra,
-duplicate or missing IDs.
+formatting are irrelevant. Preserve array order and text without Unicode normalization.
+Each ledger source and claim has exactly one audit row.
+No extra, duplicate or missing IDs are allowed.
 
 `prepared_on <= checked_on <= --as-of`. Publication, actual review and performed
-search dates cannot follow checked_on. Future policy due dates remain allowed;
-the old ledger evaluator still decides due review. Unknown dates are not guessed.
+search dates cannot follow checked_on. Future policy due dates remain allowed.
+The old ledger evaluator still decides due review. Do not guess unknown dates.
 
-Each input is at most 262,144 bytes, container depth 12; maximum 100 sources,
-100 claims, 100 source checks per claim, 20 entry points per source. IDs use the
-ledger lowercase-hyphen format, at most 80 characters; URLs 2,048; audit notes
-and locations 4,000. Reject, never truncate. Reject duplicate keys, nonfinite
+Apply these input limits:
+
+- Each input: at most 262,144 bytes.
+- Container depth: at most 12.
+- Sources: at most 100.
+- Claims: at most 100.
+- Source checks per claim: at most 100.
+- Entry points per source: at most 20.
+- IDs: ledger lowercase-hyphen format, at most 80 characters.
+- URLs: at most 2,048 characters.
+- Audit notes and locations: at most 4,000 characters.
+
+Reject input that exceeds these limits. Never truncate it.
+Reject duplicate keys, nonfinite
 numbers including overflow, invalid UTF-8/BOM, trailing JSON, unknown fields,
 wrong types and empty required text. All keys are required even for unknowns.
 
@@ -58,8 +76,9 @@ URL syntax checks reject credentials, query, fragment, localhost, IP literals
 and single-label hosts. Host boundary checks follow IDNA/case/trailing-dot
 normalization; nonstandard numeric IPv4 aliases (short, octal, hex) are rejected
 too. No DNS: an ordinary domain is NOT proof of public access.
-Never provide private/login/signed URLs or tokens; use a non-secret public entry
-point. Null retrieval/status URL is allowed; absent status basis needs review.
+Never provide private/login/signed URLs or tokens.
+Use a non-secret public entry point.
+A null retrieval/status URL is allowed. An absent status basis needs review.
 
 | Access | Required ledger review_status | Verified locator allowed |
 | --- | --- | --- |
@@ -106,9 +125,10 @@ state machine, regex truth check or automatic correction database query exists.
 python scripts/check_evidence_audit.py --ledger <external-ledger.json> --audit <external-audit.json> --as-of YYYY-MM-DD
 ```
 
-Repository and packaged CLI share implementation. Exit 2 is invalid-input
-(fixed stderr `evidence audit validation failed`); exit 3 is needs-review;
-exit 0 is recorded-checks-complete. Completion only means applicable checks are
+Repository and packaged CLI share implementation.
+Exit 2 is invalid-input (fixed stderr `evidence audit validation failed`).
+Exit 3 is needs-review. Exit 0 is recorded-checks-complete.
+Completion only means applicable checks are
 recorded complete, not source correctness, scientific validity, clinical
 effectiveness, deployment readiness or independently verified human judgment.
 Invalid takes precedence, then union ALL old ledger gaps with audit gaps.

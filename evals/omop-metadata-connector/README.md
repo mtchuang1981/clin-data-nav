@@ -12,4 +12,4 @@ human-effectiveness study.
 `implementation-ready` is a ceiling for connector evidence only. It can apply
 only after all other readiness prerequisites are met, and it never makes a
 metadata-only result executable or validated. Non-standard deviations are
-represented solely by aggregate counts; their names are intentionally absent.
+represented solely by aggregate counts. Their names are intentionally absent.

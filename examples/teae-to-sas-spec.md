@@ -12,7 +12,7 @@ Sources actually consulted: Current request only; SYNTH identifiers below denote
 The hypothetical protocol and SAP govern the emergence window and partial-date
 rules. Official CDISC guidance and controlled terminology govern submission
 structure, not the study-specific window. Lex Jansen indexes implementation
-literature; it is not a standard or validation authority.
+literature. It is not a standard or validation authority.
 
 | Claim | Governing source to review | Authority | Applicability | Limitation |
 | --- | --- | --- | --- | --- |
@@ -26,12 +26,12 @@ literature; it is not a standard or validation authority.
 - Subject input: one record per synthetic subject, logical subject key, treatment
   start and safety-population role defined by the assumed dictionary.
 - Event input: one record per adverse event with logical subject key, onset,
-  worsening and coding facts; physical fields pending owner confirmation.
-- Join: many events to one subject; reject unmatched events and multiplying joins.
+  worsening and coding facts. Physical fields are pending owner confirmation.
+- Join: many events to one subject. Reject unmatched events and multiplying joins.
 - Parameters: emergence window, partial-date/ongoing-event rules and terminology
   version require approved values, not guesses. Precision, missingness and
   comparison precedence follow the signed SAP.
-- Outputs: approved analysis roles and aggregate review findings; preserve lineage
+- Outputs: approved analysis roles and aggregate review findings. Preserve lineage
   to protocol, SAP, dictionary and transformation versions.
 - Acceptance cases: onset inside the window, pre-treatment resolution, worsening,
   partial dates and unmatched subjects, with expectations from the reviewed SAP.
@@ -55,7 +55,7 @@ inventing fields, implementing SAS, or claiming a reviewed source.
 
 ## Execution gate
 
-Unmet. Reassess all relevant execution gates after gaps close; one completed gap
+Unmet. After gaps close, reassess all relevant execution gates. One completed gap
 or metadata-only check cannot grant execution authority.
 
 SPECIFICATION ONLY — NOT EXECUTABLE

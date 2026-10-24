@@ -2,7 +2,8 @@
 
 # Clinical Data Research Navigator
 
-這是一套可安裝的 Agent Skill，協助你把臨床資料問題整理成依權威性排序的指引，但不會提供私有 schema，也不會宣稱已產出具臨床效度的結論。
+這是一套可安裝的 Agent Skill，協助你把臨床資料問題整理成依來源權威性排序的指引。
+它不會提供私有 schema，也不會宣稱已產出具臨床效度的結論。
 
 [![Validation](https://github.com/mtchuang1981/clin-data-nav/actions/workflows/validate.yml/badge.svg?branch=main)](https://github.com/mtchuang1981/clin-data-nav/actions/workflows/validate.yml?query=branch%3Amain)
 
@@ -19,7 +20,8 @@ npx skills add mtchuang1981/clin-data-nav
 Node.js 必要條件、更新、驗證 ZIP 安裝與疑難排解，請見[安裝指南](docs/installation.zh-TW.md)。
 既有使用者重新安裝前，請先依照其中的 [Skill ID 遷移程序](docs/installation.zh-TW.md#從先前的-skill-id-遷移)操作。
 
-貢獻者可使用[選用的唯讀安裝診斷](docs/installation.zh-TW.md#選用的唯讀安裝診斷)，核對所選檔案與可信 manifest；工具無法確認 host 實際載入的版本。
+貢獻者可使用[選用的唯讀安裝診斷](docs/installation.zh-TW.md#選用的唯讀安裝診斷)，核對所選檔案與可信 manifest。
+工具無法確認 host 實際載入的版本。
 
 ## 第一次成功使用
 
@@ -75,13 +77,13 @@ OpenAI 官方文件說明，Skill 會封裝操作指引、資源與選用指令�
 | 回報安全性問題 | [安全性說明](SECURITY.md) |
 | 回饋安裝或任務完成情形 | [社群使用回饋](https://github.com/mtchuang1981/clin-data-nav/issues/new?template=usability-feedback.zh-TW.yml) |
 | 準備經核准的發布 | [發布流程](docs/release.md) |
-| 查看 v0.10.0 變更 | [靜態 Release notes](docs/releases/0.10.0.md)與[版本紀錄](CHANGELOG.zh-TW.md)（[英文完整紀錄](CHANGELOG.md)） |
+| 查看 v0.11.0 候選版變更 | [靜態 Release notes](docs/releases/0.11.0.md)與[版本紀錄](CHANGELOG.zh-TW.md)（[英文完整紀錄](CHANGELOG.md)） |
 | 查核目前產品指引 | [OpenAI 的 ChatGPT Skills 說明](https://help.openai.com/en/articles/20001066)與[Codex Skill 文件](https://learn.chatgpt.com/docs/build-skills) |
 
 ## 證據、公開邊界與限制
 
-社群回饋是未驗證的自陳，不納入正式成效彙總。無問題完成可省略問題描述；
-僅填簡短的公開或合成工作流程摘要，不貼原始提示、模型回答、日誌、附件、
+社群回饋是未驗證的自陳，不納入正式成效彙總。若完成時未遇到問題，可省略問題描述。
+請僅填簡短的公開或合成工作流程摘要。不要貼原始提示、模型回答、日誌、附件、
 病人資料、機構 schema 或憑證。表單不能保證攔截所有敏感內容。
 
 Skill 會優先採用主導來源，再參考實作文獻，並清楚區分已確認事實、假設、
@@ -101,7 +103,7 @@ v5.4 目錄與契約；其來源可追溯至官方 v5.4.2 版、13 個資料表�
 schema 檢查與遮蔽、原始 schema 資料、憑證及連線設定。
 
 固定的 13 個資料表的允許清單僅限中繼資料：不得存取資料列或執行 SQL。封閉且已遮蔽的
-摘要可指出邏輯對應缺口，但無法證明資料適用性、研究就緒度、治理核准或分析結果；
+摘要可指出邏輯對應缺口，但無法證明資料適用性、研究就緒度、治理核准或分析結果。
 它本身不能產生 `executable` 或 `validated` 狀態。選用的離線檢查器與私有端一致性確認
 界線請見[安裝指南](docs/installation.zh-TW.md#選用的-omop-v54-中繼資料連接器)。
 
@@ -117,6 +119,6 @@ RWD 不會自動成為 RWE。只有具備必要設計欄位的因果比較問題
 
 缺少核准的 Adapter、現行詮釋資料、參數或 fixture 時，實作要求會維持
 `SPECIFICATION ONLY — NOT EXECUTABLE`，不得臆造本地資料表、欄位、join、
-代碼或可直接上線的邏輯。資訊不足時，回覆會先做問題釐清並提供缺少資訊清單，
-不會捏造確定答案。使用安裝後僅含指令與參考文件的 Skill 不需要 Python；
+代碼或可直接上線的邏輯。資訊不足時，Skill 會先釐清問題，再提供缺少資訊清單，
+不會捏造確定答案。使用安裝後僅含指令與參考文件的 Skill 不需要 Python。
 Python 3.11 只供[貢獻指南](CONTRIBUTING.md)所述的儲存庫開發與發布工具使用。

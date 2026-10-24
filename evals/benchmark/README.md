@@ -17,14 +17,14 @@ from this repository or from CI.
 
 Keep every populated plan, response index, response file, provider log,
 generated summary, and generated report outside the repository checkout. Use
-only an approved external location. Each response cell starts in a fresh
-session, the first normative campaign is offline with network and external
-retrieval disabled, and the frozen plan's balanced condition order must be
-followed exactly.
+only an approved external location.
+Start each response cell in a fresh session.
+For the first normative campaign, disable network and external retrieval.
+Follow the frozen plan's balanced condition order exactly.
 
 The external plan, response, and output directories require a single writer
 for the duration of each CLI transaction. The validators reject unsafe state
-and detectable namespace drift; they do not claim protection from a malicious
+and detectable namespace drift. They do not claim protection from a malicious
 process continuously replacing POSIX directory entries.
 
 ## Released Skill binding
@@ -46,7 +46,7 @@ itself is insufficient, and preparation performs no network call.
 ## Prepare plan
 
 Create the frozen plan at an existing external directory. Supply controlled,
-self-reported model and runner metadata; never supply a secret or credential.
+self-reported model and runner metadata. Never supply a secret or credential.
 
 ```bash
 python scripts/prepare_simulation_benchmark.py \
@@ -73,9 +73,9 @@ The generated plan fixes all 72 cells before any response is observed.
 
 Use your own approved, repository-external runner. This project does not
 provide a model runner, recommend a provider, or describe credential setup.
-For every planned cell, start a fresh session and keep the shared model,
+For every planned cell, start a fresh session. Keep the shared model,
 runner, base system prompt, tool policy, seed policy, and output settings
-unchanged. `control` has no `clin-nav`; `intervention` makes the bound bundle
+unchanged. `control` has no `clin-nav`. `intervention` makes the bound bundle
 available and invokes `$clin-nav`. Do not copy a response between sessions or
 change the frozen balanced condition order.
 
@@ -100,13 +100,13 @@ python scripts/evaluate_simulation_benchmark.py \
 ```
 
 Exit `0` means a complete valid `benchmark-observed` summary was committed.
-Exit `3` means the valid canonical record prefix is incomplete; no result
+Exit `3` means the valid canonical record prefix is incomplete. No result
 summary is written. Exit `2` means invalid or unsafe input, drift, mismatch,
 aliasing, evaluation failure, or output/notification failure.
 
 The canonical summary file is the authoritative result. Success stdout is only
 a bounded notification after commit. If stdout fails before any byte, the CLI
-emits its fixed stderr and exits `2`; after a partial notification it emits no
+emits its fixed stderr and exits `2`. After a partial notification it emits no
 additional stderr and exits `2`. In either case, an already committed valid
 summary remains authoritative and is not rolled back.
 
@@ -132,7 +132,7 @@ an overall absolute pass-rate improvement of at least `0.20`, more improved
 than worsened pairs, zero intervention forbidden-rule violations, and no
 negative output-depth stratum. Any overall negative difference, increased
 intervention forbidden violations, or negative depth stratum is a
-`negative-signal`; all other complete results are `mixed-or-null`.
+`negative-signal`. All other complete results are `mixed-or-null`.
 
 These directions concern synthetic prompts and deterministic contract checks.
 A positive signal is not human-effective and is not evaluation-green. No representative user
@@ -162,5 +162,5 @@ Never commit or paste patient data, private schema, an internal document,
 condition key, task pack, nonce, API key, access token, credential, raw answer,
 prompt, provider log, populated plan or index, response bundle, real generated
 report, or any other sensitive or human-study material. A form acknowledgement
-reduces but cannot eliminate accidental disclosure risk; maintainers should
+reduces but cannot eliminate accidental disclosure risk. Maintainers should
 close or redact unsafe reports using the available moderation controls.

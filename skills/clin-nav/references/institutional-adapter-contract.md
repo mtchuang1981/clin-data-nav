@@ -2,7 +2,7 @@
 
 Generic contract revision: **1.2**. The manifest schema remains `"1"`.
 This revision is independent of OMOP metadata connector wire versions and
-the ClinNav package version; it does not change their defaults or payloads.
+the ClinNav package version. It does not change their defaults or payloads.
 
 Use an institutional Adapter to supply governed local facts without placing
 them in this public Skill. Keep each Adapter in its approved environment.
@@ -34,12 +34,12 @@ For every domain, require:
 
 - **Logical role and grain:** Define what one row represents and the event,
   person, episode, or period boundaries.
-- **Keys:** Declare approved primary, foreign, and deduplication keys; state
+- **Keys:** Declare approved primary, foreign, and deduplication keys. State
   whether each is stable across refreshes.
 - **Join cardinality:** Declare allowed one-to-one, one-to-many, or many-to-one
   paths and the checks that detect multiplication or loss.
 - **Coverage:** Record source system, population, site, and date coverage with
-  an owner-approved snapshot; distinguish unavailable from unknown.
+  an owner-approved snapshot. Distinguish unavailable from unknown.
 - **Types:** Map logical fields to approved physical types and nullability.
 - **Time precision:** Declare date, datetime, partial-date, timezone, and
   interval semantics, including censoring or imputation rules.
@@ -72,7 +72,7 @@ Historical documentation alone never verifies the current environment.
 For OMOP metadata verification, a valid redacted connector result may supply
 one bounded structural input to this comparison. It does not replace the
 approved Adapter manifest, governed study parameters, or target-environment
-fixture checks; retain every discrepancy as a validation gap.
+fixture checks. Retain every discrepancy as a validation gap.
 
 ## Fixture checks
 
@@ -125,7 +125,7 @@ capabilities:
 With no declaration, keep the existing logical-contract workflow unchanged.
 Explicit null, a partial/invalid declaration, unsupported capability version,
 unknown operation, or incompatible local mapping does not enable this route.
-Report the gap; do not discover, install, probe, retry, or improvise a compiler.
+Report the gap. Do not discover, install, probe, retry, or improvise a compiler.
 Legacy adapters require no new field to retain their existing workflow.
 
 ### Declaration validation and local tool mapping
@@ -142,9 +142,10 @@ and 1–16 distinct lowercase kebab-case scope labels of 1–64 characters each.
 The helper documents its exact token grammar and returns only bounded,
 controlled error codes, never source values or private diagnostics.
 
-The owner must establish the format's version meaning and compatibility;
-valid token syntax cannot establish either. De-identified fixtures additionally
-require explicit local approval; public fixtures must be wholly synthetic.
+The owner must establish the format's version meaning and compatibility.
+Valid token syntax cannot establish either.
+De-identified fixtures additionally require explicit local approval.
+Public fixtures must be wholly synthetic.
 
 Operation names are logical identifiers. The approved local manifest maps
 them to actual tools and defines their compatible input/output contracts.
@@ -157,7 +158,7 @@ tool name, or metadata-only access never grants execution or data access.
    or mapping, with provenance for every code identifying the versioned source
    and why it was selected. Give reasons for review-required candidates and
    a permitted per-site summary that makes empty sites visible. Unresolved
-   selections require human review; never return person-level data.
+   selections require human review. Never return person-level data.
 2. **`validate_spec`:** Return the complete specification-error list, or success
    bound to the exact accepted specification digest. Errors or unresolved
    required parameters block compilation.
@@ -173,7 +174,7 @@ tool name, or metadata-only access never grants execution or data access.
    zero process exit alone is insufficient. Missing runtime (`unavailable`),
    skipped/failed tests, missing binding, or a different digest is not a pass.
 
-The accepted specification digest must match the compilation manifest; the
+The accepted specification digest must match the compilation manifest. The
 compiled program digest must match the fixture record. Reassess and rerun
 affected steps after changes to specification, program, mappings/dictionary,
 compiler, relevant metadata snapshot, or environment. Never reuse an unrelated
@@ -194,9 +195,9 @@ upgrade:
 | Reviewed target-environment results meet acceptance and disclosure/release controls | `validated` |
 
 An otherwise complete specification with no fixture runtime stays
-`parameterized`. A changed/mismatched program cannot retain `executable`;
-reassess lower gates instead of assuming even `parameterized` when concepts or
-parameters remain unresolved. List every unmet gate and retain
+`parameterized`. A changed/mismatched program cannot retain `executable`.
+Reassess lower gates. When concepts or parameters remain unresolved, do not assume even `parameterized`.
+List every unmet gate and retain
 `SPECIFICATION ONLY — NOT EXECUTABLE` while promotion requirements are missing.
 
 Fixture execution is separate from real-data execution. `executable` is a
@@ -207,8 +208,9 @@ compatibility remain separate inputs, never substitutes for these gates.
 ### Minimize outputs before model ingestion
 
 Adapter output enters the assistant context and may be sent to a hosted
-model. Return only locally approved fields needed for the current review:
-summary first, bounded paging, and coarse usage bands where permitted. Keep
+model. Return only locally approved fields needed for the current review.
+Present the summary first. Use bounded paging and coarse usage bands where permitted.
+Keep
 full lists, programs, review documents, and detailed diagnostics locally.
 Do not automatically read them merely because an Adapter returns a path.
 

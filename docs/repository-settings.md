@@ -3,8 +3,8 @@
 This is an operator checklist for an explicitly approved change. This
 documentation is not proof that a setting is enabled. Do not
 change an external setting, topic, integration, or repository rule merely
-because it appears here. Capture the pre-change state, apply only the approved
-change, and complete a post-change re-read from GitHub or Zenodo.
+because it appears here. Capture the pre-change state.
+Apply only the approved change. Complete a post-change re-read from GitHub or Zenodo.
 
 Repository used in the examples:
 `mtchuang1981/clin-data-nav`. Commands are read-only unless a separately
@@ -12,9 +12,13 @@ approved change procedure explicitly says otherwise.
 
 ## Required status checks
 
-Before changing a branch rule or ruleset, confirm that the target workflow has
-completed successfully on `main`, that an administrator recovery route exists,
-and that the check names shown by GitHub are exact. The required status checks
+Before changing a branch rule or ruleset, confirm these conditions:
+
+- The target workflow completed successfully on `main`.
+- An administrator recovery route exists.
+- The check names shown by GitHub are exact.
+
+The required status checks
 include both platform checks and the package-identity comparator:
 
 - `test (ubuntu-latest)`
@@ -61,7 +65,7 @@ Read-only post-change re-read:
 gh api --method GET repos/mtchuang1981/clin-data-nav/topics --jq '.names'
 ```
 
-Require exact set equality; a locally documented list is not evidence of the
+Require exact set equality. A locally documented list is not evidence of the
 remote topic state.
 
 ## Private vulnerability reporting
@@ -78,7 +82,7 @@ gh api --method GET \
 ```
 
 If the API returns `false`, reporters must follow the non-sensitive
-coordination route in [SECURITY.md](../SECURITY.md); never ask them to move a
+coordination route in [SECURITY.md](../SECURITY.md). Never ask them to move a
 sensitive payload into a public issue.
 
 ## Dependabot security updates
@@ -97,7 +101,7 @@ gh api --include --method GET \
 
 GitHub returns `204 No Content` when automated security fixes are enabled and
 `404 Not Found` when they are disabled or unavailable to the caller. Confirm
-the UI state as well; an unreadable API response is not evidence of either
+the UI state as well. An unreadable API response is not evidence of either
 state.
 
 ## CodeQL default setup
@@ -105,9 +109,8 @@ state.
 GitHub UI path: **Settings → Security → Advanced Security → CodeQL analysis**.
 The approved default setup analyzes `actions` and `python` with the `default`
 query suite, `remote` threat model, `standard` runner, and `weekly` schedule.
-CodeQL is not currently a required check; do not add it to branch protection
-until its exact PR check names and availability have been observed and a
-separate change is approved.
+CodeQL is not currently a required check.
+Until its exact PR check names and availability have been observed and a separate change is approved, do not add it to branch protection.
 
 Read-only post-change re-read:
 
@@ -118,8 +121,8 @@ gh api --method GET \
   'repos/mtchuang1981/clin-data-nav/code-scanning/alerts?state=open'
 ```
 
-Confirm the stored configuration, inspect both language analyses, and review
-every alert. A successful scan and zero results do not prove that the
+Confirm the stored configuration. Inspect both language analyses.
+Review every alert. A successful scan and zero results do not prove that the
 repository is secure. Do not dismiss an alert merely to make a check green.
 
 ## Optional Zenodo evaluation

@@ -3,17 +3,17 @@
 [繁體中文](installation.zh-TW.md)
 
 The recommended path is a project-local installation with `npx skills add`.
-The current verified Release is `v0.10.0`; its exact `clin-nav`
-artifact verification and installation path is below. The immutable v0.6.0
-Release remains available as a historical version, while the v0.4.0 ZIP material
-is a historical verification reference, not an installation path. Use the
-source-checkout path only when developing or auditing this repository.
+The current verified Release is `v0.10.0`.
+Its exact `clin-nav` artifact verification and installation path is below.
+The immutable v0.6.0 Release remains available as a historical version.
+The v0.4.0 ZIP material is a historical verification reference, not an installation path.
+Only when developing or auditing this repository, use the source-checkout path.
 
 ## Runtime boundary
 
-Source-checkout tools target `0.10.0`, matching the verified public ZIP. Use
-scripts from the matching source version when installing a versioned ZIP;
-do not pair this strict installer with older assets. The
+Source-checkout tools target the `0.11.0` candidate, not the verified `0.10.0` ZIP. Use
+scripts from the matching source version when installing a versioned ZIP.
+Do not pair this strict installer with older assets. The
 [release notes](releases/0.10.0.md) describe governed routing and its unverified
 private-operational boundary. See the
 [publication record](verification/2026-10-19-v0.10.0-publication.md) for the
@@ -32,7 +32,7 @@ mtchuang1981/clin-data-nav` installation or its instruction-only runtime: that
 normal use does not require Python. Consider the connector only after the user
 explicitly authorizes read-only metadata access in the current request. It is
 limited to an OMOP CDM v5.4, 13-table allowlist whose public catalog is pinned
-to official v5.4.2 provenance; it permits no row access or SQL execution.
+to official v5.4.2 provenance. It permits no row access or SQL execution.
 
 The public Skill owns that catalog, contract, and validator/status calculation.
 The private `tmucrd-adapter` owner owns `get_capabilities`, authorization,
@@ -41,15 +41,16 @@ connection configuration. The owner can perform conformance without disclosing
 an endpoint, server command, DSN, or private configuration:
 
 1. Confirm that `get_capabilities` declares the required read-only boundary.
-2. Run tbls only in the governed private environment, inspect only the fixed
-   allowlist, and redact it into the closed metadata-summary contract.
-3. Keep raw output and diagnostics private; export only the closed, redacted
-   response when an authorized workflow needs offline validation.
+2. Run tbls only in the governed private environment.
+   Inspect only the fixed allowlist.
+   Redact the result into the closed metadata-summary contract.
+3. Keep raw output and diagnostics private.
+   When an authorized workflow needs offline validation, export only the closed, redacted response.
 4. Treat the resulting status as a logical mapping-gap check, never automatic
    execution or proof of study fitness.
 
-For an optional offline check, run this from the project root after `npx skills
-add` has installed ClinNav. It requires Python only for this checker and uses
+After `npx skills add` has installed ClinNav, run the optional offline check from the project root.
+It requires Python only for this checker and uses
 already-exported redacted JSON files held outside this repository and the
 installed Skill:
 
@@ -57,7 +58,7 @@ installed Skill:
 python .agents/skills/clin-nav/scripts/check_omop_metadata.py --capabilities <external-capabilities.json> --input <external-inspection.json> --as-of <RFC-3339-timestamp>
 ```
 
-The packaged checker validates those external files offline; it does not
+The packaged checker validates those external files offline. It does not
 discover, install, or contact a connector. Public examples and fixtures are
 synthetic only. A metadata-only result cannot produce `executable` or
 `validated` status by itself.
@@ -74,14 +75,14 @@ evidence, or a positive integer up to 31,536,000 for finite expiry.
 python scripts/check_omop_metadata.py --capabilities <external-capabilities.json> --input <external-inspection.json> --as-of <RFC-3339-timestamp> --contract-version 1.2 --allow-nonexpiring-dqd
 ```
 
-The flag grants consent to a null policy; it does not override a finite limit.
+The flag grants consent to a null policy. It does not override a finite limit.
 Without consent, the checker stops before reading the inspection. Default 1.0
 and explicit 1.1 keep their original behavior. Metadata freshness remains finite
 (for example, 86,400 seconds), even when DQD expiry is disabled. A changed
-snapshot or check specification requires new evidence; preserve `checked_at`.
+snapshot or check specification requires new evidence. Preserve `checked_at`.
 Report structural compatibility and DQD attestation separately. Accepted
-attestation is neither independently verified private content nor study fitness;
-an incompatible structure remains exit 3. See the
+attestation is neither independently verified private content nor study fitness.
+An incompatible structure remains exit 3. See the
 [connector contract and private handoff](../skills/clin-nav/references/omop-metadata-connector.md#optional-12-independent-dqd-expiration).
 
 ## Check prerequisites
@@ -109,8 +110,8 @@ permissions.
 
 `/skills` and
 `$clin-nav` are entered in
-Codex; they are not terminal commands. Use `/skills` to confirm discovery,
-then invoke the Skill explicitly. A request with incomplete implementation
+Codex; they are not terminal commands. Use `/skills` to confirm discovery.
+Then invoke the Skill explicitly. A request with incomplete implementation
 inputs should receive question clarification and a missing-information list,
 not invented schema or production code.
 
@@ -118,8 +119,8 @@ In Codex CLI or the IDE extension, use `/skills` for discovery and
 `$clin-nav` for explicit invocation. The ChatGPT
 desktop app has a separate installation surface: open `Skills` through
 **Plugins → Skills → Create → Upload from computer**. This interface may vary
-by plan, workspace permissions, or rollout; continue only when your plan and
-workspace allow uploads. Check both OpenAI's [Help Center Skills
+by plan, workspace permissions, or rollout. Only when your plan and
+workspace allow uploads, continue. Check both OpenAI's [Help Center Skills
 guide](https://help.openai.com/en/articles/20001066-skills-in-chatgpt) and [Build Skills
 documentation](https://learn.chatgpt.com/docs/build-skills) for the current
 surface. The project-local `npx` command writes to `.agents/skills`; it does
@@ -129,9 +130,8 @@ not install it into ChatGPT or establish a public Plugin-directory listing.
 
 The installed Skill ID changed from `clinical-data-research-navigator` to
 `clin-nav`. Inspect the exact existing
-`.agents/skills/clinical-data-research-navigator` directory before removing or archiving anything,
-and confirm that it is the previous Skill installation in
-the intended project.
+`.agents/skills/clinical-data-research-navigator` directory before removing or archiving anything.
+Confirm that it is the previous Skill installation in the intended project.
 
 Remove or archive only that verified directory with a safe file operation for
 your platform. Move any archive outside `.agents/skills` and every other Skill
@@ -250,10 +250,10 @@ test -f "$staging_directory/SKILL.md"
 mv "$staging_directory" "$skill_directory"
 ```
 
-After installation, confirm `.agents/skills/clin-nav/SKILL.md`, restart the
-Skill host if needed, use `/skills` to confirm discovery, and invoke
-`$clin-nav`. The examples refuse an existing install or staging directory;
-inspect an existing path instead of deleting or overwriting it blindly.
+After installation, confirm `.agents/skills/clin-nav/SKILL.md` exists.
+If needed, restart the Skill host. Use `/skills` to confirm discovery.
+Invoke `$clin-nav`. The examples refuse an existing install or staging directory.
+Inspect an existing path instead of deleting or overwriting it blindly.
 
 ## Historical v0.4.0 Release artifact verification (reference only)
 
@@ -316,13 +316,14 @@ python scripts/install_local.py \
   --destination "$HOME/.agents/skills"
 ```
 
-The local packager validates the Skill and prints the exact archive path,
-followed by its manifest path. Passing that reported archive avoids coupling
-the instructions to a future version constant. The destination is
-`$HOME/.agents/skills/clin-nav`. Use `--overwrite`
-only after you have inspected that exact installation and intentionally chosen
-to replace it; the command above omits `--overwrite`, so an existing target is
-refused. The packager and installer are contributor/release tooling, so this
+The local packager validates the Skill.
+It prints the exact archive path, followed by its manifest path.
+Passing that reported archive keeps the instructions independent of a future version constant.
+The destination is `$HOME/.agents/skills/clin-nav`.
+
+Only after inspecting that exact installation and intentionally choosing to replace it, use `--overwrite`.
+The command above omits `--overwrite`, so it refuses an existing target.
+The packager and installer are contributor/release tooling, so this
 path requires Python 3.11 and the setup in
 [CONTRIBUTING.md](../CONTRIBUTING.md).
 
@@ -339,12 +340,12 @@ python scripts/verify_installation.py --skill-dir <selected-directory> --manifes
 
 Obtain the manifest and its raw-byte SHA-256 from a trusted publication. A
 self-created receipt beside mutable files is not a trust root. The manifest
-must be outside the selected Skill and source repository; do not copy the
+must be outside the selected Skill and source repository. Do not copy the
 candidate hash or assume a locally generated manifest is an official release.
 Trusted historical manifests are supported. The tool does not download, install,
 overwrite, restart the host, call MCP or inspect other installation directories.
 
-Exit 0 reports `manifest-files-byte-identical`; exit 3 reports `content-differs`
+Exit 0 reports `manifest-files-byte-identical`. Exit 3 reports `content-differs`
 with missing/extra/different counts. Exit 2 means invalid or unsafe input, a
 limit, read error or detected concurrent change. `--comparison canonical-text`
 only normalizes CRLF/CR to LF for valid UTF-8 without NUL: success is

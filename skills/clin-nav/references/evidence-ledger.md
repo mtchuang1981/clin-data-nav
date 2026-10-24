@@ -2,14 +2,14 @@
 
 For requested source-freshness or citation review records, use the optional
 companion in `evidence-audit.md`. It binds to this unchanged schema `1` and unions
-all existing review items; it cannot turn unreviewed evidence into verified facts.
+all existing review items. It cannot turn unreviewed evidence into verified facts.
 
 Use this optional JSON ledger when the user requests a machine-auditable or
 repeatable evidence record for an evidence navigation, research design, or
 implementation specification. Keep quick explanations concise unless the user
 explicitly asks for the ledger.
 
-The ledger records review state; it does not prove that a source is correct,
+The ledger records review state. It does not prove that a source is correct,
 current, applicable, or sufficient for a clinical decision. Save actual
 ledgers outside the Skill and source repository because they may contain
 sensitive research context. The checked-in JSON is synthetic structure only.
@@ -17,8 +17,8 @@ sensitive research context. The checked-in JSON is synthetic structure only.
 ## Fail-closed rules
 
 - Use schema version `1` and the exact keys shown below. Use JSON `null` for an
-  unknown date, version, or stable identifier; never guess or invent a
-  surrogate identifier.
+  unknown date, version, or stable identifier.
+  Never guess or invent a surrogate identifier.
 - Set `review_status` to `reviewed` only after opening and reviewing the actual
   source. A search result, abstract-only record, snippet, citation, user mention,
   or model memory is `not-reviewed`. Use `unavailable` when access was attempted
@@ -86,6 +86,7 @@ python scripts/check_evidence_ledger.py --input <external-ledger.json> --as-of Y
 
 The checker uses no network. It emits only counts, record IDs, and status—not
 claim or source text. Exit `0` means the ledger is structurally valid with no
-recorded review item due; exit `3` means the ledger is valid but review remains;
-exit `2` means invalid input. Exit `0` is not evidence of scientific validity,
+recorded review item due.
+Exit `3` means the ledger is valid but review remains.
+Exit `2` means invalid input. Exit `0` is not evidence of scientific validity,
 clinical appropriateness, source truth, or deployment readiness.

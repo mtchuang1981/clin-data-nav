@@ -22,7 +22,7 @@ new contract when replaying an archived benchmark or reinterpret its scores.
 
 Successful opted-in CLI JSON contains `heading_contract: research-bilingual-v1`.
 Default and explicit legacy JSON retain the original shape with no new field.
-The Python `Evaluation` result shape remains unchanged; API callers must retain
+The Python `Evaluation` result shape remains unchanged. API callers must retain
 their selected contract ID alongside any newly produced report.
 
 ## Closed heading vocabulary

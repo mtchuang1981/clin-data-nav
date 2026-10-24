@@ -60,9 +60,11 @@ When network search is available:
    - SAS platform or version caveats
    - limitations
 
-4. For any code fragment, record its paper and page provenance, whether it is
-   quoted, adapted, or independently reimplemented, and the stated copyright,
-   license, or reuse terms.
+4. For any code fragment, record:
+
+   - paper and page provenance;
+   - whether the fragment is quoted, adapted, or independently reimplemented;
+   - the stated copyright, license, or reuse terms.
 5. When permission to reuse code is absent or unclear, describe the technique
    or create a clean-room implementation instead of copying the fragment.
 6. Compare the technique with governing definitions and with the target
@@ -70,8 +72,8 @@ When network search is available:
    that code is faster or optimized without target-environment measurement.
 
 When network search or the full paper is unavailable, write `not searched` or
-`not reviewed` in the evidence record, preserve the planned query, and list the
-missing review as a validation gap. Do not convert an unavailable search into a
+`not reviewed` in the evidence record. Preserve the planned query.
+List the missing review as a validation gap. Do not convert an unavailable search into a
 claim that no evidence exists.
 
 ## Build search units
@@ -109,8 +111,8 @@ When a machine-auditable record is requested, use the closed JSON schema in
 `evidence-ledger.md`. Do not translate `unknown` into an invented date, version,
 review status, or evidence location. The JSON contract uses `null` for unknown
 dates and versions and keeps source review state separate from claim support.
-It also uses `null` for an unknown stable identifier; never manufacture a
-source identifier merely to satisfy the record shape.
+It also uses `null` for an unknown stable identifier.
+Never manufacture a source identifier merely to satisfy the record shape.
 
 ## Reconcile conflicts
 
@@ -125,7 +127,7 @@ For each conflict:
 
 For institutional discrepancies, treat approved live metadata as the current
 technical observation and the versioned Adapter as the governed interpretation.
-Escalate disagreement to the source owner; do not silently choose a mapping.
+Escalate disagreement to the source owner. Do not silently choose a mapping.
 
 ## Apply the delivery boundary
 

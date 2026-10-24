@@ -11,7 +11,7 @@ data-owner, security, or other institutional authority.
 The validator can report only `incomplete` or
 `ready-for-institutional-review`. Its authorization field is always
 `not-authorized-to-recruit`. Exit code 0 therefore means documentation
-readiness only; it never authorizes recruitment or any human-study activity.
+readiness only. It never authorizes recruitment or any human-study activity.
 
 ## Public files and external instance
 
@@ -24,8 +24,8 @@ readiness only; it never authorizes recruitment or any human-study activity.
   [checklist.zh-TW.md](checklist.zh-TW.md) describe the same twelve controls in
   English and Taiwan Traditional Chinese.
 
-Copy the template to an approved location outside this repository and complete
-it there. A real completed instance, its evidence, and any mapping from opaque
+Copy the template to an approved location outside this repository.
+Complete it there. A real completed instance, its evidence, and any mapping from opaque
 reference tokens to documents must never enter Git. `study-governance/` is
 ignored and rejected as a safety net, but an ignored folder inside the checkout
 is still not an approved storage location.
@@ -41,7 +41,7 @@ The `protocol_commit` identifies the fixed study protocol version being
 prepared. The current public protocol is [protocol.md](../protocol.md), and the
 study input boundary is documented in [input-schema.md](../input-schema.md).
 The [2026-08-11 offline dry-run evidence](../../../docs/verification/2026-08-11-effectiveness-offline-dry-run.md)
-shows pipeline operation without people; it is not governance approval or
+shows pipeline operation without people. It is not governance approval or
 effectiveness evidence.
 
 ## Validate an external instance
@@ -68,10 +68,15 @@ Every valid result remains `not-authorized-to-recruit`.
 
 ## Stop rules
 
-Stop preparation and do not proceed when any required control is undocumented,
-the protocol commit is wrong, a real instance is inside the repository, an
-evidence reference contains a path or sensitive value, or an institutional
-owner has not accepted responsibility for the next step. Follow
+Stop preparation and do not proceed if any of these conditions holds:
+
+- Any required control is undocumented.
+- The protocol commit is wrong.
+- A real instance is inside the repository.
+- An evidence reference contains a path or sensitive value.
+- An institutional owner has not accepted responsibility for the next step.
+
+Follow
 [SECURITY.md](../../../SECURITY.md) if sensitive material may have entered the
 public checkout.
 
@@ -80,7 +85,7 @@ public checkout.
 After exit code 0, give the external pack and its separately governed evidence
 to the responsible institutional channel. The institution determines the
 applicable pathway, required changes, and whether later human-study actions may
-occur. Record those outcomes only in the approved external system; this schema
+occur. Record those outcomes only in the approved external system. This schema
 intentionally has no approval or recruitment-authority field.
 
 Return to the [effectiveness evaluation framework](../README.md) only after the

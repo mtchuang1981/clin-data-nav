@@ -45,7 +45,7 @@ evidence never enter Git.
 If an exploratory pilot is stopped by an environment change, task-pack
 leakage, or a reportable incident, follow the public
 [incident-recovery guide](recovery/README.md). The affected batch remains
-excluded; completed recovery records and all referenced evidence stay in an
+excluded. Completed recovery records and all referenced evidence stay in an
 approved location outside this checkout.
 
 Check external incident closure, restart authorization, and new bindings:
@@ -73,7 +73,7 @@ aggregate gate:
 python scripts/validate_effectiveness_recovery.py green-check --recovery-record <external-path> --study-manifest <external-path> --scores <external-path> --ratings-lock <external-path> --condition-key <external-path> --aggregate-summary <external-path> --unlock-after-ratings-lock
 ```
 
-These commands compute evidence states; they do not provide ethics,
+These commands compute evidence states. They do not provide ethics,
 recruitment, collection, unlock, analysis, or publication authority. No real
 replacement pilot was performed by adding them.
 
@@ -86,8 +86,8 @@ python -m pytest tests/test_effectiveness_contract.py -q
 ```
 
 The public files are [offline-tasks.yaml](offline-tasks.yaml) and
-[rubric.yaml](rubric.yaml). They support pipeline testing and rater training;
-they are not the confidential human task pack.
+[rubric.yaml](rubric.yaml). They support pipeline testing and rater training.
+They are not the confidential human task pack.
 
 ## Generate an external balanced assignment
 
@@ -97,7 +97,7 @@ Replace `<external-dir>` with a path outside this repository checkout:
 python scripts/generate_study_assignments.py --study-id pilot-v1 --seed 20260809 --output <external-dir>/assignments.json
 ```
 
-`--tasks` and `--rubric` are optional overrides; their defaults are the public
+`--tasks` and `--rubric` are optional overrides. Their defaults are the public
 contracts in this directory. The CLI generates 64 rows for 16 synthetic
 participant codes. The callable validator contract is exactly
 `validate_assignments(rows, catalog, study_id, seed)`. An actual human-study
@@ -134,15 +134,21 @@ python scripts/analyze_effectiveness.py agreement-check --study-manifest <extern
 ```
 
 The output status must be `eligible-for-locked-unlock`. A status of
-`recalibrate-and-rescore-before-unlock` produces `exit code 3`: stop, calibrate
-on designated synthetic training examples, complete a new independent scoring
-round, create a new lock, and rerun the check. Keep the superseded round in
-approved external audit storage; do not combine rounds and do not inspect or
-use the condition key.
+`recalibrate-and-rescore-before-unlock` produces `exit code 3`.
+For that status:
+
+1. Stop before inspecting or using the condition key.
+2. Calibrate on designated synthetic training examples.
+3. Complete a new independent scoring round.
+4. Create a new lock.
+5. Rerun the check.
+
+Keep the superseded round in approved external audit storage.
+Do not combine rounds. Do not inspect or use the condition key during this process.
 
 The blinded score document must also contain mandatory, condition-free
 `protocol_deviations` and `study_limitations` review objects. They use only
-prespecified category IDs and positive aggregate counts; `reviewed-none` means
+prespecified category IDs and positive aggregate counts. `reviewed-none` means
 the review was completed and found none, not that the fields were omitted.
 
 ## Explicitly unlock and analyze

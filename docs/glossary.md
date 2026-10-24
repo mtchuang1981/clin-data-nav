@@ -4,8 +4,8 @@
 
 These definitions are an orientation, not a substitute for the current
 standard, guidance, protocol, statistical analysis plan (SAP), or approved
-institutional metadata. A model tells you how information can be represented;
-an implementation still needs source review, mapping decisions, and
+institutional metadata. A model tells you how information can be represented.
+An implementation still needs source review, mapping decisions, and
 validation.
 
 <a id="clinical-research"></a>
@@ -13,7 +13,7 @@ validation.
 
 [Clinical research](https://www.nih.gov/health-information/nih-clinical-research-trials-you/basics)
 is medical research involving people. Clinical trials are one type of clinical
-research; the term also includes observational and epidemiologic studies. The
+research. The term also includes observational and epidemiologic studies. The
 research question and intended use determine which design and evidence rules
 apply.
 
@@ -23,7 +23,7 @@ apply.
 The [Clinical Data Interchange Standards Consortium
 (CDISC)](https://www.cdisc.org/standards) develops a family of standards for
 clinical and non-clinical research data. CDISC is the organization and
-standards ecosystem; it is not a single dataset format. Always identify the
+standards ecosystem. It is not a single dataset format. Always identify the
 specific standard, implementation guide, controlled terminology, and version
 that govern the work.
 
@@ -71,7 +71,7 @@ need separate evidence and checks.
 are data about patient health status or health-care delivery that are
 routinely collected from sources such as electronic health records, claims,
 registries, and digital health technologies. “Real-world” describes where and
-how data arise; it does not certify their quality or relevance to a question.
+how data arise. It does not certify their quality or relevance to a question.
 
 <a id="rwe"></a>
 ## RWE
@@ -79,7 +79,7 @@ how data arise; it does not certify their quality or relevance to a question.
 [Real-world evidence
 (RWE)](https://www.fda.gov/science-research/science-and-research-special-topics/real-world-evidence)
 is clinical evidence about a medical product's use and potential benefits or
-risks, derived from analysis of RWD. RWD is an input; RWE is an evidentiary
+risks, derived from analysis of RWD. RWD is an input. RWE is an evidentiary
 result. A dataset does not become RWE until a defined question, fit-for-purpose
 data, an appropriate design and analysis, and transparent limitations support
 the claim.
@@ -102,7 +102,7 @@ designs a non-randomized study to mimic the randomized trial that would
 ideally answer a comparative-effect question. Eligibility, treatment
 strategies, assignment, follow-up, outcomes, causal contrast, and analysis
 must be specified together. Emulation can expose time-related and selection
-biases; it cannot automatically remove confounding, measurement error, or
+biases. It cannot automatically remove confounding, measurement error, or
 missing data.
 
 <a id="estimand"></a>
@@ -112,7 +112,7 @@ An [estimand](https://www.fda.gov/regulatory-information/search-fda-guidance-doc
 is a precise description of the treatment effect a study intends to estimate.
 Under ICH E9(R1), it connects the objective to the population, treatment
 conditions, outcome, handling of intercurrent events, and population-level
-summary. The estimator and analysis method should target that estimand; they
+summary. The estimator and analysis method should target that estimand. They
 are not the estimand itself.
 
 <a id="phenotype"></a>
@@ -156,7 +156,7 @@ stays a logical specification.
 
 Code maturity is one label describing how far an implementation has been
 verified: `conceptual`, `dictionary-specified`, `parameterized`, `executable`,
-or `validated`. The label cannot advance merely because code was written; its
+or `validated`. The label cannot advance merely because code was written. Its
 evidence and checks must also advance.
 
 <a id="fixture"></a>
@@ -172,7 +172,7 @@ evidence, not real patient data.
 
 An Adapter is an approved, versioned private contract that maps logical roles
 to an institution's governed implementation and verification steps. This
-public repository describes what an Adapter must prove; it does not contain or
+public repository describes what an Adapter must prove. It does not contain or
 guess an institution's Adapter.
 
 <a id="governing-artifact"></a>
@@ -214,14 +214,14 @@ is unique or safe to join.
 
 Time zero is the defined moment when eligibility, treatment or exposure
 assignment, and follow-up align for a study. Misaligned time zero can introduce
-selection or immortal-time bias; it is required when relevant to the design,
-not invented from whichever date happens to be available.
+selection or immortal-time bias. When relevant to the design, time zero is required.
+It is not invented from whichever date happens to be available.
 
 <a id="specification-only-versus-executable"></a>
 ## Specification-only versus executable
 
 Specification-only output states the logical requirements and unresolved
-checks; it is not safe to run. Executable output has passed the execution gate
+checks. It is not safe to run. Executable output has passed the execution gate
 for a named, current target environment. `SPECIFICATION ONLY — NOT EXECUTABLE`
 is therefore a safety status, not unfinished code disguised as a program.
 
@@ -242,5 +242,5 @@ A [validation
 gap](../skills/clin-nav/references/evidence-output-template.md#implementation-specification)
 is a missing source, decision, metadata item, check, or acceptance result that
 blocks a stronger claim or code-maturity level. Naming the gap does not prove
-the work is invalid; it states exactly what remains unverified and what
+the work is invalid. It states exactly what remains unverified and what
 evidence would close it.

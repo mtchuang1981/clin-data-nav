@@ -1,8 +1,8 @@
 # Governance documentation readiness checklist
 
-Use this public checklist to prepare references to externally governed
-documentation. Do not put the referenced material or a completed real instance
-in this repository.
+Use this public checklist to prepare references to documentation under external governance.
+Do not put the referenced material in this repository.
+Do not put a completed real instance in this repository.
 
 | Control ID | External evidence that must exist | Responsible role | Prohibited action while undocumented |
 |---|---|---|---|
@@ -19,7 +19,6 @@ in this repository.
 | `rater-readiness` | Rater roles, training evidence, calibration gate, and blinding boundary | Rating lead | Do not score human outputs before readiness is documented. |
 | `task-pack-commitment-plan` | External custody, commitment timing, leakage response, and later verification plan | Task-pack custodian | Do not create or disclose the real task pack or nonce. |
 
-A structurally complete checklist may be
-`ready-for-institutional-review`; it is always
-`not-authorized-to-recruit`. This checklist does not select or determine an
-ethics pathway.
+A structurally complete checklist may be `ready-for-institutional-review`.
+It is always `not-authorized-to-recruit`.
+This checklist does not select or determine an ethics pathway.

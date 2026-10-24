@@ -8,7 +8,7 @@ boundaries, not a complete causal-analysis method.
 
 Assign one primary intent before choosing a study-design path:
 
-1. `descriptive` — frequency, characteristics, utilisation, or natural history;
+1. `descriptive` — frequency, characteristics, utilization, or natural history;
 2. `predictive` — prognosis, classification, or risk prediction;
 3. `causal-comparative` — effects or safety under two or more strategies;
 4. `measurement` — phenotype, variable, outcome, or data-quality validation;
@@ -28,15 +28,25 @@ is a structured specification. Compiled aggregate counts are possible only
 when the approved Adapter supports the scope and institutional policy permits
 the purpose, processing, and disclosure under its controls.
 
-Decompose population and period, index event, groups, inclusion/exclusion
-criteria and their windows relative to index, and requested breakdowns. Ask
-investigator-only ambiguities rather than silently choosing definitions,
-washout/history windows, overlap rules, sites, or output thresholds.
+Decompose the request into:
 
-Use the stated index event. If none is stated, propose one suitable to the
-question, give a one-sentence reason, and mark it pending investigator
-confirmation; a proposed first qualifying exposure, procedure, or diagnosis
-is not an approved study parameter. Keep unresolved mappings as logical
+- population and period;
+- index event;
+- groups;
+- inclusion/exclusion criteria and their windows relative to index;
+- requested breakdowns.
+
+Ask the investigator to resolve investigator-only ambiguities.
+Do not silently choose definitions, washout/history windows, overlap rules, sites, or output thresholds.
+
+Use the stated index event. If none is stated:
+
+1. Propose one suitable to the question.
+2. Give a one-sentence reason.
+3. Mark it pending investigator confirmation.
+
+A proposed first qualifying exposure, procedure, or diagnosis is not an approved study parameter.
+Keep unresolved mappings as logical
 parameters, not remembered codes or invented physical schema.
 
 Outcome event counts, person-time, baseline tables, effect estimates, and
@@ -47,8 +57,9 @@ unsupported request, or imply every public methodological discussion requires
 institutional approval.
 
 For an authorized implementation request with an optional governed pipeline,
-use `institutional-adapter-contract.md`; no declaration or a fixture pass
-alone grants execution or disclosure. Keep all existing maturity gates.
+use `institutional-adapter-contract.md`.
+No declaration or a fixture pass alone grants execution or disclosure.
+Keep all existing maturity gates.
 
 ## Frame intervention or exposure questions
 
@@ -74,7 +85,7 @@ of a causal effect.
 
 RWD are routinely collected data about health status or health-care delivery,
 including EHR, claims, registry, and other relevant sources. RWE is clinical
-evidence about use, benefits, or risks that results from analysing
+evidence about use, benefits, or risks that results from analyzing
 fit-for-purpose RWD.
 
 RWD is not automatically RWE. Do not label a database, OMOP instance, extract,
@@ -115,7 +126,7 @@ interference. Missing information is a validation gap. Do not silently invent
 an assumption to make the request appear TTE-ready.
 
 Do not route descriptive, predictive, measurement, natural-history,
-utilisation, signal-detection, or implementation-only questions to TTE merely
+utilization, signal-detection, or implementation-only questions to TTE merely
 because they use RWD.
 
 ## Hand off to optional build-rwe-sap

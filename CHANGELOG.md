@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.11.0 - 2026-10-24
+
+### Changed
+
+- Review 42 current public Markdown guidance files using STE-inspired principles.
+  Clarify English and Traditional Chinese procedures, conditions and safety boundaries.
+  Retain already clear text, fixed output shapes and historical evidence.
+- Include the explicit opt-in `research-bilingual-v1` heading contract added
+  after v0.10.0. The default remains `legacy-v1`; content and safety checks do not change.
+
+### Validation and limitations
+
+- Preserve frozen catalogs, fixtures, benchmark results and generated reports.
+  This is not formal STE certification or model, human, clinical or token-saving evidence.
+- The previous Windows cleanup anomaly remains unexplained and is not claimed fixed.
+  Publication requires all fresh local, cross-platform CI and security gates to pass.
+
 ## 0.10.0 - 2026-10-19
 
 Publication authorized after all local, cross-platform CI and security gates pass.

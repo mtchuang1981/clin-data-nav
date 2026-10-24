@@ -3,7 +3,7 @@
 The analyzer fails closed on four external JSON inputs: a study manifest,
 condition-blinded scores, a ratings lock, and a condition key. Every input path
 must resolve outside the repository checkout. All schemas use
-`schema_version: "1"`; unknown or missing keys are rejected. The public
+`schema_version: "1"`. Unknown or missing keys are rejected. The public
 repository may receive only a validated aggregate summary, never these inputs.
 
 ## Normative assignment contract
@@ -41,10 +41,10 @@ The manifest has exactly these keys:
 - `bootstrap_seed`, `bootstrap_resamples`; and
 - `sessions`.
 
-Commit fields are lowercase 40-character hexadecimal strings; the task
-commitment is lowercase 64-character hexadecimal; study timestamps are
-timezone-aware ISO 8601 values in chronological order; and task commitment
-verification must be true. Bootstrap resamples are an integer from 1,000
+Commit fields are lowercase 40-character hexadecimal strings.
+The task commitment is lowercase 64-character hexadecimal.
+Study timestamps are timezone-aware ISO 8601 values in chronological order.
+Task commitment verification must be true. Bootstrap resamples are an integer from 1,000
 through 100,000. Environment strings are non-empty, single-line, and no longer
 than 200 characters.
 
@@ -81,8 +81,8 @@ mandatory: `reviewed-none` requires an empty `items` list, while
 review is never treated as no finding.
 
 Each controlled count row has exactly `category_id` and `count`. Counts are
-positive integers. Categories are unique and appear in the deterministic order
-below; unknown or out-of-order categories fail closed. Free text, identifiers,
+positive integers. Categories are unique and appear in the deterministic order below.
+Unknown or out-of-order categories fail closed. Free text, identifiers,
 and condition fields are forbidden.
 
 `protocol_deviations` categories, in order, are `eligibility`, `assignment`,
