@@ -77,22 +77,22 @@ new changelog entries, current README navigation, version tests, `docs/releases/
 - [x] Verify legacy digest and opt-in heading tests.
 - [x] Rebuild package twice and compare ZIP/manifest bytes and hashes; run artifact verifier and public-content review.
 - [x] Review full diff and obtain one fresh semantic/bilingual review; resolve material findings with appropriate tests.
-- [ ] Commit only scoped files, excluding all private/raw materials and unrelated backlog.
+- [x] Commit only scoped files, excluding all private/raw materials and unrelated backlog.
 
 ### Task 4: PR, main gates and publication
 
 **Consumes:** Verified candidate and explicit user publication authority.
 **Produces:** Normal PR/main integration, new annotated tag and published Release.
 
-- [ ] Push feature, create/attach PR, require both platforms, compare-packages and CodeQL on exact head.
-- [ ] Merge normally after CLEAN; fetch/fast-forward main and require main's own complete gates and zero relevant open alerts.
-- [ ] Create/push annotated v0.11.0 at exact verified main; dispatch release workflow from main with that tag.
-- [ ] Require all Release jobs/steps success; verify tag object and peeled commit.
-- [ ] Download exactly ZIP/manifest; compare independent SHA-256 and local bytes; record actual immutability flag.
+- [x] Push feature, create/attach PR, require both platforms, compare-packages and CodeQL on exact head.
+- [x] Merge normally after CLEAN; fetch/fast-forward main and require main's own complete gates and zero relevant open alerts.
+- [x] Create/push annotated v0.11.0 at exact verified main; dispatch release workflow from main with that tag.
+- [x] Require all Release jobs/steps success; verify tag object and peeled commit.
+- [x] Download exactly ZIP/manifest; compare independent SHA-256 and local bytes; record actual immutability flag.
 
 ### Task 5: Published documentation and final handoff
 
-- [ ] Update current public version/hash pointers only after actual download verification.
+- [x] Update current public version/hash pointers only after actual download verification.
 - [ ] Add dated publication evidence, run focused/full required checks and submit a normal post-publication PR.
 - [ ] Wait PR/main gates, sync main and confirm old/new published assets unchanged.
 - [ ] Report actual coverage, tests, release URL, hashes and unresolved risks without efficacy or STE-certification claims.

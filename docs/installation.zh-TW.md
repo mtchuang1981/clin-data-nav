@@ -3,16 +3,16 @@
 [English](installation.md)
 
 建議使用 `npx skills add`，把 Skill 安裝在要使用它的專案中。目前
-已驗證的 Release 是 `v0.10.0`；下方提供確切的 `clin-nav` 產物核對與安裝
+已驗證的 Release 是 `v0.11.0`；下方提供確切的 `clin-nav` 產物核對與安裝
 方式。不可變的 v0.6.0 Release 仍可作為歷史版本取得；v0.4.0 ZIP 內容則僅
 供歷史驗證參考，不是安裝方式。開發或稽核本儲存庫時，才使用原始碼簽出安裝。
 
 ## 執行環境界線
 
-原始碼封裝器與嚴格安裝器以 `0.11.0` 候選版為目標，不是已驗證的 `0.10.0` ZIP。
+原始碼封裝器與嚴格安裝器以 `0.11.0` 為目標，與已驗證的公開 ZIP 相符。
 安裝版本化 ZIP 時，須使用相符版本的工具，不要搭配舊產物。
-[版本說明](releases/0.10.0.md)列出受治理路由與尚未驗證的私有端界線；
-[發布紀錄](verification/2026-10-19-v0.10.0-publication.md)提供實際下載的產物
+[版本說明](releases/0.11.0.md)列出中英文指引審閱、選用標題契約與未變的安全界線；
+[發布紀錄](verification/2026-10-24-v0.11.0-publication.md)提供實際下載的產物
 識別、核對結果與已揭露的流程限制。
 
 安裝後只包含操作指引與參考文件的 Skill 不需要 Python。它由 Markdown、YAML
@@ -141,18 +141,18 @@ npx skills update clin-nav --project --yes
 接著再用 `/skills` 確認。若顯示的行為仍是舊版，請依下方對應階段排解，
 不要直接重複安裝。
 
-## 目前已驗證的 v0.10.0 Release 產物核對
+## 目前已驗證的 v0.11.0 Release 產物核對
 
 這些檢查識別已核對的發布位元組，不代表平台強制的 Release 不可變保護。
-2026-10-19 的 GitHub API 回報此 Release 為 `immutable: false`。
+2026-10-24 的 GitHub API 回報此 Release 為 `immutable: false`。
 Publisher 會拒絕既有 Release，本流程不移動已發布 tag 或取代附件；
 這是發布政策，不是平台鎖定。
 
-目前已驗證的 Release 是 `v0.10.0`。確切的已發布產物為
-`clin-nav-0.10.0.zip` 與 `clin-nav-0.10.0.manifest.json`。下列指令會從同一個
+目前已驗證的 Release 是 `v0.11.0`。確切的已發布產物為
+`clin-nav-0.11.0.zip` 與 `clin-nav-0.11.0.manifest.json`。下列指令會從同一個
 已發布 Release 下載兩個產物，先用已發布的 SHA-256 核對 manifest，再用
 已發布的 SHA-256 與 manifest 內的 `archive_sha256` 交叉核對 ZIP，通過後才
-安裝。這些值綁定可重現的 v0.10.0 產物，以及 tagged source 通過的
+安裝。這些值綁定可重現的 v0.11.0 產物，以及 tagged source 通過的
 Linux／Windows 套件比對結果。
 
 先前的 [v0.9.0](https://github.com/mtchuang1981/clin-data-nav/releases/tag/v0.9.0) 仍可取得，既有產物不變。
@@ -161,11 +161,11 @@ v0.4.0 套件則保留於下方，僅供歷史驗證參考。
 PowerShell：
 
 ```powershell
-$releaseVersion = "0.10.0"
+$releaseVersion = "0.11.0"
 $archiveName = "clin-nav-$releaseVersion.zip"
 $manifestName = "clin-nav-$releaseVersion.manifest.json"
-$expectedArchiveSha256 = "03fea5cf29d600d687a609f2114881c08c8194e1c410167baeb83e302740694a"
-$expectedManifestSha256 = "a9d712362401e27d228aec3b2e3b3585d7e951eadab11197b4a89a4a479b5527"
+$expectedArchiveSha256 = "1cf42f68f1ac960a2304579498f89ed359d59c789ce4c722159eff4c8fbb2e9b"
+$expectedManifestSha256 = "5dae33ec243bef00c1c6ad16375427472dc32608b70f43696616bb3b99fdfd3e"
 $releaseBase = "https://github.com/mtchuang1981/clin-data-nav/releases/download/v$releaseVersion"
 Invoke-WebRequest "$releaseBase/$archiveName" -OutFile $archiveName
 Invoke-WebRequest "$releaseBase/$manifestName" -OutFile $manifestName
@@ -180,7 +180,7 @@ if ($actualArchiveSha256 -ne $expectedArchiveSha256) { throw "Archive SHA-256 mi
 
 $skillsRoot = Join-Path (Get-Location) ".agents/skills"
 $skillDirectory = Join-Path $skillsRoot "clin-nav"
-$stagingDirectory = Join-Path $skillsRoot ".clin-nav-v0.10.0-staged"
+$stagingDirectory = Join-Path $skillsRoot ".clin-nav-v0.11.0-staged"
 if (Test-Path $skillDirectory) { throw "Installation already exists" }
 if (Test-Path $stagingDirectory) { throw "Staging directory already exists" }
 New-Item -ItemType Directory -Path $skillsRoot -Force | Out-Null
@@ -193,11 +193,11 @@ Move-Item -LiteralPath $stagingDirectory -Destination $skillDirectory
 POSIX shell：
 
 ```bash
-release_version="0.10.0"
+release_version="0.11.0"
 archive_name="clin-nav-$release_version.zip"
 manifest_name="clin-nav-$release_version.manifest.json"
-expected_archive_sha256="03fea5cf29d600d687a609f2114881c08c8194e1c410167baeb83e302740694a"
-expected_manifest_sha256="a9d712362401e27d228aec3b2e3b3585d7e951eadab11197b4a89a4a479b5527"
+expected_archive_sha256="1cf42f68f1ac960a2304579498f89ed359d59c789ce4c722159eff4c8fbb2e9b"
+expected_manifest_sha256="5dae33ec243bef00c1c6ad16375427472dc32608b70f43696616bb3b99fdfd3e"
 release_base="https://github.com/mtchuang1981/clin-data-nav/releases/download/v$release_version"
 curl -fL "$release_base/$archive_name" -o "$archive_name"
 curl -fL "$release_base/$manifest_name" -o "$manifest_name"
@@ -218,7 +218,7 @@ test "$actual_archive_sha256" = "$expected_archive_sha256" || { echo "Archive SH
 
 skills_root="$PWD/.agents/skills"
 skill_directory="$skills_root/clin-nav"
-staging_directory="$skills_root/.clin-nav-v0.10.0-staged"
+staging_directory="$skills_root/.clin-nav-v0.11.0-staged"
 test ! -e "$skill_directory" || { echo "Installation already exists" >&2; exit 1; }
 test ! -e "$staging_directory" || { echo "Staging directory already exists" >&2; exit 1; }
 mkdir -p "$skills_root"
