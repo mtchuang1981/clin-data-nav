@@ -71,6 +71,13 @@ private adapter already supports 1.2. Both capabilities and the hashed summary
 must declare the same `max_dqd_evidence_age_seconds`: `null` for non-expiring
 evidence, or a positive integer up to 31,536,000 for finite expiry.
 
+The [portable JSON Schema integer type](https://json-schema.org/understanding-json-schema/reference/numeric#integer)
+treats mathematically integral numbers such as `1.0`
+as integers. The Python contract validator rejects floating-point values,
+including `1.0`; provide `1` instead. Schema-only success does not establish
+full contract acceptance. Use the offline checker for semantic validation,
+including policy agreement, hashes and evidence binding.
+
 ```text
 python scripts/check_omop_metadata.py --capabilities <external-capabilities.json> --input <external-inspection.json> --as-of <RFC-3339-timestamp> --contract-version 1.2 --allow-nonexpiring-dqd
 ```

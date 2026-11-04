@@ -58,6 +58,11 @@ python .agents/skills/clin-nav/scripts/check_omop_metadata.py --capabilities <ex
 capabilities 與已雜湊的摘要須一致宣告 `max_dqd_evidence_age_seconds`：
 `null` 代表無時間期限；1 至 31,536,000 的正整數代表有限期限。
 
+[可攜 JSON Schema 的整數型別](https://json-schema.org/understanding-json-schema/reference/numeric#integer)
+將 `1.0` 這類數學上的整數視為整數；Python 契約驗證器則拒絕
+所有浮點數，包括 `1.0`，請改用 `1`。僅通過 Schema 不代表完整契約驗證通過。
+請使用離線 checker 驗證政策一致性、雜湊及證據綁定等語意規則。
+
 ```text
 python scripts/check_omop_metadata.py --capabilities <external-capabilities.json> --input <external-inspection.json> --as-of <RFC-3339-timestamp> --contract-version 1.2 --allow-nonexpiring-dqd
 ```
