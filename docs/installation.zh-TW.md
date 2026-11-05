@@ -74,6 +74,9 @@ python scripts/check_omop_metadata.py --capabilities <external-capabilities.json
 研究適用性。結構不相容仍為退出碼 3。詳見
 [連接器契約與私有端交接要求](../skills/clin-nav/references/omop-metadata-connector.md#optional-12-independent-dqd-expiration)。
 
+機構負責人可使用[私有 Adapter 驗收交接清單](private-adapter-acceptance-checklist.zh-TW.md)，
+分開準備公開契約檢查與機構端稽核證據；清單本身不授予存取或執行權限。
+
 ## 確認必要條件
 
 建議的安裝方式需要 Node.js 與 npm/npx，也需要支援 Skills 的 Codex 介面。
