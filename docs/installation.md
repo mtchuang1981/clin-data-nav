@@ -92,6 +92,9 @@ attestation is neither independently verified private content nor study fitness.
 An incompatible structure remains exit 3. See the
 [connector contract and private handoff](../skills/clin-nav/references/omop-metadata-connector.md#optional-12-independent-dqd-expiration).
 
+Institutional owners can use the [private Adapter acceptance checklist (Traditional Chinese)](private-adapter-acceptance-checklist.zh-TW.md)
+to separate public contract checks from private audit evidence. The checklist grants no access or execution permission.
+
 ## Check prerequisites
 
 The recommended installation needs Node.js with npm/npx and a Codex interface

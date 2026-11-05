@@ -18,7 +18,7 @@
 | 2 | 解壓安裝後的 OMOP 1.2 CLI 比對 | 已補五個合成案例，Python 3.11.9 相關測試 75 項通過。比對 repo wrapper 與新建、解壓套件的退出碼及完整 stdout/stderr，涵蓋接受、未同意、結構不相容、非法回應與舊版旗標拒絕。 |
 | 3 | 可攜 JSON Schema 的整數型別限制說明 | 已補中英文安裝指南，並連結 JSON Schema 官方依據。Schema 對數學整數 `1.0` 與 Python 嚴格型別檢查不同；Schema 通過不能取代完整契約驗證。 |
 | 4 | Eval 測試的父、子行程編碼不一致 | 已定位至測試 subprocess 的編碼設定，並明訂兩端 UTF-8。一般與父行程 UTF-8 模式的相關測試各 119 項通過（警告視為錯誤）；未改 CLI 或評分行為。詳見[編碼驗證紀錄](verification/2026-11-04-evaluator-subprocess-encoding.md)。 |
-| 另行授權 | 私有機構端驗收 | 公開紀錄仍列 OMOP 1.2 私有實作／快照綁定及編譯器／工具映射一致性為待驗證；本清單不證明私有端的目前狀態，也不授權存取。 |
+| 另行授權 | 私有機構端驗收 | 2026-11-05 已整理[公開驗收交接清單](private-adapter-acceptance-checklist.zh-TW.md)。OMOP 1.2 私有實作／快照綁定及編譯器／工具映射仍待機構端授權與驗收；文件完成不代表私有端已通過。 |
 | 另行決定 | 真人易用性與成效評估 | 公開評估框架已備妥，尚無本專案真人或臨床成效證據；啟動前須完成另行授權的治理流程。 |
 
 技術缺口依據：[OMOP 1.2 驗證與延後事項](verification/2026-10-12-omop-v12-dqd-expiration.md)、[Windows 異常原始紀錄](verification/2026-10-19-governed-compiler-pipeline.md)、[v0.11.0 已知限制](verification/2026-10-24-ste-project-candidate.md)。真人評估邊界見[成效評估框架](../evals/effectiveness/README.md)。
