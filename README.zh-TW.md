@@ -69,6 +69,7 @@ OpenAI 官方文件說明，Skill 會封裝操作指引、資源與選用指令�
 | 查詢名詞 | [初學者詞彙表](docs/glossary.zh-TW.md) |
 | 依序學習 | [學習路徑](docs/learning-paths.zh-TW.md) |
 | 合成資料實作範例 | [TEAE 到 SAS](examples/teae-to-sas-spec.md)、[OMOP phenotype 到 SQL 規格](examples/omop-phenotype-to-sql-spec.md)及[機構對應](examples/synthetic-institutional-mapping.md) |
+| 準備私有 Adapter 驗收交接 | [驗收交接清單](docs/private-adapter-acceptance-checklist.zh-TW.md)，僅供規劃，不代表授權或已完成驗收 |
 | 證據輸出與限制 | [證據輸出範本](skills/clin-nav/references/evidence-output-template.md)與[架構說明](docs/architecture.md) |
 | 可機器稽核的來源審閱 | [Evidence ledger 契約](skills/clin-nav/references/evidence-ledger.md)與離線檢查器 |
 | 產品效果評估框架 | [效果評估](evals/effectiveness/README.md) |
