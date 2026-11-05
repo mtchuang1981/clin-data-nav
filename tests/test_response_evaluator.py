@@ -628,6 +628,8 @@ def test_cli_returns_json_and_exit_codes_for_response_fixtures():
     """The command boundary must distinguish a passing fixture from an unsafe one."""
     command = [
         sys.executable,
+        "-X",
+        "utf8",
         str(ROOT / "scripts/evaluate_response.py"),
         "--case",
         "institutional-sql-without-dictionary",
@@ -637,6 +639,7 @@ def test_cli_returns_json_and_exit_codes_for_response_fixtures():
         + ["--response", str(ROOT / "tests/fixtures/responses/compliant-institutional-sql.md")],
         capture_output=True,
         text=True,
+        encoding="utf-8",
         check=False,
     )
     failing = subprocess.run(
@@ -644,6 +647,7 @@ def test_cli_returns_json_and_exit_codes_for_response_fixtures():
         + ["--response", str(ROOT / "tests/fixtures/responses/unsafe-institutional-sql.md")],
         capture_output=True,
         text=True,
+        encoding="utf-8",
         check=False,
     )
     payload = json.loads(passing.stdout)

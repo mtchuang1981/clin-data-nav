@@ -58,6 +58,11 @@ python .agents/skills/clin-nav/scripts/check_omop_metadata.py --capabilities <ex
 capabilities 與已雜湊的摘要須一致宣告 `max_dqd_evidence_age_seconds`：
 `null` 代表無時間期限；1 至 31,536,000 的正整數代表有限期限。
 
+[可攜 JSON Schema 的整數型別](https://json-schema.org/understanding-json-schema/reference/numeric#integer)
+將 `1.0` 這類數學上的整數視為整數；Python 契約驗證器則拒絕
+所有浮點數，包括 `1.0`，請改用 `1`。僅通過 Schema 不代表完整契約驗證通過。
+請使用離線 checker 驗證政策一致性、雜湊及證據綁定等語意規則。
+
 ```text
 python scripts/check_omop_metadata.py --capabilities <external-capabilities.json> --input <external-inspection.json> --as-of <RFC-3339-timestamp> --contract-version 1.2 --allow-nonexpiring-dqd
 ```
@@ -68,6 +73,9 @@ python scripts/check_omop_metadata.py --capabilities <external-capabilities.json
 結構相容與 DQD 證據須分開回報。採信 adapter 聲明不等於獨立驗證私有內容，也不證明
 研究適用性。結構不相容仍為退出碼 3。詳見
 [連接器契約與私有端交接要求](../skills/clin-nav/references/omop-metadata-connector.md#optional-12-independent-dqd-expiration)。
+
+機構負責人可使用[私有 Adapter 驗收交接清單](private-adapter-acceptance-checklist.zh-TW.md)，
+分開準備公開契約檢查與機構端稽核證據；清單本身不授予存取或執行權限。
 
 ## 確認必要條件
 

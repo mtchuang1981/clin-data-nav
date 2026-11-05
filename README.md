@@ -74,6 +74,7 @@ publish a Plugin.
 | Definitions | [Beginner glossary](docs/glossary.md) |
 | Guided progression | [Learning paths](docs/learning-paths.md) |
 | Synthetic worked examples | [TEAE to SAS](examples/teae-to-sas-spec.md), [OMOP phenotype to SQL specification](examples/omop-phenotype-to-sql-spec.md), and [institutional mapping](examples/synthetic-institutional-mapping.md) |
+| Prepare a private Adapter acceptance handoff | [Acceptance checklist (Traditional Chinese)](docs/private-adapter-acceptance-checklist.zh-TW.md); planning only, without access authorization or a conformance claim |
 | Evidence shape and limitations | [Evidence output template](skills/clin-nav/references/evidence-output-template.md) and [architecture](docs/architecture.md) |
 | Machine-auditable source review | [Evidence ledger contract](skills/clin-nav/references/evidence-ledger.md) and offline checker |
 | Product-effectiveness evaluation framework | [Effectiveness evaluation](evals/effectiveness/README.md) |

@@ -1,12 +1,15 @@
 """Consent, handshake and real offline entry-point tests with synthetic inputs."""
 import json
+import os
 import subprocess
 import sys
+from zipfile import ZipFile
 
 import pytest
 
 from test_omop_metadata_v12 import AS_OF, CATALOG, POLICY, ROOT, rehash, sample_v12
 from omop_metadata_connector import assess_connector
+from scripts.package_skill import build_package
 
 
 def assess(cap, ins, **options):
@@ -157,3 +160,55 @@ def test_offline_entry_points_agree(tmp_path, entry, case, code, status):
             assert result[POLICY] is None
         if case == "fk":
             assert result["foreign_key_mismatch_count"] == 13
+
+
+@pytest.fixture(scope="module")
+def unpacked_checker(tmp_path_factory):
+    directory = tmp_path_factory.mktemp("omop-v12-installed")
+    package = build_package(ROOT / "skills/clin-nav", directory / "build")
+    installed = directory / "installed"
+    with ZipFile(package.archive) as archive:
+        archive.extractall(installed)
+    return installed / "scripts/check_omop_metadata.py"
+
+
+@pytest.mark.parametrize("case,code,status", [
+    ("accept", 0, "compatible"), ("no-consent", 3, "unavailable"),
+    ("fk", 3, "incompatible"), ("invalid", 2, "invalid-response"),
+    ("legacy-flag", 2, None),
+])
+def test_unpacked_cli_matches_repository_bytes(tmp_path, unpacked_checker, case, code, status):
+    """A fresh archive must work outside the checkout and retain exact CLI output."""
+    cap, ins = sample_v12()
+    if case == "fk":
+        for table in ins["tables"]:
+            table["foreign_key_status"] = "missing"
+        rehash(ins)
+    elif case == "invalid":
+        ins["rows"] = "SYNTHETIC_PRIVATE_MARKER"
+        rehash(ins)
+    cap_path, ins_path = tmp_path / "cap.json", tmp_path / "ins.json"
+    cap_path.write_text(json.dumps(cap), encoding="utf-8")
+    ins_path.write_text(json.dumps(ins), encoding="utf-8")
+    arguments = ["--capabilities", str(cap_path), "--input", str(ins_path),
+                 "--as-of", AS_OF, "--contract-version",
+                 "1.1" if case == "legacy-flag" else "1.2"]
+    if case != "no-consent":
+        arguments.append("--allow-nonexpiring-dqd")
+    processes = [
+        subprocess.run([sys.executable, "-B", str(entry), *arguments],
+                       cwd=tmp_path, capture_output=True, check=False)
+        for entry in (ROOT / "scripts/check_omop_metadata.py", unpacked_checker)
+    ]
+    repository, installed = processes
+    assert repository.returncode == code
+    assert (installed.returncode, installed.stdout, installed.stderr) == (
+        repository.returncode, repository.stdout, repository.stderr
+    )
+    assert b"SYNTHETIC_PRIVATE_MARKER" not in installed.stdout + installed.stderr
+    if status is None:
+        assert installed.stdout == b""
+        assert installed.stderr == b"OMOP metadata validation failed" + os.linesep.encode("ascii")
+    else:
+        assert json.loads(installed.stdout)["status"] == status
+        assert installed.stderr == b""
