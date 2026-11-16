@@ -25,7 +25,7 @@ except ModuleNotFoundError:  # Direct execution from the scripts directory.
 
 
 SKILL_NAME = "clin-nav"
-PACKAGE_VERSION = "0.11.0"
+PACKAGE_VERSION = "0.11.1"
 READ_CHUNK_BYTES = 64 * 1024
 MAX_MANIFEST_BYTES = 1 * 1024 * 1024
 MAX_ARCHIVE_BYTES = 20 * 1024 * 1024
@@ -306,6 +306,53 @@ def _install_without_overwrite(staged: Path, installed: Path) -> None:
         ) from None
 
 
+
+def _prepare_staging_permissions(temporary_root: Path, destination: Path) -> None:
+    """Make staged Windows children inherit the selected destination policy."""
+    if _platform_family() != "windows":
+        return
+    # The private tempfile ACL must not become the final installation policy.
+    # Change only our empty staging container, before creating any descendants.
+    api = ctypes.WinDLL("advapi32", use_last_error=True)
+    kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+    pointer = ctypes.c_void_p
+    get_security = api.GetNamedSecurityInfoW
+    get_security.argtypes = [
+        ctypes.c_wchar_p, ctypes.c_int, ctypes.c_ulong,
+        pointer, pointer, ctypes.POINTER(pointer), pointer, ctypes.POINTER(pointer),
+    ]
+    get_security.restype = ctypes.c_ulong
+    set_security = api.SetNamedSecurityInfoW
+    set_security.argtypes = [
+        ctypes.c_wchar_p, ctypes.c_int, ctypes.c_ulong,
+        pointer, pointer, pointer, pointer,
+    ]
+    set_security.restype = ctypes.c_ulong
+    kernel.LocalFree.argtypes = [pointer]
+    kernel.LocalFree.restype = pointer
+    descriptor = pointer()
+    dacl = pointer()
+    try:
+        result = get_security(
+            str(destination), 1, 4, None, None, ctypes.byref(dacl),
+            None, ctypes.byref(descriptor),
+        )
+        if result:
+            raise ctypes.WinError(result)
+        if not dacl.value:
+            raise PermissionError("destination has no bounded Windows DACL")
+        # DACL_SECURITY_INFORMATION | PROTECTED_DACL_SECURITY_INFORMATION.
+        # Prevent inheritance from the staging container's unrelated parent.
+        result = set_security(
+            str(temporary_root), 1, 4 | 0x80000000, None, None, dacl, None,
+        )
+        if result:
+            raise ctypes.WinError(result)
+    finally:
+        if descriptor.value:
+            kernel.LocalFree(descriptor)
+
+
 def install_package(
     archive: Path,
     destination: Path,
@@ -343,12 +390,13 @@ def install_package(
                     f"installation already exists: {installed}"
                 )
 
-            destination.parent.mkdir(parents=True, exist_ok=True)
+            destination.mkdir(parents=True, exist_ok=True)
             with tempfile.TemporaryDirectory(
                 prefix=".clin-nav-",
                 dir=destination.parent,
             ) as temporary_name:
                 temporary_root = Path(temporary_name)
+                _prepare_staging_permissions(temporary_root, destination)
                 staged = temporary_root / SKILL_NAME
                 staged.mkdir()
                 _stream_members(zip_file, infos, records, staged)

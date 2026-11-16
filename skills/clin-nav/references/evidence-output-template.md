@@ -20,11 +20,16 @@ Sources actually consulted: [reviewed sources, or "Current request only"]
 
 ## Quick Explanation
 
-Write a short natural-language answer without a fixed header or headings. Give
-the direct definition or comparison, why it matters in context, and one or two
-material confusions or limits. Expand named acronyms. Cite only sources actually
-consulted, and do not add an Evidence table, Data contract, or Code maturity
-section unless the user asks for a deeper output.
+For coordinator orientation on an unresolved feasibility consultation, use
+`feasibility-consultation.md`: handling decision, material findings, decisions
+to confirm, next deliverable. Keep this brief distinct from a requested formal
+contract; source attribution and uncertainty remain visible in natural prose.
+
+Write a short natural-language answer without a fixed header or headings. For
+a definition or comparison, give the direct answer, why it matters in context,
+and one or two material confusions or limits. Expand named acronyms when present.
+Cite only sources actually consulted, and do not add an Evidence table, Data
+contract, or Code maturity section unless the user asks for a deeper output.
 
 ## Evidence Navigation
 

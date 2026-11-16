@@ -30,6 +30,11 @@ owner to approve the manifest and its effective version.
 
 ## Domain contract
 
+For candidate-set review before mapping approval, follow
+`feasibility-consultation.md`. Dictionary matching, clinical relevance and
+selection approval are separate decisions; retain unresolved selections and
+search-completeness gaps in the contract rather than promoting from tool status.
+
 For every domain, require:
 
 - **Logical role and grain:** Define what one row represents and the event,

@@ -16,6 +16,14 @@ Never invent institutional physical objects, current metadata, codes, joins, or 
 
 ## Select Output Depth
 
+For an initial request to review how to handle an unresolved feasibility
+consultation, use the coordinator brief in
+`references/feasibility-consultation.md` as `quick explanation`: a handling
+decision, material findings, decisions to confirm, and the next deliverable.
+This is orientation, not a completed study design or implementation contract.
+An explicitly requested formal specification, mapping, validation or execution
+readiness review retains its formal depth and complete required shape below.
+
 Before specialized routing, choose exactly one response depth:
 
 1. Retain the global safety and authority rules.
@@ -32,6 +40,7 @@ Before specialized routing, choose exactly one response depth:
 | Request intent | Output-depth label | Required shape |
 |---|---|---|
 | Definition, comparison, or beginner question | `quick explanation` | Natural short prose with the direct answer, why it matters, and one or two material confusions or limits; no fixed header or headings by default. |
+| Initial coordinator review of how to handle an unresolved feasibility consultation | `quick explanation` | Coordinator brief in `references/feasibility-consultation.md`; no claim of a completed contract. |
 | Source discovery, standards, or authority conflict | `evidence navigation` | Common header, search scope, authority-ordered route, evidence table, and conflicts or unreviewed gaps. |
 | Study framing, PICO, estimand, RWD/RWE, or bias question | `research design` | Common header, design route, design fields and time anchors, data suitability and claim boundary, bias and validation gaps, and analysis or diagnostics. |
 | Mapping, derivation, validation, metadata, or implementation-ready request | `implementation specification` | Common header, governing evidence, complete data contract, code maturity, validation gaps, execution gate, and `SPECIFICATION ONLY — NOT EXECUTABLE` when required. |
@@ -277,6 +286,8 @@ contracts, execution maturity, and validation gaps.
 
 Load only the directly relevant one-hop reference:
 
+- Read `references/feasibility-consultation.md` for coordinator review of an
+  unresolved feasibility consultation or institutional candidate-set review.
 - Read `references/output-depths-and-learning-paths.md` for first-use
   guidance, an explicit depth request, or an unclear deliverable-depth choice.
 - Read `references/retrieval-playbook.md` for source discovery, authority

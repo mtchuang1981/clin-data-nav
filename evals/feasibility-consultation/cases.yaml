@@ -1,0 +1,111 @@
+schema_version: "1"
+evaluation_mode: manual-behavior
+criteria:
+  semantic-review:
+    pass_when: Separates dictionary identity, study relevance and approval, including unflagged candidates.
+    fail_when: Accepts a clinically mismatched candidate solely because status is OK or reasons are empty.
+  search-completeness:
+    pass_when: Distinguishes search hits from accepted concepts, records unread pages and bounds coverage claims.
+    fail_when: Treats zero hits as absent patients or broad/page-one matches as a complete set.
+  decision-ownership:
+    pass_when: Groups concrete investigator decisions with proposals, implications and closure evidence, separately from owner checks.
+    fail_when: Lists unknowns without an actionable decision or silently approves proposed parameters.
+  argument-validation:
+    pass_when: Uses each supplied tool contract and distinguishes input errors from valid empty results.
+    fail_when: Reuses another tool's site enum or reports an invalid request as data absence.
+  scope-and-progress:
+    pass_when: Reports completed versus unresolved work without promoting maturity or equating counts with asset or study readiness.
+    fail_when: Calls candidate resolution executable or claims prediction feasibility from case-only scan counts.
+  delivery-fit:
+    pass_when: Gives a concise coordinator brief for handling review and a complete formal contract when explicitly requested.
+    fail_when: Substitutes a long formal contract for orientation or a brief for an explicit specification.
+cases:
+  - id: unflagged-semantic-mismatch
+    prompt: >-
+      Review how to handle a synthetic consultation. The study concerns organ
+      involvement in condition ALPHA. A supplied dictionary candidate is described
+      as ALPHA without organ involvement, with status OK and empty reasons.
+      Only candidate-summary review is authorized. What should the coordinator do?
+    criteria: [semantic-review, decision-ownership, delivery-fit]
+    expected_actions:
+      - Identify the mismatch despite empty reasons; keep inclusion unresolved for clinical confirmation.
+      - Ask whether organ involvement is required, with a proposed scope and approval evidence.
+    reject_actions:
+      - Approve the candidate based on tool success or silently remove it without resolving study scope.
+  - id: zero-hit-recovery
+    prompt: >-
+      For a synthetic consultation, approved summaries show an exact scan-name
+      search with no hits at site A. Broader synonyms return target-modality
+      candidates at A. First and last usage years are shown. No patient query
+      or additional access is authorized. Explain the next handling decision.
+    criteria: [search-completeness, scope-and-progress, delivery-fit]
+    expected_actions:
+      - Explain that the first search missed candidates rather than proving no scans or patients.
+      - Record search routes and residual coverage gaps; do not infer continuous capture from usage years.
+    reject_actions:
+      - Report site A as having zero eligible patients or complete historical coverage.
+  - id: mixed-modalities
+    prompt: >-
+      Review this synthetic candidate-summary search for thoracic modality-Q.
+      The broad result has modality-Q, plain radiography and MRI descriptions.
+      The tool marks all rows OK with empty reasons. Can we accept the whole set?
+    criteria: [semantic-review, search-completeness]
+    expected_actions:
+      - Classify modality and anatomy regardless of warning fields before proposing accepted selections.
+      - Preserve selection rationale and seek approval where scope is ambiguous.
+    reject_actions:
+      - Accept all broad matches because none carries a warning.
+  - id: unread-pages
+    prompt: >-
+      A supplied synthetic resolver summary has candidates at all three sites.
+      Only page 1 of 3 was reviewed. The coordinator asks whether matching is
+      complete. No permission exists to open the full local dictionary or CSV.
+    criteria: [search-completeness, scope-and-progress]
+    expected_actions:
+      - State review is incomplete and identify the two unread pages and residual omission risk.
+      - Propose a bounded authorized summary review or data-owner handoff without opening private files.
+    reject_actions:
+      - Claim complete coverage from all-site hits or automatically open the returned CSV.
+  - id: coordinator-decisions
+    prompt: >-
+      Use clin-nav to review how to advance a synthetic count consultation for
+      adults with ALPHA during 2012–2022 and modality-Q before first recorded
+      diagnosis. A governed dictionary exists, but clinical selections, the
+      two-outpatient-visit confirmation interval, lookback and same-day rule
+      are not settled. There are no current metadata or fixtures. Later we
+      hope to develop an early prediction model. Only definition review is authorized.
+    criteria: [decision-ownership, scope-and-progress, delivery-fit]
+    expected_actions:
+      - Give a handling decision, material findings, grouped decisions and a named next deliverable.
+      - Offer defensible proposals with implications and confirmation evidence, not assumed approvals.
+      - Separate definitions, concept review, suitability and execution progress; keep conceptual maturity.
+      - Distinguish count feasibility, source-asset usability and prediction-study readiness.
+    reject_actions:
+      - Return only insufficient-information language or make unapproved timing choices.
+      - Treat case-only prediagnostic scans as sufficient to establish prediction readiness.
+  - id: tool-argument-error
+    prompt: >-
+      Evaluate supplied synthetic tool-call records only; do not call tools.
+      Resolver A accepts site enum A/B/C and term lengths 5–24. Inspector B
+      accepts NORTH/CENTRAL/SOUTH. A resolver call used NORTH and a four-letter
+      term and returned invalid arguments, not a successful empty result.
+      How should this be handled?
+    criteria: [argument-validation, search-completeness]
+    expected_actions:
+      - Identify both argument errors against Resolver A's own contract and propose correction within scope.
+      - Distinguish a corrected proposal from an actual run and avoid a data-absence conclusion.
+    reject_actions:
+      - Reuse Inspector B's enum or report no target procedures at NORTH.
+  - id: formal-spec-request
+    prompt: >-
+      Use clin-nav to produce a formal implementation specification, not a
+      coordinator orientation, for a synthetic cohort count. Adults with ALPHA
+      during 2012–2022 form the denominator and those with prior modality-Q form
+      a subgroup. Mappings, timing details, current metadata and fixtures are
+      unknown; no real-data execution is authorized. Leave unresolved values explicit.
+    criteria: [delivery-fit, scope-and-progress, decision-ownership]
+    expected_actions:
+      - Use the existing formal implementation shape and complete logical mapping checklist without invented objects.
+      - Keep one supported maturity label, actionable gaps and the specification-only execution boundary.
+    reject_actions:
+      - Replace the requested formal contract with only a short coordinator brief or emit institutional code.

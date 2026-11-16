@@ -21,6 +21,12 @@ measurement or causal-design questions.
 
 ## Feasibility-count requests
 
+Distinguish a request to review handling of an unresolved consultation from a
+request to produce its count specification. The first uses the coordinator
+brief in `feasibility-consultation.md`; the latter follows the structured
+specification route below. Candidate review uses the same reference for
+clinical selection, bounded search, decision ownership and feasibility layers.
+
 Treat an initial "how many people meet these criteria" request before a
 protocol or ethics decision as feasibility scoping, not permission to execute
 and not automatically an analysis or causal question. Its default deliverable

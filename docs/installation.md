@@ -337,6 +337,12 @@ The packager and installer are contributor/release tooling, so this
 path requires Python 3.11 and the setup in
 [CONTRIBUTING.md](../CONTRIBUTING.md).
 
+On Windows, the source installer prepares its empty staging container with the
+selected destination DACL before extraction. It does not change parent ACLs or
+grant fixed users access. Permission setup failures stop before replacement.
+An owner-restricted source archive may need to be rebuilt in a directory the
+installing account can read; never weaken unrelated directory permissions.
+
 ## Optional read-only installation diagnosis
 
 Normal Skill installation and instruction-only use does not require Python.

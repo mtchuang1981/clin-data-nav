@@ -7,6 +7,10 @@ It does not supply private schemas or claim validated clinical conclusions.
 
 [![Validation](https://github.com/mtchuang1981/clin-data-nav/actions/workflows/validate.yml/badge.svg?branch=main)](https://github.com/mtchuang1981/clin-data-nav/actions/workflows/validate.yml?query=branch%3Amain)
 
+Local candidate: **v0.11.1** adds coordinator consultation briefs and a Windows
+source-installer permission repair. See [candidate notes](docs/releases/0.11.1.md).
+Publication and downloaded asset verification are pending.
+
 ## Install in a project
 
 Verified public release: [v0.11.0](https://github.com/mtchuang1981/clin-data-nav/releases/tag/v0.11.0).
@@ -83,7 +87,7 @@ publish a Plugin.
 | Report a security concern | [Security](SECURITY.md) |
 | Share a safe installation or task-completion self-report | [Community usability feedback](https://github.com/mtchuang1981/clin-data-nav/issues/new?template=usability-feedback.yml) |
 | Prepare an approved release | [Release process](docs/release.md) |
-| Review v0.11.0 changes | [Static release notes](docs/releases/0.11.0.md) and [changelog](CHANGELOG.md) |
+| Review v0.11.1 changes | [Static release notes](docs/releases/0.11.1.md) and [changelog](CHANGELOG.md) |
 | Check current product guidance | [OpenAI Skills in ChatGPT](https://help.openai.com/en/articles/20001066) and [Codex Skill documentation](https://learn.chatgpt.com/docs/build-skills) |
 
 ## Evidence, public boundary, and limitations
