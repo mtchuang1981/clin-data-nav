@@ -17,7 +17,7 @@ Spec: docs/superpowers/specs/2026-11-16-installer-permissions-design.md.
   historical releases, hashes, frozen benchmark inputs and action pins.
 - [x] Full pytest, skill validation, public boundary, reproducible package,
   release artifact verifier and diff review; commit only reviewed scoped files.
-- [ ] Push branch, create PR, require CI, merge normally, require merged-commit
+- [x] Push branch, create PR, require CI, merge normally, require merged-commit
   CI/CodeQL; annotated new tag; main-dispatched release workflow; verify downloads.
 - [ ] Record public release evidence and submit its normal report PR.
 
