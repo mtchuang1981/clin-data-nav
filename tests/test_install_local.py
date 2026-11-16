@@ -43,8 +43,8 @@ def _build_test_package(tmp_path: Path):
 
 
 def test_candidate_installer_version_matches_the_candidate_packager():
-    assert INSTALLER_VERSION == "0.11.0"
-    assert PACKAGER_VERSION == "0.11.0"
+    assert INSTALLER_VERSION == "0.11.1"
+    assert PACKAGER_VERSION == "0.11.1"
 
 
 def _refresh_archive_hash(package) -> None:
@@ -1065,3 +1065,169 @@ def test_install_cli_requires_and_uses_selected_destination(
     assert exit_code == 0
     assert capsys.readouterr().out.strip() == str(installed)
     assert (installed / "SKILL.md").is_file()
+
+
+def _windows_set_test_dacl(path, sddl):
+    """Apply a synthetic test policy to a test-owned tree only."""
+    import ctypes
+    from ctypes import wintypes
+    api = ctypes.WinDLL("advapi32", use_last_error=True)
+    kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+    pointer = ctypes.c_void_p()
+    convert = api.ConvertStringSecurityDescriptorToSecurityDescriptorW
+    convert.argtypes = [wintypes.LPCWSTR, wintypes.DWORD,
+                        ctypes.POINTER(ctypes.c_void_p), ctypes.c_void_p]
+    convert.restype = wintypes.BOOL
+    apply = api.SetFileSecurityW
+    apply.argtypes = [wintypes.LPCWSTR, wintypes.DWORD, ctypes.c_void_p]
+    apply.restype = wintypes.BOOL
+    kernel.LocalFree.argtypes = [ctypes.c_void_p]
+    kernel.LocalFree.restype = ctypes.c_void_p
+    if not convert(sddl, 1, ctypes.byref(pointer), None):
+        raise ctypes.WinError(ctypes.get_last_error())
+    try:
+        if not apply(str(path), 4 | 0x80000000, pointer):
+            raise ctypes.WinError(ctypes.get_last_error())
+    finally:
+        kernel.LocalFree(pointer)
+
+
+def _windows_test_dacl(path):
+    import ctypes
+    from ctypes import wintypes
+    api = ctypes.WinDLL("advapi32", use_last_error=True)
+    kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+    descriptor = ctypes.c_void_p()
+    output = ctypes.c_void_p()
+    get = api.GetNamedSecurityInfoW
+    get.argtypes = [wintypes.LPCWSTR, ctypes.c_int, wintypes.DWORD,
+                   ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p,
+                   ctypes.c_void_p, ctypes.POINTER(ctypes.c_void_p)]
+    get.restype = wintypes.DWORD
+    convert = api.ConvertSecurityDescriptorToStringSecurityDescriptorW
+    convert.argtypes = [ctypes.c_void_p, wintypes.DWORD, wintypes.DWORD,
+                        ctypes.POINTER(ctypes.c_void_p), ctypes.c_void_p]
+    convert.restype = wintypes.BOOL
+    kernel.LocalFree.argtypes = [ctypes.c_void_p]
+    kernel.LocalFree.restype = ctypes.c_void_p
+    result = get(str(path), 1, 4, None, None, None, None, ctypes.byref(descriptor))
+    if result:
+        raise ctypes.WinError(result)
+    try:
+        if not convert(descriptor, 1, 4, ctypes.byref(output), None):
+            raise ctypes.WinError(ctypes.get_last_error())
+        return ctypes.wstring_at(output)
+    finally:
+        if output.value:
+            kernel.LocalFree(output)
+        kernel.LocalFree(descriptor)
+
+
+@pytest.mark.skipif(install_local_module.os.name != "nt", reason="Windows DACL contract")
+@pytest.mark.parametrize("overwrite", [False, True], ids=["new", "replace"])
+def test_windows_install_inherits_selected_destination_policy(tmp_path, monkeypatch, overwrite):
+    package = _build_test_package(tmp_path)
+    destination = tmp_path / "selected-skills"
+    destination.mkdir()
+    # Well-known SIDs only: owner, SYSTEM, administrators, authenticated readers.
+    private = "D:P(A;OICI;FA;;;OW)(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)"
+    _windows_set_test_dacl(destination, private + "(A;OICI;GRGX;;;AU)")
+    old = destination / "clin-nav"
+    if overwrite:
+        old.mkdir()
+        (old / "old-marker.txt").write_text("old", encoding="utf-8")
+    real_temporary = install_local_module.tempfile.TemporaryDirectory
+
+    def restricted_staging(*args, **kwargs):
+        context = real_temporary(*args, **kwargs)
+        _windows_set_test_dacl(Path(context.name), private)
+        return context
+
+    monkeypatch.setattr(install_local_module.tempfile, "TemporaryDirectory", restricted_staging)
+    installed = install_package(package.archive, destination, overwrite=overwrite)
+    for relative in [".", "SKILL.md", "agents", "agents/openai.yaml"]:
+        assert ";;;AU)" in _windows_test_dacl(installed / relative), relative
+    assert not (installed / "old-marker.txt").exists()
+    assert (installed / "SKILL.md").read_text(encoding="utf-8").endswith("# Skill\n")
+
+
+@pytest.mark.parametrize("overwrite", [False, True], ids=["new", "replace"])
+def test_permission_preparation_failure_never_publishes_or_moves_old_install(
+    tmp_path, monkeypatch, overwrite,
+):
+    package = _build_test_package(tmp_path)
+    destination = tmp_path / "selected-skills"
+    old = destination / "clin-nav"
+    if overwrite:
+        old.mkdir(parents=True)
+        (old / "keep.txt").write_bytes(b"original")
+    def reject_permissions(*args):
+        raise PermissionError("synthetic destination policy failure")
+    monkeypatch.setattr(install_local_module, "_prepare_staging_permissions", reject_permissions)
+    with pytest.raises(PermissionError, match="synthetic destination policy failure"):
+        install_package(package.archive, destination, overwrite=overwrite)
+    if overwrite:
+        assert (old / "keep.txt").read_bytes() == b"original"
+        assert not (old / "SKILL.md").exists()
+    else:
+        assert not old.exists()
+    assert not list(tmp_path.glob(".clin-nav-backup-*"))
+
+
+def test_non_windows_permission_preparation_does_not_load_windows_libraries(tmp_path, monkeypatch):
+    def reject_library(*args, **kwargs):
+        raise AssertionError("Windows library loaded on another platform")
+    monkeypatch.setattr(install_local_module, "_platform_family", lambda: "linux")
+    monkeypatch.setattr(install_local_module.ctypes, "WinDLL", reject_library, raising=False)
+    install_local_module._prepare_staging_permissions(tmp_path / "stage", tmp_path / "destination")
+
+
+@pytest.mark.skipif(install_local_module.os.name != "nt", reason="Windows DACL contract")
+@pytest.mark.parametrize("flags", ["OICI", "OICINP", "OI", ""], ids=["normal", "no-propagate", "files-only", "non-inheritable"])
+@pytest.mark.parametrize("inherited", [False, True], ids=["explicit-parent", "inherited-parent"])
+def test_windows_install_policy_matches_direct_created_tree(tmp_path, flags, inherited):
+    package = _build_test_package(tmp_path)
+    policy_root = tmp_path / "policy-root"
+    policy_root.mkdir()
+    policy = "D:P(A;OICI;FA;;;OW)(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)"
+    policy += f"(A;{flags};GRGX;;;AU)"
+    _windows_set_test_dacl(policy_root, policy)
+    destination = policy_root / "skills"
+    destination.mkdir()
+    if not inherited:
+        _windows_set_test_dacl(destination, policy)
+    reference = destination / "reference"
+    (reference / "agents").mkdir(parents=True)
+    (reference / "SKILL.md").write_bytes(b"reference")
+    (reference / "agents/openai.yaml").write_bytes(b"reference")
+    installed = install_package(package.archive, destination)
+    for relative in [".", "SKILL.md", "agents", "agents/openai.yaml"]:
+        actual = _windows_test_dacl(installed / relative)
+        expected = _windows_test_dacl(reference / relative)
+        # AI records automatic-inheritance bookkeeping, not an ACE/access mask.
+        # Keep ACE order, all ACE flags, P (protection) and AR significant.
+        assert actual.replace("D:AI(", "D:(", 1) == expected.replace("D:AI(", "D:(", 1), relative
+
+
+@pytest.mark.skipif(install_local_module.os.name != "nt", reason="Windows error semantics")
+@pytest.mark.parametrize("failure", ["get", "set", "null"])
+def test_windows_permission_api_failure_frees_descriptor(tmp_path, monkeypatch, failure):
+    import ctypes
+    from types import SimpleNamespace
+    freed = []
+    def get_security(name, kind, info, owner, group, dacl, sacl, descriptor):
+        ctypes.cast(descriptor, ctypes.POINTER(ctypes.c_void_p))[0] = 77
+        if failure != "null":
+            ctypes.cast(dacl, ctypes.POINTER(ctypes.c_void_p))[0] = 88
+        return 5 if failure == "get" else 0
+    def set_security(*args):
+        return 5
+    def free(pointer):
+        freed.append(pointer.value)
+    api = SimpleNamespace(GetNamedSecurityInfoW=get_security, SetNamedSecurityInfoW=set_security)
+    kernel = SimpleNamespace(LocalFree=free)
+    monkeypatch.setattr(install_local_module.ctypes, "WinDLL",
+                        lambda name, **kwargs: api if name == "advapi32" else kernel)
+    with pytest.raises(OSError):
+        install_local_module._prepare_staging_permissions(tmp_path / "stage", tmp_path / "destination")
+    assert freed == [77]

@@ -7,6 +7,9 @@
 
 [![Validation](https://github.com/mtchuang1981/clin-data-nav/actions/workflows/validate.yml/badge.svg?branch=main)](https://github.com/mtchuang1981/clin-data-nav/actions/workflows/validate.yml?query=branch%3Amain)
 
+本機候選版：**v0.11.1** 新增承辦諮詢摘要並修正 Windows 原始碼安裝工具權限。
+詳見[候選版說明](docs/releases/0.11.1.md)；尚待發布與下載產物核對。
+
 ## 安裝到專案
 
 已驗證的公開版本：[v0.11.0](https://github.com/mtchuang1981/clin-data-nav/releases/tag/v0.11.0)。
@@ -78,7 +81,7 @@ OpenAI 官方文件說明，Skill 會封裝操作指引、資源與選用指令�
 | 回報安全性問題 | [安全性說明](SECURITY.md) |
 | 回饋安裝或任務完成情形 | [社群使用回饋](https://github.com/mtchuang1981/clin-data-nav/issues/new?template=usability-feedback.zh-TW.yml) |
 | 準備經核准的發布 | [發布流程](docs/release.md) |
-| 查看 v0.11.0 變更 | [靜態 Release notes](docs/releases/0.11.0.md)與[版本紀錄](CHANGELOG.zh-TW.md)（[英文完整紀錄](CHANGELOG.md)） |
+| 查看 v0.11.1 變更 | [靜態 Release notes](docs/releases/0.11.1.md)與[版本紀錄](CHANGELOG.zh-TW.md)（[英文完整紀錄](CHANGELOG.md)） |
 | 查核目前產品指引 | [OpenAI 的 ChatGPT Skills 說明](https://help.openai.com/en/articles/20001066)與[Codex Skill 文件](https://learn.chatgpt.com/docs/build-skills) |
 
 ## 證據、公開邊界與限制

@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.11.1 - 2026-11-16
+
+### Fixes
+
+- Keep coordinator feasibility reviews concise while retaining complete formal
+  specifications on explicit request; separate dictionary validity, clinical
+  relevance, approval and bounded search completeness.
+- Prepare Windows staging with the selected destination DACL before extraction,
+  preserving parent policies and fail-before-replacement behavior.
+- Add seven synthetic semantic-review scenarios and native Windows ACL tests.
+  Small local behavioral observations do not establish general effectiveness.
+  The unrelated intermittent Windows cleanup anomaly is not claimed fixed.
+
 ## 0.11.0 - 2026-10-24
 
 ### Changed

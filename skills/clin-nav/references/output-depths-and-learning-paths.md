@@ -4,11 +4,18 @@ Choose one output depth before responding. The choice changes the deliverable,
 not the global authority, evidence, public/private-boundary, or execution-gate
 rules.
 
+An initial coordinator request to review how to handle an unresolved
+feasibility consultation is orientation: use `quick explanation` and the four
+content parts in `feasibility-consultation.md`. A request for a formal count
+specification, mapping, validation or execution readiness keeps its formal
+depth. The brief does not claim a complete contract or change execution gates.
+
 ## Selection Decision Table
 
 | If the user asks for | Choose | Do not add by default |
 |---|---|---|
 | A definition, comparison, or first orientation | `quick explanation` | A source-ranking table, study-design plan, or implementation details. |
+| Initial coordinator review of an unresolved feasibility consultation | `quick explanation` | A completed contract or execution-readiness claim. |
 | Sources, standards, implementation literature, or conflict resolution | `evidence navigation` | A full study design or implementation-ready specification. |
 | Study framing, PICO, estimand, RWD/RWE fitness, bias, or diagnostics | `research design` | An executable institutional program. |
 | Mappings, derivations, validation rules, metadata, or implementation readiness | `implementation specification` | Executable code until the execution gate is met. |
