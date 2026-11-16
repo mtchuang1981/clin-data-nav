@@ -7,14 +7,12 @@
 
 [![Validation](https://github.com/mtchuang1981/clin-data-nav/actions/workflows/validate.yml/badge.svg?branch=main)](https://github.com/mtchuang1981/clin-data-nav/actions/workflows/validate.yml?query=branch%3Amain)
 
-本機候選版：**v0.11.1** 新增承辦諮詢摘要並修正 Windows 原始碼安裝工具權限。
-詳見[候選版說明](docs/releases/0.11.1.md)；尚待發布與下載產物核對。
-
 ## 安裝到專案
 
-已驗證的公開版本：[v0.11.0](https://github.com/mtchuang1981/clin-data-nav/releases/tag/v0.11.0)。
-本版依 STE 原則整理中英文指引，並納入須明確選用的研究章節標題別名；
-詳見[版本說明](docs/releases/0.11.0.md)與[發布驗證紀錄](docs/verification/2026-10-24-v0.11.0-publication.md)。
+已驗證的公開版本：[v0.11.1](https://github.com/mtchuang1981/clin-data-nav/releases/tag/v0.11.1)。
+本版新增精簡的承辦諮詢摘要，並修正 Windows 原始碼安裝工具權限。
+詳見[版本說明](docs/releases/0.11.1.md)與[下載驗證紀錄](docs/verification/2026-11-16-v0.11.1-publication.md)；
+安裝指南已列出公開產物的驗證雜湊。
 
 ```bash
 npx skills add mtchuang1981/clin-data-nav
