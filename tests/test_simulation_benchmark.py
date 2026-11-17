@@ -13,6 +13,8 @@ import sys
 
 import pytest
 
+from summary_file_ownership import SummaryFileOwnership
+
 from scripts.evaluate_simulation_benchmark import (
     IncompleteBenchmark,
     canonical_summary_bytes,
@@ -64,6 +66,23 @@ V070_BINDING = {
     "tag_object": "2b867a1bdfec445de52d7252bae50249673b3105",
     "version": "0.7.0",
 }
+
+
+@pytest.fixture
+def summary_file_ownership(monkeypatch):
+    from scripts import evaluate_simulation_benchmark as benchmark
+
+    tracker = SummaryFileOwnership()
+    original = benchmark._SummaryTransaction.prepare
+
+    def prepare(transaction, payload):
+        original(transaction, payload)
+        if transaction.backup_name is not None:
+            tracker.capture('backup', transaction.parent_path / transaction.backup_name)
+        tracker.capture('stage', transaction.parent_path / transaction.stage_name)
+
+    monkeypatch.setattr(benchmark._SummaryTransaction, 'prepare', prepare)
+    return tracker
 
 
 def valid_plan(
@@ -3105,7 +3124,7 @@ def test_stderr_transport_failure_never_escapes_the_cli_boundary(
     ],
 )
 def test_windows_summary_close_after_effect_is_never_retried(
-    tmp_path, monkeypatch, capfd, seam
+    tmp_path, monkeypatch, capfd, seam, summary_file_ownership
 ):
     """An ambiguous post-close failure must not touch a reused HANDLE value."""
     from scripts import evaluate_simulation_benchmark as benchmark
@@ -3174,7 +3193,7 @@ def test_windows_summary_close_after_effect_is_never_retried(
         assert validate_benchmark_summary(summary) == []
         assert summary_bytes != previous
         assert _bundle_input_bytes(bundle) == before
-        assert not list(tmp_path.glob(f".{output.name}.*.tmp"))
+        summary_file_ownership.assert_committed(output)
     finally:
         try:
             _, current_identity, _ = benchmark._windows_handle_info(
@@ -3187,6 +3206,67 @@ def test_windows_summary_close_after_effect_is_never_retried(
                 original_close_handle(
                     benchmark.wintypes.HANDLE(sentinel_reference)
                 )
+
+
+@pytest.mark.skipif(os.name != 'nt', reason='Windows raw HANDLE close contract')
+@pytest.mark.parametrize('role', ['backup', 'stage', 'parent'])
+def test_windows_close_contract_preserves_foreign_temporary_objects(
+    tmp_path, monkeypatch, capfd, summary_file_ownership, role
+):
+    from scripts import evaluate_simulation_benchmark as benchmark
+
+    foreign = None
+
+    def add_foreign(parent, stage_name, output_name):
+        nonlocal foreign
+        foreign = parent / (f'.{output_name}.backup-' + 'f' * 32 + '.tmp').upper()
+        foreign = foreign.with_name(foreign.name + '.tmp')
+        with foreign.open('xb') as stream:
+            stream.write(b'synthetic foreign object')
+
+    monkeypatch.setattr(benchmark, '_before_summary_finish', add_foreign)
+    test_windows_summary_close_after_effect_is_never_retried(
+        tmp_path, monkeypatch, capfd, f'_close_summary_{role}_owner'
+        if role != 'parent' else '_close_summary_parent_reference', summary_file_ownership
+    )
+    assert foreign is not None
+    assert foreign.read_bytes() == b'synthetic foreign object'
+
+
+@pytest.mark.skipif(os.name != 'nt', reason='Windows raw HANDLE close contract')
+@pytest.mark.parametrize('role', ['backup', 'stage', 'parent'])
+@pytest.mark.parametrize('rename', [False, True], ids=['original-name', 'renamed'])
+def test_windows_close_contract_still_detects_owned_backup_leaks(
+    tmp_path, monkeypatch, capfd, summary_file_ownership, role, rename
+):
+    from scripts import evaluate_simulation_benchmark as benchmark
+
+    original_delete = benchmark._SummaryTransaction._delete_owner
+    original_finish = benchmark._SummaryTransaction.finish
+    leaked = None
+
+    def leak_backup(transaction, owner, name):
+        nonlocal leaked
+        if owner == transaction.backup_owner:
+            leaked = transaction.parent_path / name
+            return
+        original_delete(transaction, owner, name)
+
+    def finish(transaction):
+        nonlocal leaked
+        original_finish(transaction)
+        if rename:
+            leaked = leaked.rename(transaction.parent_path / 'owned-backup-renamed.bin')
+
+    monkeypatch.setattr(benchmark._SummaryTransaction, '_delete_owner', leak_backup)
+    monkeypatch.setattr(benchmark._SummaryTransaction, 'finish', finish)
+    with pytest.raises(AssertionError, match='owned transaction file remains'):
+        test_windows_summary_close_after_effect_is_never_retried(
+            tmp_path, monkeypatch, capfd, f'_close_summary_{role}_owner'
+            if role != 'parent' else '_close_summary_parent_reference', summary_file_ownership
+        )
+    assert leaked is not None
+    assert leaked.read_bytes() == b'previous-summary\n'
 
 
 def test_summary_close_failure_before_effect_is_contained_without_fallback(
