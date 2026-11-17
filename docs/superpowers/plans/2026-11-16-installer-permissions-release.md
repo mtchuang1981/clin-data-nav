@@ -19,7 +19,10 @@ Spec: docs/superpowers/specs/2026-11-16-installer-permissions-design.md.
   release artifact verifier and diff review; commit only reviewed scoped files.
 - [x] Push branch, create PR, require CI, merge normally, require merged-commit
   CI/CodeQL; annotated new tag; main-dispatched release workflow; verify downloads.
-- [ ] Record public release evidence and submit its normal report PR.
+- [x] Record public release evidence and submit its normal report PR.
+  Completed through [PR #18](https://github.com/mtchuang1981/clin-data-nav/pull/18),
+  merged at `56146e9bb9f14fdb348e6afcebc3147eee38e591`.
+  See [publication and download verification](../../verification/2026-11-16-v0.11.1-publication.md).
 
 User approval covers this work and publication; no repeated permission question
 is needed for the same scope. OS sandbox escalation remains independent.
