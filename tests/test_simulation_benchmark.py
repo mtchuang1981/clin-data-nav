@@ -2989,7 +2989,7 @@ def test_partial_success_notification_failure_has_no_contradictory_stderr(
 
 
 def test_backup_cleanup_failure_rolls_back_before_success_notification(
-    tmp_path, monkeypatch, capfd
+    tmp_path, monkeypatch, capfd, summary_file_ownership
 ):
     """A fallible backup retirement must complete before stdout success."""
     from scripts import evaluate_simulation_benchmark as benchmark
@@ -3022,11 +3022,11 @@ def test_backup_cleanup_failure_rolls_back_before_success_notification(
     assert captured.err == EVALUATE_ERROR.decode()
     assert output.read_bytes() == previous
     assert _bundle_input_bytes(bundle) == before
-    assert not list(tmp_path.glob(f".{output.name}.*.tmp"))
+    summary_file_ownership.assert_rolled_back(output, prior_output=True)
 
 
 def test_pre_finish_failure_removes_a_newly_created_summary(
-    tmp_path, monkeypatch, capfd
+    tmp_path, monkeypatch, capfd, summary_file_ownership
 ):
     """Before cleanup completes, rollback must restore initial absence."""
     from scripts import evaluate_simulation_benchmark as benchmark
@@ -3048,7 +3048,7 @@ def test_pre_finish_failure_removes_a_newly_created_summary(
     assert captured.err == EVALUATE_ERROR.decode()
     assert not output.exists()
     assert _bundle_input_bytes(bundle) == before
-    assert not list(tmp_path.glob(f".{output.name}.*.tmp"))
+    summary_file_ownership.assert_rolled_back(output, prior_output=False)
 
 
 def test_rollback_cleanup_failure_is_normalized_and_restores_prior_output(
@@ -3294,7 +3294,7 @@ def test_summary_close_failure_before_effect_is_contained_without_fallback(
 
 
 def test_close_failures_during_precommit_rollback_do_not_mask_fixed_error(
-    tmp_path, monkeypatch, capfd
+    tmp_path, monkeypatch, capfd, summary_file_ownership
 ):
     """Resource finalization errors cannot replace a primary transaction error."""
     from scripts import evaluate_simulation_benchmark as benchmark
@@ -3359,4 +3359,99 @@ def test_close_failures_during_precommit_rollback_do_not_mask_fixed_error(
     assert captured.err == EVALUATE_ERROR.decode()
     assert output.read_bytes() == previous
     assert _bundle_input_bytes(bundle) == before
-    assert not list(tmp_path.glob(f".{output.name}.*.tmp"))
+    summary_file_ownership.assert_rolled_back(output, prior_output=True)
+
+
+_STANDARD_ROLLBACK_CASES = [
+    (test_backup_cleanup_failure_rolls_back_before_success_notification, True),
+    (test_pre_finish_failure_removes_a_newly_created_summary, False),
+    (test_close_failures_during_precommit_rollback_do_not_mask_fixed_error, True),
+]
+_STANDARD_ROLLBACK_IDS = ['backup-retirement', 'new-output', 'close-errors']
+
+
+@pytest.mark.parametrize('rollback_test,prior_output', _STANDARD_ROLLBACK_CASES, ids=_STANDARD_ROLLBACK_IDS)
+@pytest.mark.parametrize('old_stage_name', [False, True], ids=['lookalike', 'old-stage-name'])
+def test_standard_rollback_preserves_foreign_objects(
+    tmp_path, monkeypatch, capfd, summary_file_ownership, rollback_test, prior_output, old_stage_name
+):
+    from scripts import evaluate_simulation_benchmark as benchmark
+
+    original = benchmark._SummaryTransaction.rollback
+    foreign = None
+    before_identity = None
+
+    def rollback(transaction):
+        nonlocal foreign, before_identity
+        name = transaction.backup_name or transaction.stage_name
+        foreign = transaction.parent_path / (name.upper() + '.tmp')
+        with foreign.open('xb') as stream:
+            stream.write(b'synthetic unrelated object')
+        metadata = foreign.lstat()
+        before_identity = (metadata.st_dev, metadata.st_ino)
+        original(transaction)
+        if old_stage_name:
+            foreign = foreign.rename(transaction.parent_path / transaction.stage_name)
+
+    monkeypatch.setattr(benchmark._SummaryTransaction, 'rollback', rollback)
+    rollback_test(tmp_path, monkeypatch, capfd, summary_file_ownership)
+    assert foreign.read_bytes() == b'synthetic unrelated object'
+    metadata = foreign.lstat()
+    assert (metadata.st_dev, metadata.st_ino) == before_identity
+
+
+@pytest.mark.parametrize('rollback_test,prior_output', _STANDARD_ROLLBACK_CASES, ids=_STANDARD_ROLLBACK_IDS)
+@pytest.mark.parametrize('rename', [False, True], ids=['original-name', 'renamed'])
+def test_standard_rollback_detects_owned_stage_leaks(
+    tmp_path, monkeypatch, capfd, summary_file_ownership, rollback_test, prior_output, rename
+):
+    from scripts import evaluate_simulation_benchmark as benchmark
+
+    original = benchmark._SummaryTransaction._delete_owner
+    leaked = None
+
+    def leak_stage(transaction, owner, name):
+        nonlocal leaked
+        if owner == transaction.stage_owner:
+            source = transaction.parent_path / name
+            leaked = transaction.parent_path / (
+                'synthetic-retained-stage.bin' if rename else transaction.stage_name
+            )
+            if source != leaked:
+                assert not leaked.exists()
+                source.rename(leaked)
+            return
+        original(transaction, owner, name)
+
+    monkeypatch.setattr(benchmark._SummaryTransaction, '_delete_owner', leak_stage)
+    with pytest.raises(AssertionError, match='owned transaction file remains'):
+        rollback_test(tmp_path, monkeypatch, capfd, summary_file_ownership)
+    metadata = leaked.lstat()
+    assert (metadata.st_dev, metadata.st_ino) == summary_file_ownership.identities['stage']
+
+
+@pytest.mark.parametrize(
+    'rollback_test,prior_output', [case for case in _STANDARD_ROLLBACK_CASES if case[1]],
+    ids=['backup-retirement', 'close-errors'],
+)
+def test_standard_rollback_detects_same_content_wrong_restored_identity(
+    tmp_path, monkeypatch, capfd, summary_file_ownership, rollback_test, prior_output
+):
+    from scripts import evaluate_simulation_benchmark as benchmark
+
+    original = benchmark._SummaryTransaction.rollback
+    retained = None
+
+    def substitute_output(transaction):
+        nonlocal retained
+        original(transaction)
+        output = transaction.parent_path / transaction.output_name
+        payload = output.read_bytes()
+        retained = output.rename(transaction.parent_path / 'retained-original-output.bin')
+        output.write_bytes(payload)
+
+    monkeypatch.setattr(benchmark._SummaryTransaction, 'rollback', substitute_output)
+    with pytest.raises(AssertionError, match='output identity'):
+        rollback_test(tmp_path, monkeypatch, capfd, summary_file_ownership)
+    metadata = retained.lstat()
+    assert (metadata.st_dev, metadata.st_ino) == summary_file_ownership.identities['backup']

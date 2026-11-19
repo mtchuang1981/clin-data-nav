@@ -2,13 +2,15 @@
 
 本清單追蹤已核准的優化事項與後續缺口，不代表歷史工作已全部完成。列入待辦不等於已實作，也不包含 Git 提交、推送或發布授權。
 
-最後盤點：2026-11-17。最新公開版本為 [v0.11.1](https://github.com/mtchuang1981/clin-data-nav/releases/tag/v0.11.1)。本次遠端查核基準為 `main` 提交 `69a206eb2e316d3738895b6213fe32c1ff2ffcae`，Windows、Ubuntu、套件比對及 CodeQL 均成功。[PR #17](https://github.com/mtchuang1981/clin-data-nav/pull/17) 已完成諮詢流程與安裝權限修正；[PR #18](https://github.com/mtchuang1981/clin-data-nav/pull/18) 已完成發布紀錄與雙語安裝文件更新；[PR #19](https://github.com/mtchuang1981/clin-data-nav/pull/19) 已完成目標 Windows 清理測試的身分判定修正。三者均已合併，PR #19 未新增版本或改動產品清理邏輯。
+公開合併狀態查核：2026-11-17。最新公開版本為 [v0.11.1](https://github.com/mtchuang1981/clin-data-nav/releases/tag/v0.11.1)。本次遠端查核基準為 `main` 提交 `69a206eb2e316d3738895b6213fe32c1ff2ffcae`，Windows、Ubuntu、套件比對及 CodeQL 均成功。[PR #17](https://github.com/mtchuang1981/clin-data-nav/pull/17) 已完成諮詢流程與安裝權限修正；[PR #18](https://github.com/mtchuang1981/clin-data-nav/pull/18) 已完成發布紀錄與雙語安裝文件更新；[PR #19](https://github.com/mtchuang1981/clin-data-nav/pull/19) 已完成目標 Windows 清理測試的身分判定修正。三者均已合併，PR #19 未新增版本或改動產品清理邏輯。
 
 v0.11.1 發布驗證（Python 3.11.9）：完整測試 1,973 passed、13 skipped；Skill 驗證、公開邊界、可重現封裝與公開下載產物核對均通過。已安裝副本的 26 個檔案與正式 manifest 完全一致；這不代表 host 已重新載入。略過項目仍受平台或權限限制，不能列為通過。詳見[發布與下載驗證紀錄](verification/2026-11-16-v0.11.1-publication.md)。
 
 歷史待辦同步驗證（2026-11-16）：完整測試為 1,972 passed、1 failed、13 skipped，於 `test_windows_summary_close_after_effect_is_never_retried[stage]` 再次出現交易暫存名稱的清理斷言失敗。事後檢視時，該異常名稱已不在目錄；未取得其直接檔案身分或大小。此失敗不能由後續測試通過覆蓋，也不能推定建立者或根因。詳見[當次重現與證據界線](verification/2026-11-16-backlog-sync.md)。
 
 PR #19 修正驗證（2026-11-17，Python 3.11.9）：本機完整測試 1,996 passed、13 skipped；新增合成回歸確認外部同型物件不會誤判，真正 backup 殘留、改名洩漏及 stage 硬連結別名仍會失敗。見[設計與驗證界線](verification/2026-11-17-summary-cleanup-identity.md)。合併提交的 [CI](https://github.com/mtchuang1981/clin-data-nav/actions/runs/43985353281) 為 Windows 2,006 passed、3 skipped，Ubuntu 1,974 passed、35 skipped，套件比對通過；[CodeQL](https://github.com/mtchuang1981/clin-data-nav/actions/runs/43985352292) 亦成功。不同環境的略過項目不能當作通過，也不將跨平台數量相加為獨立案例數。
+
+2026-11-19 同行程回滾補強：新增明確的原輸出有／無狀態判定，將三個標準回滾案例的最後 glob 轉為檔案身分檢查。本機完整測試為 2,039 passed、14 skipped，必要腳本檢查通過；這是[本機實作驗證](verification/2026-11-19-rollback-cleanup-identity.md)，不冒充尚未執行的遠端 CI 或已合併狀態。子行程身分蒐集與 POSIX 特殊契約保留後續處理。
 
 歷史進度（2026-11-06）：公開核心補強、私有端驗收交接清單及雙語 README 導覽分別由 [PR #13](https://github.com/mtchuang1981/clin-data-nav/pull/13)、[PR #14](https://github.com/mtchuang1981/clin-data-nav/pull/14)、[PR #15](https://github.com/mtchuang1981/clin-data-nav/pull/15) 合併；setup-python 更新與測試雜湊同步由 [PR #12](https://github.com/mtchuang1981/clin-data-nav/pull/12) 合併。當時查核的 `main` 為 `d9f2e90`，最新公開版本為 v0.11.0；這些歷史狀態不代表目前版本。
 
@@ -22,7 +24,7 @@ PR #19 修正驗證（2026-11-17，Python 3.11.9）：本機完整測試 1,996 p
 
 | 優先度 | 項目 | 狀態與驗收條件 |
 | --- | --- | --- |
-| 1 | Windows 清理測試的剩餘證據與範圍缺口 | PR #19 已修正目標 close-after-effect 測試的判定缺陷；先前自然失敗當下的完整因果仍未證實，其他廣泛 glob、rollback 與 subprocess 測試未全面改寫，跨目錄洩漏、長期 inode 重用及掃描後的並行變動也不在本輪證明範圍。保留[11/16 失敗紀錄](verification/2026-11-16-backlog-sync.md)與[修正界線](verification/2026-11-17-summary-cleanup-identity.md)，不以修正後通過結果覆蓋歷史失敗。本機診斷已依另行核准的範圍完成，原始紀錄僅留本機；不自動重啟或擴大追蹤。此項與已完成的安裝 DACL 修正分開追蹤。 |
+| 1 | 清理測試的剩餘證據與範圍缺口 | PR #19 已修正目標 close-after-effect 判定；2026-11-19 另完成三個標準同行程回滾判定的[本機實作與驗證](verification/2026-11-19-rollback-cleanup-identity.md)。仍剩 5 處 glob：3 個子行程案例需獨立的身分蒐集設計，2 個 POSIX 相關案例須遵守各自契約，不能全面套用掃描判定。先前自然失敗的完整因果、跨目錄洩漏、長期 inode 重用及掃描後變動仍未證明。保留[歷史失敗](verification/2026-11-16-backlog-sync.md)，不以後續通過覆蓋；原始診斷僅留本機，不自動重啟或擴大追蹤。 |
 | 另行授權 | 私有機構端驗收 | 2026-11-05 已整理[公開驗收交接清單](private-adapter-acceptance-checklist.zh-TW.md)。OMOP 1.2 私有實作／快照綁定及編譯器／工具映射仍待機構端授權與驗收；文件完成不代表私有端已通過。 |
 | 另行決定 | 真人易用性與成效評估 | 公開評估框架已備妥，尚無本專案真人或臨床成效證據；啟動前須完成另行授權的治理流程。 |
 
@@ -30,6 +32,7 @@ PR #19 修正驗證（2026-11-17，Python 3.11.9）：本機完整測試 1,996 p
 
 | 項目 | 完成依據 |
 | --- | --- |
+| 三個標準同行程回滾測試的身分判定（本機） | 2026-11-19 增加明確回滾狀態，驗證原 backup 身分回復或原先輸出不存在，並抓到原名／改名 stage 殘留、別名與相同內容但錯誤身分的輸出。新增 30 個 helper 案例與 14 個整合案例；完成審查競態修正與本機完整測試，詳見[驗證紀錄](verification/2026-11-19-rollback-cleanup-identity.md)。產品清理程式與 POSIX 刻意保留別名的契約未改；本列不代表遠端合併或完整歷史歸因。 |
 | 目標 Windows 清理測試的身分判定 | PR #19 已合併至 `69a206e`。以交易 stage／backup 的檔案身分取代最後的廣泛名稱斷言，保留既有 HANDLE、sentinel、輸入與輸出檢查；加入外部物件、原名／改名 backup 殘留與 stage 別名等合成回歸。產品程式、版本與發布產物未變；本機、雙平台 CI、套件比對及 CodeQL 通過，詳見本頁上方查核與[本機驗證](verification/2026-11-17-summary-cleanup-identity.md)。完成的是明確示範的測試判定缺陷，不代表先前每次自然失敗均已取得完整歸因。 |
 | 承辦諮詢流程與概念審查補強 | PR #17 已合併並納入 v0.11.1。初步諮詢採精簡決策單，正式規格保留完整契約；補上語意審查、搜尋完整性、工具參數與責任分工。七項合成情境與小樣本前後測不代表一般化成效，見[範圍與驗證紀錄](verification/2026-11-16-feasibility-consultation.md)。 |
 | Windows 安裝權限繼承修正 | PR #17 已合併。解壓前準備目標目錄的 DACL；權限失敗時不替換舊安裝。原生安裝器測試 72 項通過，詳見[根因與發布前驗證](verification/2026-11-16-v0.11.1-preflight.md)。本項不包含間歇性清理異常。 |
