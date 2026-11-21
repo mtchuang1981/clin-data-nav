@@ -13,6 +13,7 @@ import sys
 
 import pytest
 
+from observe_summary_subprocess import read_observation
 from summary_file_ownership import SummaryFileOwnership
 
 from scripts.evaluate_simulation_benchmark import (
@@ -2296,6 +2297,26 @@ def _run_evaluation_bundle(
     )
 
 
+def _run_observed_summary(bundle, tmp_path_factory, *, retain_backup=False):
+    _, _, responses_root, plan_path, response_index_path, output = bundle
+    sidecar = tmp_path_factory.mktemp("summary-observation") / "identities.json"
+    command = _evaluation_command(plan_path, response_index_path, responses_root, output)
+    completed = subprocess.run(
+        [
+            command[0],
+            str(ROOT / "tests" / "observe_summary_subprocess.py"),
+            str(sidecar),
+            "retain-backup" if retain_backup else "observe",
+            *command[2:],
+        ],
+        cwd=ROOT,
+        capture_output=True,
+        check=False,
+        timeout=60,
+    )
+    return completed, sidecar
+
+
 def test_evaluate_cli_writes_only_a_canonical_complete_summary(tmp_path):
     """A successful run must not expose aggregate details on the process stream."""
     bundle = _external_evaluation_bundle(tmp_path)
@@ -2314,19 +2335,70 @@ def test_evaluate_cli_writes_only_a_canonical_complete_summary(tmp_path):
     assert summary["synthetic_example"] is False
 
 
-def test_evaluate_cli_atomically_replaces_an_existing_summary(tmp_path):
+@pytest.mark.parametrize("foreign", [False, True])
+def test_evaluate_cli_atomically_replaces_an_existing_summary(
+    tmp_path, tmp_path_factory, foreign
+):
     """Success must retire its identity-held backup without leaving artifacts."""
     bundle = _external_evaluation_bundle(tmp_path)
     _, _, _, _, _, output = bundle
     output.write_bytes(b"previous-summary\n")
+    prior = SummaryFileOwnership._identity(output)
+    lookalike = _add_foreign_summary_file(output) if foreign else None
 
-    completed = _run_evaluation_bundle(bundle)
+    completed, sidecar = _run_observed_summary(bundle, tmp_path_factory)
 
     assert completed.returncode == 0
     assert completed.stdout == EVALUATE_SUCCESS
     assert completed.stderr == b""
     assert validate_benchmark_summary(json.loads(output.read_bytes())) == []
-    assert not list(tmp_path.glob(f".{output.name}.*.tmp"))
+    observation = read_observation(sidecar, output, prepared=True)
+    assert observation.identities["backup"] == prior
+    observation.assert_committed(output)
+    if lookalike is not None:
+        assert lookalike.read_bytes() == b"unrelated file"
+
+
+def _add_foreign_summary_file(output):
+    sibling = output.with_name(f".{output.name}.backup-unrelated.TMP.tmp")
+    sibling.write_bytes(b"unrelated file")
+    return sibling
+
+
+def test_detects_retained_subprocess_backup_after_rename(tmp_path, tmp_path_factory):
+    bundle = _external_evaluation_bundle(tmp_path)
+    output = bundle[5]
+    output.write_bytes(b"previous-summary\n")
+    prior = SummaryFileOwnership._identity(output)
+
+    completed, sidecar = _run_observed_summary(bundle, tmp_path_factory, retain_backup=True)
+
+    assert (completed.returncode, completed.stdout, completed.stderr) == (0, EVALUATE_SUCCESS, b"")
+    retained = output.with_name("synthetic-retained-backup.bin")
+    assert SummaryFileOwnership._identity(retained) == prior
+    observation = read_observation(sidecar, output, prepared=True)
+    assert observation.identities["backup"] == prior
+    with pytest.raises(AssertionError, match="owned transaction file remains"):
+        observation.assert_committed(output)
+
+
+@pytest.mark.parametrize(
+    "payload,prepared",
+    [
+        (None, True),
+        (b"", True),
+        (b'{"started":0,"identities":{}}', True),
+        (b'{"started":1,"identities":{}}', False),
+        (b'{"started":1,"identities":{"stage":[0,1],"backup":[0,0]}}', True),
+        (b'{"started":1,"identities":{"stage":[0,1],"backup":[0,1]}}', True),
+    ],
+)
+def test_invalid_subprocess_observation_fails(tmp_path, payload, prepared):
+    sidecar = tmp_path / "observation.json"
+    if payload is not None:
+        sidecar.write_bytes(payload)
+    with pytest.raises((OSError, ValueError, AssertionError)):
+        read_observation(sidecar, tmp_path / "output.json", prepared=prepared)
 
 
 def test_evaluate_cli_reports_only_a_valid_canonical_prefix_as_incomplete(tmp_path):
@@ -2615,7 +2687,10 @@ def test_evaluate_cli_rejects_an_output_hardlinked_to_a_response(tmp_path):
     assert output.read_bytes() == original
 
 
-def test_evaluate_cli_rejects_existing_output_with_a_sibling_hardlink(tmp_path):
+@pytest.mark.parametrize("foreign", [False, True])
+def test_evaluate_cli_rejects_existing_output_with_a_sibling_hardlink(
+    tmp_path, tmp_path_factory, foreign
+):
     """A non-input sibling link may not be retired with the prior output."""
     bundle = _external_evaluation_bundle(tmp_path)
     output = bundle[5]
@@ -2629,8 +2704,9 @@ def test_evaluate_cli_rejects_existing_output_with_a_sibling_hardlink(tmp_path):
     except OSError:
         pytest.skip("the current filesystem cannot create hardlinks")
     before_identity = (output.stat().st_dev, output.stat().st_ino)
+    lookalike = _add_foreign_summary_file(output) if foreign else None
 
-    completed = _run_evaluation_bundle(bundle)
+    completed, sidecar = _run_observed_summary(bundle, tmp_path_factory)
 
     assert completed.returncode == 2
     assert completed.stdout == b""
@@ -2639,7 +2715,9 @@ def test_evaluate_cli_rejects_existing_output_with_a_sibling_hardlink(tmp_path):
     assert sibling.read_bytes() == previous
     assert (output.stat().st_dev, output.stat().st_ino) == before_identity
     assert (sibling.stat().st_dev, sibling.stat().st_ino) == before_identity
-    assert not list(tmp_path.glob(f".{output.name}.*.tmp"))
+    read_observation(sidecar, output, prepared=False)
+    if lookalike is not None:
+        assert lookalike.read_bytes() == b"unrelated file"
 
 
 def test_evaluate_cli_rejects_output_inside_the_response_tree(tmp_path):
@@ -2656,29 +2734,37 @@ def test_evaluate_cli_rejects_output_inside_the_response_tree(tmp_path):
     assert not output.exists()
 
 
-def test_evaluate_cli_failure_preserves_existing_output_and_all_inputs(tmp_path):
+@pytest.mark.parametrize("foreign", [False, True])
+def test_evaluate_cli_failure_preserves_existing_output_and_all_inputs(
+    tmp_path, tmp_path_factory, foreign
+):
     """A failed run must be observationally read-only outside transient staging."""
     bundle = _external_evaluation_bundle(tmp_path)
     _, _, responses_root, plan_path, response_index_path, output = bundle
     previous = b"previous-valid-summary\n"
     output.write_bytes(previous)
     response_index_path.write_bytes(b'{"MARKER-INVALID-JSON":')
+    lookalike = _add_foreign_summary_file(output) if foreign else None
+    before_identity = SummaryFileOwnership._identity(output)
     before = {
         path: path.read_bytes()
         for path in (plan_path, response_index_path, *sorted(responses_root.iterdir()))
     }
 
-    completed = _run_evaluation_bundle(bundle)
+    completed, sidecar = _run_observed_summary(bundle, tmp_path_factory)
 
     assert completed.returncode == 2
     assert completed.stdout == b""
     assert completed.stderr == EVALUATE_ERROR
     assert output.read_bytes() == previous
+    assert SummaryFileOwnership._identity(output) == before_identity
     assert {
         path: path.read_bytes()
         for path in (plan_path, response_index_path, *sorted(responses_root.iterdir()))
     } == before
-    assert not list(tmp_path.glob(f".{output.name}.*.tmp"))
+    read_observation(sidecar, output, prepared=False)
+    if lookalike is not None:
+        assert lookalike.read_bytes() == b"unrelated file"
 
 
 def _evaluation_main_arguments(
