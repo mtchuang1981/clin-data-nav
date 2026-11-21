@@ -27,28 +27,45 @@ class SummaryFileOwnership:
 
     def assert_committed(self, output: Path) -> None:
         assert 'stage' in self.identities, 'stage was not captured'
+        self._assert_final_state(output, self.identities['stage'])
+
+    def assert_rolled_back(self, output: Path, *, prior_output: bool) -> None:
+        assert 'stage' in self.identities, 'stage was not captured'
+        assert ('backup' in self.identities) is prior_output, 'backup capture disagrees with prior output'
+        expected = self.identities['backup'] if prior_output else None
+        self._assert_final_state(output, expected)
+
+    def _assert_final_state(self, output: Path, expected: tuple[int, int] | None) -> None:
         assert output.parent == self.parent, 'different parent'
         try:
             output_identity = self._identity(output)
+        except FileNotFoundError as error:
+            if expected is not None:
+                raise AssertionError('cannot inspect output') from error
         except OSError as error:
             raise AssertionError('cannot inspect output') from error
-        assert output_identity == self.identities['stage'], 'output identity changed'
+        else:
+            assert expected is not None, 'output should be absent'
+            assert output_identity == expected, 'output identity changed'
         owned = set(self.identities.values())
         try:
             entries = list(output.parent.iterdir())
         except OSError as error:
             raise AssertionError('cannot inspect transaction parent') from error
-        assert output in entries, 'cannot inspect output in transaction parent'
+        if expected is not None:
+            assert output in entries, 'cannot inspect output in transaction parent'
         for entry in entries:
             try:
                 identity = self._identity(entry)
             except FileNotFoundError as error:
                 if entry == output:
-                    raise AssertionError('cannot inspect output') from error
+                    message = 'output should be absent' if expected is None else 'cannot inspect output'
+                    raise AssertionError(message) from error
                 continue
             except OSError as error:
                 raise AssertionError('cannot inspect transaction parent entry') from error
             if entry == output:
-                assert identity == self.identities['stage'], 'output identity changed'
+                assert expected is not None, 'output should be absent'
+                assert identity == expected, 'output identity changed'
             else:
                 assert identity not in owned, f'owned transaction file remains: {entry.name}'
