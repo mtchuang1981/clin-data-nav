@@ -13,6 +13,7 @@
 本版新增精簡的承辦諮詢摘要，並修正 Windows 原始碼安裝工具權限。
 詳見[版本說明](docs/releases/0.11.1.md)與[下載驗證紀錄](docs/verification/2026-11-16-v0.11.1-publication.md)；
 安裝指南已列出公開產物的驗證雜湊。
+本儲存庫的原始碼以 [v0.11.2](docs/releases/0.11.2.md) 為目標版本。
 
 ```bash
 npx skills add mtchuang1981/clin-data-nav
@@ -79,7 +80,7 @@ OpenAI 官方文件說明，Skill 會封裝操作指引、資源與選用指令�
 | 回報安全性問題 | [安全性說明](SECURITY.md) |
 | 回饋安裝或任務完成情形 | [社群使用回饋](https://github.com/mtchuang1981/clin-data-nav/issues/new?template=usability-feedback.zh-TW.yml) |
 | 準備經核准的發布 | [發布流程](docs/release.md) |
-| 查看 v0.11.1 變更 | [靜態 Release notes](docs/releases/0.11.1.md)與[版本紀錄](CHANGELOG.zh-TW.md)（[英文完整紀錄](CHANGELOG.md)） |
+| 查看 v0.11.2 變更 | [靜態 Release notes](docs/releases/0.11.2.md)與[版本紀錄](CHANGELOG.zh-TW.md)（[英文完整紀錄](CHANGELOG.md)） |
 | 查核目前產品指引 | [OpenAI 的 ChatGPT Skills 說明](https://help.openai.com/en/articles/20001066)與[Codex Skill 文件](https://learn.chatgpt.com/docs/build-skills) |
 
 ## 證據、公開邊界與限制

@@ -214,19 +214,19 @@ def test_package_contains_offline_evidence_ledger_checker(tmp_path):
     assert all(not name.endswith((".pyc", ".pyo")) for name in result.files)
 
 
-def test_v0111_candidate_package_and_manifest_names_match_project_version(tmp_path):
+def test_candidate_package_and_manifest_names_match_project_version(tmp_path):
     result = build_package(
         Path("skills/clin-nav"),
         tmp_path,
     )
     manifest = json.loads(result.manifest.read_text(encoding="utf-8"))
 
-    assert result.archive.name == "clin-nav-0.11.1.zip"
+    assert result.archive.name == "clin-nav-0.11.2.zip"
     assert (
         result.manifest.name
-        == "clin-nav-0.11.1.manifest.json"
+        == "clin-nav-0.11.2.manifest.json"
     )
-    assert manifest["version"] == "0.11.1"
+    assert manifest["version"] == "0.11.2"
     assert manifest["archive"] == result.archive.name
 
 

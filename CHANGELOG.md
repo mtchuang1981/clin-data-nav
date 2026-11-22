@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.11.2 - 2026-11-22
+
+### Verification and documentation
+
+- Check file identity in synthetic output cleanup tests for Windows,
+  same-process rollback, subprocess cleanup and POSIX cases.
+- Record completed public checks and clarify the verified release installation
+  and artifact hashes. The installable Skill content is unchanged.
+- Private institutional acceptance and human effectiveness evaluation remain
+  pending. The cause of the intermittent Windows cleanup anomaly remains unknown.
+
 ## 0.11.1 - 2026-11-16
 
 ### Fixes
