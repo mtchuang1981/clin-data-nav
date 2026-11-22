@@ -43,8 +43,8 @@ def _build_test_package(tmp_path: Path):
 
 
 def test_candidate_installer_version_matches_the_candidate_packager():
-    assert INSTALLER_VERSION == "0.11.1"
-    assert PACKAGER_VERSION == "0.11.1"
+    assert INSTALLER_VERSION == "0.11.2"
+    assert PACKAGER_VERSION == "0.11.2"
 
 
 def _refresh_archive_hash(package) -> None:

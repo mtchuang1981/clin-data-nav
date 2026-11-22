@@ -11,13 +11,11 @@ Only when developing or auditing this repository, use the source-checkout path.
 
 ## Runtime boundary
 
-Source-checkout tools target `0.11.1`, matching the verified public ZIP. Use
-scripts from the matching source version when installing a versioned ZIP.
-Do not pair this strict installer with older assets. The
-[release notes](releases/0.11.1.md) describe consultation review and Windows
-installer permission repair, with unchanged execution gates. See the
-[publication record](verification/2026-11-16-v0.11.1-publication.md) for the
-downloaded artifact identity, verification and disclosed process limitations.
+Source-checkout tools target [`0.11.2`](releases/0.11.2.md). Use the matching
+source version when installing a versioned ZIP with the strict installer.
+For the verified `v0.11.1` assets, use the procedure below. The
+[publication record](verification/2026-11-16-v0.11.1-publication.md) gives the
+downloaded artifact hashes and verification details.
 
 The instruction-only installed Skill does not require Python. It consists of
 Markdown, YAML metadata, and references read by the supporting agent product.

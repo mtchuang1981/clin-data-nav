@@ -14,6 +14,7 @@ It adds concise coordinator consultation reviews and repairs Windows source-inst
 permissions. See [release notes](docs/releases/0.11.1.md) and the
 [download verification record](docs/verification/2026-11-16-v0.11.1-publication.md).
 The installation guide includes the verified public asset hashes.
+This source checkout targets [v0.11.2](docs/releases/0.11.2.md).
 
 ```bash
 npx skills add mtchuang1981/clin-data-nav
@@ -83,7 +84,7 @@ publish a Plugin.
 | Report a security concern | [Security](SECURITY.md) |
 | Share a safe installation or task-completion self-report | [Community usability feedback](https://github.com/mtchuang1981/clin-data-nav/issues/new?template=usability-feedback.yml) |
 | Prepare an approved release | [Release process](docs/release.md) |
-| Review v0.11.1 changes | [Static release notes](docs/releases/0.11.1.md) and [changelog](CHANGELOG.md) |
+| Review v0.11.2 changes | [Static release notes](docs/releases/0.11.2.md) and [changelog](CHANGELOG.md) |
 | Check current product guidance | [OpenAI Skills in ChatGPT](https://help.openai.com/en/articles/20001066) and [Codex Skill documentation](https://learn.chatgpt.com/docs/build-skills) |
 
 ## Evidence, public boundary, and limitations
