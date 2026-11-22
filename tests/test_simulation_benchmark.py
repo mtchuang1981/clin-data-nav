@@ -602,6 +602,9 @@ def test_posix_summary_stage_dup_failure_retains_cleanup_ownership(
     output.write_bytes(previous)
     stage_name = f".{output.name}.stage-test.tmp"
     stage_path = tmp_path / stage_name
+    foreign = _add_foreign_summary_file(output)
+    previous_identity = SummaryFileOwnership._identity(output)
+    ownership = SummaryFileOwnership()
     real_open = os.open
     opened: list[int] = []
     deletion_requests: list[tuple[int, str]] = []
@@ -623,6 +626,7 @@ def test_posix_summary_stage_dup_failure_retains_cleanup_ownership(
 
     def fail_duplicate(descriptor):
         assert descriptor == opened[0]
+        ownership.capture("stage", stage_path)
         raise OSError("MARKER-POSIX-DUP-FAILURE")
 
     def delete_owned_stage(owner, name):
@@ -650,8 +654,9 @@ def test_posix_summary_stage_dup_failure_retains_cleanup_ownership(
         transaction.rollback()
 
         assert output.read_bytes() == previous
-        assert not stage_path.exists()
-        assert not list(tmp_path.glob(f".{output.name}.backup-*.tmp"))
+        assert SummaryFileOwnership._identity(output) == previous_identity
+        ownership.assert_rolled_back(stage_path, prior_output=False)
+        assert foreign.read_bytes() == b"unrelated file"
         with pytest.raises(OSError):
             os.fstat(opened[0])
     finally:
@@ -2829,7 +2834,7 @@ def test_detected_stage_drift_before_commit_is_rejected_and_rolled_back(
 
 @pytest.mark.skipif(os.name == "nt", reason="POSIX dir-fd cleanup contract")
 def test_posix_cleanup_deletes_only_the_verified_owned_name(
-    tmp_path, monkeypatch, capfd
+    tmp_path, monkeypatch, capfd, summary_file_ownership
 ):
     """An unexpected same-inode link must never be found and deleted by scan."""
     from scripts import evaluate_simulation_benchmark as benchmark
@@ -2838,13 +2843,18 @@ def test_posix_cleanup_deletes_only_the_verified_owned_name(
     output = bundle[5]
     previous = b"previous-summary\n"
     output.write_bytes(previous)
+    previous_identity = SummaryFileOwnership._identity(output)
     before = _bundle_input_bytes(bundle)
     unexpected = tmp_path / "unexpected-owned-sibling.tmp"
+    foreign = _add_foreign_summary_file(output)
+    generated_stage = None
 
     def link_stage_then_fail(
         parent: Path, stage_name: str, output_name: str
     ) -> None:
-        os.link(parent / stage_name, unexpected)
+        nonlocal generated_stage
+        generated_stage = parent / stage_name
+        os.link(generated_stage, unexpected)
         raise OSError("MARKER-TRIGGER-ROLLBACK")
 
     monkeypatch.setattr(
@@ -2858,9 +2868,15 @@ def test_posix_cleanup_deletes_only_the_verified_owned_name(
     assert captured.out == ""
     assert captured.err == EVALUATE_ERROR.decode()
     assert output.read_bytes() == previous
-    assert unexpected.is_file()
+    assert SummaryFileOwnership._identity(output) == previous_identity
+    assert summary_file_ownership.identities["backup"] == previous_identity
+    assert SummaryFileOwnership._identity(unexpected) == summary_file_ownership.identities["stage"]
+    assert output.lstat().st_nlink == unexpected.lstat().st_nlink == 1
+    assert generated_stage is not None
+    with pytest.raises(FileNotFoundError):
+        generated_stage.lstat()
     assert _bundle_input_bytes(bundle) == before
-    assert not list(tmp_path.glob(f".{output.name}.*.tmp"))
+    assert foreign.read_bytes() == b"unrelated file"
 
 
 def test_detected_final_hardlink_drift_before_commit_is_rolled_back_safely(

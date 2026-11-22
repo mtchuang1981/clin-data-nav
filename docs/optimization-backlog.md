@@ -24,7 +24,7 @@ PR #19 修正驗證（2026-11-17，Python 3.11.9）：本機完整測試 1,996 p
 
 | 優先度 | 項目 | 狀態與驗收條件 |
 | --- | --- | --- |
-| 1 | 清理測試的剩餘證據與範圍缺口 | PR #19 已修正目標 close-after-effect 判定，PR #21 已合併三個標準同行程回滾判定。三個子行程案例已採用測試專用觀測檔，見[設計與驗證步驟](superpowers/plans/2026-11-21-subprocess-cleanup-identity.md)。剩下 2 個 POSIX 相關 glob，須依各自契約處理。先前自然失敗的完整因果、跨目錄洩漏、長期 inode 重用及掃描後變動仍未證明。[歷史失敗紀錄](verification/2026-11-16-backlog-sync.md)與本機原始診斷保留。 |
+| 1 | 清理測試的剩餘證據與範圍缺口 | PR #19 已修正目標 close-after-effect 判定，PR #21 已合併三個標準同行程回滾判定，PR #22 已合併三個子行程案例。最後兩個 POSIX glob 已在本機改為檔案身分判定，並通過 Ubuntu WSL 重點驗證，見[測試紀錄](superpowers/plans/2026-11-22-posix-cleanup-identity.md)。先前自然失敗的完整因果、跨目錄洩漏、長期 inode 重用及掃描後變動仍未證明。[歷史失敗紀錄](verification/2026-11-16-backlog-sync.md)與本機原始診斷保留。 |
 | 另行授權 | 私有機構端驗收 | 2026-11-05 已整理[公開驗收交接清單](private-adapter-acceptance-checklist.zh-TW.md)。OMOP 1.2 私有實作／快照綁定及編譯器／工具映射仍待機構端授權與驗收；文件完成不代表私有端已通過。 |
 | 另行決定 | 真人易用性與成效評估 | 公開評估框架已備妥，尚無本專案真人或臨床成效證據；啟動前須完成另行授權的治理流程。 |
 
