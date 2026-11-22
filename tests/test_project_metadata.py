@@ -2901,9 +2901,9 @@ def test_installation_guides_preserve_quick_update_verified_and_source_paths():
         (
             (ROOT / "docs/installation.md").read_text(encoding="utf-8"),
             ENGLISH_ONBOARDING_CONTRACT,
-            "## Current verified v0.11.1 Release artifact verification",
+            "## Current verified v0.11.2 Release artifact verification",
             "## Historical v0.4.0 Release artifact verification (reference only)",
-            "current verified Release is `v0.11.1`",
+            "current verified Release is `v0.11.2`",
             "The v0.4.0 bundle remains below as a historical verification reference only.",
             (
                 "current verified Release is `v0.4.0`",
@@ -2914,9 +2914,9 @@ def test_installation_guides_preserve_quick_update_verified_and_source_paths():
         (
             (ROOT / "docs/installation.zh-TW.md").read_text(encoding="utf-8"),
             TRADITIONAL_CHINESE_ONBOARDING_CONTRACT,
-            "## 目前已驗證的 v0.11.1 Release 產物核對",
+            "## 目前已驗證的 v0.11.2 Release 產物核對",
             "## 歷史 v0.4.0 Release 產物驗證（僅供參考）",
-            "目前已驗證的 Release 是 `v0.11.1`",
+            "目前已驗證的 Release 是 `v0.11.2`",
             "v0.4.0 套件則保留於下方，僅供歷史驗證參考。",
             (
                 "目前已驗證的 Release 是 `v0.4.0`",
@@ -2942,8 +2942,8 @@ def test_installation_guides_preserve_quick_update_verified_and_source_paths():
         for stale_claim in stale_claims:
             assert stale_claim not in normalized
         current = _markdown_section(text, current_heading, historical_heading)
-        assert 'releaseVersion = "0.11.1"' in current
-        assert 'release_version="0.11.1"' in current
+        assert 'releaseVersion = "0.11.2"' in current
+        assert 'release_version="0.11.2"' in current
         assert "clin-nav-$releaseVersion.zip" in current
         assert "clin-nav-$releaseVersion.manifest.json" in current
         assert "clin-nav-$release_version.zip" in current
@@ -2953,7 +2953,7 @@ def test_installation_guides_preserve_quick_update_verified_and_source_paths():
             in current
         )
         assert (
-            "41c13c25aec4c7e8836e7b4408f93fc1d9d5193f9958400c52ffa8e694fdedff"
+            "660d0735efdac5d0786ebfd553926a12a79d7e2403f530944c7dc42faec2c3e5"
             in current
         )
         assert "archive_sha256" in current
