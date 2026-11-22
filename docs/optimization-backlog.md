@@ -4,7 +4,7 @@
 
 2026-11-22 查核的最新公開版本為 [v0.11.2](https://github.com/mtchuang1981/clin-data-nav/releases/tag/v0.11.2)。發布標籤指向 `4a0c89f`。發布驗證報告與雙語文件由 [PR #26](https://github.com/mtchuang1981/clin-data-nav/pull/26) 合併至 `main` 的 `658e3b6`。該合併提交的 Windows、Ubuntu、套件比對及 CodeQL 均通過。[跨平台驗證](https://github.com/mtchuang1981/clin-data-nav/actions/runs/45010551880) · [CodeQL](https://github.com/mtchuang1981/clin-data-nav/actions/runs/45010551929)
 
-2026-11-22 核准 v0.11.2 公開版優化結案。[PR #27](https://github.com/mtchuang1981/clin-data-nav/pull/27) 合併至 `639180d` 後，Windows、Ubuntu、套件比對與 CodeQL 均通過。Codex 實際載入狀態仍待部署驗證。[跨平台驗證](https://github.com/mtchuang1981/clin-data-nav/actions/runs/45012007274) · [CodeQL](https://github.com/mtchuang1981/clin-data-nav/actions/runs/45012007555)
+2026-11-22 核准 v0.11.2 公開版優化結案。[PR #27](https://github.com/mtchuang1981/clin-data-nav/pull/27) 合併至 `639180d` 後，Windows、Ubuntu、套件比對與 CodeQL 均通過。[跨平台驗證](https://github.com/mtchuang1981/clin-data-nav/actions/runs/45012007274) · [CodeQL](https://github.com/mtchuang1981/clin-data-nav/actions/runs/45012007555)
 
 歷史合併查核（2026-11-17）：當時的公開版本為 v0.11.1，`main` 提交 `69a206e` 的 Windows、Ubuntu、套件比對及 CodeQL 均通過。[PR #17](https://github.com/mtchuang1981/clin-data-nav/pull/17) 完成諮詢流程與安裝權限修正，[PR #18](https://github.com/mtchuang1981/clin-data-nav/pull/18) 完成發布紀錄與雙語安裝文件更新，[PR #19](https://github.com/mtchuang1981/clin-data-nav/pull/19) 完成目標 Windows 清理測試的身分判定修正。三者均已合併。
 
@@ -40,7 +40,8 @@ PR #19 修正驗證（2026-11-17，Python 3.11.9）：本機完整測試 1,996 p
 | v0.11.2 正式發布 | [PR #25](https://github.com/mtchuang1981/clin-data-nav/pull/25) 已合併，附註標籤 `v0.11.2` 指向 `4a0c89f`。[Release workflow](https://github.com/mtchuang1981/clin-data-nav/actions/runs/45007469684) 全數通過，已建立[公開 Release](https://github.com/mtchuang1981/clin-data-nav/releases/tag/v0.11.2)。 |
 | v0.11.2 公開產物驗證 | 已從 GitHub 下載 ZIP 與 manifest，重新計算的 SHA-256 均與 GitHub 及本機候選檔一致。ZIP 雜湊與 manifest 的 `archive_sha256` 一致，發布產物驗證器通過。[發布與下載驗證報告](verification/2026-11-22-v0.11.2-publication.md) |
 | v0.11.2 雙語 README 與安裝指南 | [PR #26](https://github.com/mtchuang1981/clin-data-nav/pull/26) 已合併。雙語 README 和指南中的 PowerShell、POSIX 指令均已更新至已驗證的 v0.11.2，並列出已核對的 ZIP 與 manifest SHA-256。[英文指南](installation.md) · [繁體中文指南](installation.zh-TW.md) |
-| v0.11.2 隔離試裝 | 在 Windows 暫存目錄用正式 ZIP 試裝，26 個檔案逐位元組符合 manifest。缺少、多出及相異檔案各為零。Codex 實際載入尚未驗證。[隔離試裝紀錄](verification/2026-11-22-v0.11.2-publication.md#isolated-installation-check) |
+| v0.11.2 隔離試裝 | 在 Windows 暫存目錄用正式 ZIP 試裝，26 個檔案逐位元組符合 manifest。缺少、多出及相異檔案各為零。[隔離試裝紀錄](verification/2026-11-22-v0.11.2-publication.md#isolated-installation-check) |
+| 本次 Codex 對話讀取核對 | 本次對話從工作階段列出的 ClinNav 安裝路徑實際讀取 `SKILL.md`。該目錄的 26 個檔案均逐位元組符合 v0.11.2 正式 manifest。v0.11.1 與 v0.11.2 的 ZIP SHA-256 相同，原始安裝版號仍無法由檔案判定。此次查核全程唯讀。[Codex 對話讀取紀錄](verification/2026-11-22-v0.11.2-publication.md#codex-session-read-verification) |
 | 子行程與 POSIX 清理測試的身分判定 | [PR #22](https://github.com/mtchuang1981/clin-data-nav/pull/22) 已合併三個子行程案例，[PR #23](https://github.com/mtchuang1981/clin-data-nav/pull/23) 已合併最後兩個 POSIX 案例。合併提交 `be635e4` 的 Windows 測試 2,060 項通過、3 項略過，Ubuntu 2,028 項通過、35 項略過，套件比對與 CodeQL 通過。[測試紀錄](superpowers/plans/2026-11-22-posix-cleanup-identity.md) |
 | 三個標準同行程回滾測試的身分判定 | [PR #21](https://github.com/mtchuang1981/clin-data-nav/pull/21) 已合併。測試驗證回復原 backup 身分或原先無輸出的狀態，並捕捉原名或改名的 stage 殘留、硬連結別名，以及內容相同但身分不同的輸出。[本機驗證紀錄](verification/2026-11-19-rollback-cleanup-identity.md) |
 | 目標 Windows 清理測試的身分判定 | PR #19 已合併至 `69a206e`。以交易 stage／backup 的檔案身分取代最後的廣泛名稱斷言，保留既有 HANDLE、sentinel、輸入與輸出檢查；加入外部物件、原名／改名 backup 殘留與 stage 別名等合成回歸。產品程式、版本與發布產物未變；本機、雙平台 CI、套件比對及 CodeQL 通過，詳見本頁上方查核與[本機驗證](verification/2026-11-17-summary-cleanup-identity.md)。完成的是明確示範的測試判定缺陷，不代表先前每次自然失敗均已取得完整歸因。 |
