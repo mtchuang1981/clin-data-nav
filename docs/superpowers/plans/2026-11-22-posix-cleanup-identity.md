@@ -29,4 +29,10 @@ contracts preserved through PR #22.
   deselected. The deselected test passed in its own process, for 2,049 passes
   overall. The native POSIX case was skipped on Windows and passed on Ubuntu.
 - Skill validation, the public boundary check, reproducible packaging and the
-  diff check passed. Remote CI is pending.
+  diff check passed locally.
+- [PR #23](https://github.com/mtchuang1981/clin-data-nav/pull/23) merged as
+  `be635e47077fa724a996ad579614ca08023dbf5f`. The merge commit passed
+  2,060 Windows tests with 3 skipped and 2,028 Ubuntu tests with 35 skipped.
+  Package comparison and both CodeQL analyses passed.
+  [Validation](https://github.com/mtchuang1981/clin-data-nav/actions/runs/44983301169)
+  · [CodeQL](https://github.com/mtchuang1981/clin-data-nav/actions/runs/44983301226)

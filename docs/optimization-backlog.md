@@ -24,15 +24,17 @@ PR #19 修正驗證（2026-11-17，Python 3.11.9）：本機完整測試 1,996 p
 
 | 優先度 | 項目 | 狀態與驗收條件 |
 | --- | --- | --- |
-| 1 | 清理測試的剩餘證據與範圍缺口 | PR #19 已修正目標 close-after-effect 判定，PR #21 已合併三個標準同行程回滾判定，PR #22 已合併三個子行程案例。最後兩個 POSIX glob 已在本機改為檔案身分判定，並通過 Ubuntu WSL 重點驗證，見[測試紀錄](superpowers/plans/2026-11-22-posix-cleanup-identity.md)。先前自然失敗的完整因果、跨目錄洩漏、長期 inode 重用及掃描後變動仍未證明。[歷史失敗紀錄](verification/2026-11-16-backlog-sync.md)與本機原始診斷保留。 |
 | 另行授權 | 私有機構端驗收 | 2026-11-05 已整理[公開驗收交接清單](private-adapter-acceptance-checklist.zh-TW.md)。OMOP 1.2 私有實作／快照綁定及編譯器／工具映射仍待機構端授權與驗收；文件完成不代表私有端已通過。 |
 | 另行決定 | 真人易用性與成效評估 | 公開評估框架已備妥，尚無本專案真人或臨床成效證據；啟動前須完成另行授權的治理流程。 |
 
 ## 已完成的公開補強
 
+清理測試的證據限於所列的合成案例。歷史自然失敗的完整因果、跨目錄洩漏、長期 inode 重用及掃描後變動仍待證實。[歷史失敗紀錄](verification/2026-11-16-backlog-sync.md)與本機原始診斷均保留。
+
 | 項目 | 完成依據 |
 | --- | --- |
-| 三個標準同行程回滾測試的身分判定（本機） | 2026-11-19 增加明確回滾狀態，驗證原 backup 身分回復或原先輸出不存在，並抓到原名／改名 stage 殘留、別名與相同內容但錯誤身分的輸出。新增 30 個 helper 案例與 14 個整合案例；完成審查競態修正與本機完整測試，詳見[驗證紀錄](verification/2026-11-19-rollback-cleanup-identity.md)。產品清理程式與 POSIX 刻意保留別名的契約未改；本列不代表遠端合併或完整歷史歸因。 |
+| 子行程與 POSIX 清理測試的身分判定 | [PR #22](https://github.com/mtchuang1981/clin-data-nav/pull/22) 已合併三個子行程案例，[PR #23](https://github.com/mtchuang1981/clin-data-nav/pull/23) 已合併最後兩個 POSIX 案例。合併提交 `be635e4` 的 Windows 測試 2,060 項通過、3 項略過，Ubuntu 2,028 項通過、35 項略過，套件比對與 CodeQL 通過。[測試紀錄](superpowers/plans/2026-11-22-posix-cleanup-identity.md) |
+| 三個標準同行程回滾測試的身分判定 | [PR #21](https://github.com/mtchuang1981/clin-data-nav/pull/21) 已合併。測試驗證回復原 backup 身分或原先無輸出的狀態，並捕捉原名或改名的 stage 殘留、硬連結別名，以及內容相同但身分不同的輸出。[本機驗證紀錄](verification/2026-11-19-rollback-cleanup-identity.md) |
 | 目標 Windows 清理測試的身分判定 | PR #19 已合併至 `69a206e`。以交易 stage／backup 的檔案身分取代最後的廣泛名稱斷言，保留既有 HANDLE、sentinel、輸入與輸出檢查；加入外部物件、原名／改名 backup 殘留與 stage 別名等合成回歸。產品程式、版本與發布產物未變；本機、雙平台 CI、套件比對及 CodeQL 通過，詳見本頁上方查核與[本機驗證](verification/2026-11-17-summary-cleanup-identity.md)。完成的是明確示範的測試判定缺陷，不代表先前每次自然失敗均已取得完整歸因。 |
 | 承辦諮詢流程與概念審查補強 | PR #17 已合併並納入 v0.11.1。初步諮詢採精簡決策單，正式規格保留完整契約；補上語意審查、搜尋完整性、工具參數與責任分工。七項合成情境與小樣本前後測不代表一般化成效，見[範圍與驗證紀錄](verification/2026-11-16-feasibility-consultation.md)。 |
 | Windows 安裝權限繼承修正 | PR #17 已合併。解壓前準備目標目錄的 DACL；權限失敗時不替換舊安裝。原生安裝器測試 72 項通過，詳見[根因與發布前驗證](verification/2026-11-16-v0.11.1-preflight.md)。本項不包含間歇性清理異常。 |
