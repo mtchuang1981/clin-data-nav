@@ -4,7 +4,7 @@
 
 2026-11-22 查核的最新公開版本為 [v0.11.2](https://github.com/mtchuang1981/clin-data-nav/releases/tag/v0.11.2)。發布標籤指向 `4a0c89f`。發布驗證報告與雙語文件由 [PR #26](https://github.com/mtchuang1981/clin-data-nav/pull/26) 合併至 `main` 的 `658e3b6`。該合併提交的 Windows、Ubuntu、套件比對及 CodeQL 均通過。[跨平台驗證](https://github.com/mtchuang1981/clin-data-nav/actions/runs/45010551880) · [CodeQL](https://github.com/mtchuang1981/clin-data-nav/actions/runs/45010551929)
 
-2026-11-22 核准 v0.11.2 公開版優化結案。[PR #27](https://github.com/mtchuang1981/clin-data-nav/pull/27) 合併至 `639180d` 後，Windows、Ubuntu、套件比對與 CodeQL 均通過。[跨平台驗證](https://github.com/mtchuang1981/clin-data-nav/actions/runs/45012007274) · [CodeQL](https://github.com/mtchuang1981/clin-data-nav/actions/runs/45012007555)
+2026-11-22 核准 v0.11.2 公開版優化結案。正式發布、產物雜湊驗證、雙語文件更新與本次 Codex 對話讀取核對均已完成。[PR #29](https://github.com/mtchuang1981/clin-data-nav/pull/29) 將對話讀取紀錄合併至 `main` 的 `87935d3`。該合併提交的 Windows、Ubuntu、跨平台套件比對及 CodeQL 均通過。[結案摘要](verification/2026-11-22-v0.11.2-publication.md#public-optimization-closeout) · [跨平台驗證](https://github.com/mtchuang1981/clin-data-nav/actions/runs/45035242390) · [CodeQL](https://github.com/mtchuang1981/clin-data-nav/actions/runs/45035242153)
 
 歷史合併查核（2026-11-17）：當時的公開版本為 v0.11.1，`main` 提交 `69a206e` 的 Windows、Ubuntu、套件比對及 CodeQL 均通過。[PR #17](https://github.com/mtchuang1981/clin-data-nav/pull/17) 完成諮詢流程與安裝權限修正，[PR #18](https://github.com/mtchuang1981/clin-data-nav/pull/18) 完成發布紀錄與雙語安裝文件更新，[PR #19](https://github.com/mtchuang1981/clin-data-nav/pull/19) 完成目標 Windows 清理測試的身分判定修正。三者均已合併。
 
