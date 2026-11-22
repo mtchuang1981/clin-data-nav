@@ -9,12 +9,14 @@ It does not supply private schemas or claim validated clinical conclusions.
 
 ## Install in a project
 
-Verified public release: [v0.11.1](https://github.com/mtchuang1981/clin-data-nav/releases/tag/v0.11.1).
-It adds concise coordinator consultation reviews and repairs Windows source-installer
-permissions. See [release notes](docs/releases/0.11.1.md) and the
-[download verification record](docs/verification/2026-11-16-v0.11.1-publication.md).
-The installation guide includes the verified public asset hashes.
-This source checkout targets [v0.11.2](docs/releases/0.11.2.md).
+Verified public release: [v0.11.2](https://github.com/mtchuang1981/clin-data-nav/releases/tag/v0.11.2).
+See the [release notes](docs/releases/0.11.2.md) and
+[download verification record](docs/verification/2026-11-22-v0.11.2-publication.md).
+
+| Release asset | SHA-256 |
+| --- | --- |
+| `clin-nav-0.11.2.zip` | `495e2b959a2831b32b677edcbff8c395e49526cec3e21871976d945019ef09ad` |
+| `clin-nav-0.11.2.manifest.json` | `660d0735efdac5d0786ebfd553926a12a79d7e2403f530944c7dc42faec2c3e5` |
 
 ```bash
 npx skills add mtchuang1981/clin-data-nav

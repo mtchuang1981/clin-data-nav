@@ -9,11 +9,13 @@
 
 ## 安裝到專案
 
-已驗證的公開版本：[v0.11.1](https://github.com/mtchuang1981/clin-data-nav/releases/tag/v0.11.1)。
-本版新增精簡的承辦諮詢摘要，並修正 Windows 原始碼安裝工具權限。
-詳見[版本說明](docs/releases/0.11.1.md)與[下載驗證紀錄](docs/verification/2026-11-16-v0.11.1-publication.md)；
-安裝指南已列出公開產物的驗證雜湊。
-本儲存庫的原始碼以 [v0.11.2](docs/releases/0.11.2.md) 為目標版本。
+已驗證的公開版本為 [v0.11.2](https://github.com/mtchuang1981/clin-data-nav/releases/tag/v0.11.2)。
+詳見[版本說明](docs/releases/0.11.2.md)與[下載驗證紀錄](docs/verification/2026-11-22-v0.11.2-publication.md)。
+
+| 發布產物 | SHA-256 |
+| --- | --- |
+| `clin-nav-0.11.2.zip` | `495e2b959a2831b32b677edcbff8c395e49526cec3e21871976d945019ef09ad` |
+| `clin-nav-0.11.2.manifest.json` | `660d0735efdac5d0786ebfd553926a12a79d7e2403f530944c7dc42faec2c3e5` |
 
 ```bash
 npx skills add mtchuang1981/clin-data-nav
