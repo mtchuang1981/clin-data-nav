@@ -11,7 +11,7 @@ Sources actually consulted: Current request only; SYNTH identifiers below denote
 
 The hypothetical protocol and SAP govern the emergence window and partial-date
 rules. Official CDISC guidance and controlled terminology govern submission
-structure, not the study-specific window. Lex Jansen indexes implementation
+structure, not the study-specific window. SAS LEX.ICON indexes implementation
 literature. It is not a standard or validation authority.
 
 | Claim | Governing source to review | Authority | Applicability | Limitation |
@@ -19,7 +19,7 @@ literature. It is not a standard or validation authority.
 | Emergence window | SYNTH protocol and SAP | Study-specific | Safety population | Signed versions and rules not reviewed |
 | Submission structure | Applicable CDISC guide | Official standard | Submission target | Version and applicability pending review |
 | Coded values | Governing terminology release | Official terminology | Target variables | Must match submission plan |
-| SAS technique | Specific paper indexed by Lex Jansen | Implementation evidence | Future technique review | Not searched or reviewed; performance not measured |
+| SAS technique | Specific paper indexed by SAS LEX.ICON | Implementation evidence | Future technique review | Not searched or reviewed; performance not measured |
 
 ## Data contract
 

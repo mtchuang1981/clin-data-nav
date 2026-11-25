@@ -11,7 +11,7 @@ This report contains aggregate benchmark facts only. The execution identity is r
 | `direction` | positive-signal |
 | `synthetic_example` | true |
 | `plan_sha256` | cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc |
-| `catalog_sha256` | 372bebf3ee169acdcfc0b60972df89ad37fd963dea40e83cf6ec98293801a423 |
+| `catalog_sha256` | c14a201fca288022bfa34522d6c392a5c47308bdff6c03a4d556cb0847d1fc83 |
 | `rubric_sha256` | 5c290c7a2002cb08853bcdf328e4a0029bb76a251180ddaf848c4a1ee38a0e1f |
 | `repeats` | 3 |
 | `cell_counts.expected` | 72 |

@@ -7,7 +7,7 @@ Sources actually consulted: The current synthetic request and the project retrie
 
 ## Search scope
 
-Use `site:lexjansen.com` for the specific technique, then review the specific paper
+Use `site:saslexicon.org` for the specific technique, then review the specific paper
 and the official SAS documentation relevant to the target platform.
 
 ## Authority-ordered route

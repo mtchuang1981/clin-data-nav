@@ -441,6 +441,19 @@ Lex Jansen.
     assert evaluate_response(case, rubric, incomplete_response).passed is False
 
 
+def test_sas_retrieval_guidance_uses_the_current_index():
+    skill_root = ROOT / "skills/clin-nav"
+    for path in ("SKILL.md", "references/retrieval-playbook.md"):
+        guidance = (skill_root / path).read_text(encoding="utf-8")
+        assert "site:saslexicon.org" in guidance, path
+        assert "lexjansen.com" not in guidance, path
+
+    playbook = (skill_root / "references/retrieval-playbook.md").read_text(
+        encoding="utf-8"
+    )
+    assert "https://saslexicon.org/" in playbook
+
+
 def test_tmucrd_forbidden_sql_pattern_matches_a_literal_asterisk():
     cases = yaml.safe_load((ROOT / "evals/cases.yaml").read_text(encoding="utf-8"))["cases"]
     tmucrd_case = next(case for case in cases if case["id"] == "tmucrd-public-profile")
