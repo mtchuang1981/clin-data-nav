@@ -221,12 +221,12 @@ def test_candidate_package_and_manifest_names_match_project_version(tmp_path):
     )
     manifest = json.loads(result.manifest.read_text(encoding="utf-8"))
 
-    assert result.archive.name == "clin-nav-0.11.2.zip"
+    assert result.archive.name == "clin-nav-0.11.3.zip"
     assert (
         result.manifest.name
-        == "clin-nav-0.11.2.manifest.json"
+        == "clin-nav-0.11.3.manifest.json"
     )
-    assert manifest["version"] == "0.11.2"
+    assert manifest["version"] == "0.11.3"
     assert manifest["archive"] == result.archive.name
 
 

@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.11.3 - 2026-11-25
+
+### Fixes
+
+- Route SAS implementation literature searches to SAS LEX.ICON. When a
+  domain-restricted query finds no relevant results, consult the index directly
+  or search the original conference proceedings.
+- Update the synthetic evaluation fixtures and benchmark digests for the new
+  search domain. Historical citations and evaluation case IDs are retained.
+
 ## 0.11.2 - 2026-11-22
 
 ### Verification and documentation
