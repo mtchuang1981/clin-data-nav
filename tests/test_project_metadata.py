@@ -2901,9 +2901,9 @@ def test_installation_guides_preserve_quick_update_verified_and_source_paths():
         (
             (ROOT / "docs/installation.md").read_text(encoding="utf-8"),
             ENGLISH_ONBOARDING_CONTRACT,
-            "## Current verified v0.11.2 Release artifact verification",
+            "## Current verified v0.11.3 Release artifact verification",
             "## Historical v0.4.0 Release artifact verification (reference only)",
-            "current verified Release is `v0.11.2`",
+            "current verified Release is `v0.11.3`",
             "The v0.4.0 bundle remains below as a historical verification reference only.",
             (
                 "current verified Release is `v0.4.0`",
@@ -2914,9 +2914,9 @@ def test_installation_guides_preserve_quick_update_verified_and_source_paths():
         (
             (ROOT / "docs/installation.zh-TW.md").read_text(encoding="utf-8"),
             TRADITIONAL_CHINESE_ONBOARDING_CONTRACT,
-            "## 目前已驗證的 v0.11.2 Release 產物核對",
+            "## 目前已驗證的 v0.11.3 Release 產物核對",
             "## 歷史 v0.4.0 Release 產物驗證（僅供參考）",
-            "目前已驗證的 Release 是 `v0.11.2`",
+            "目前已驗證的 Release 是 `v0.11.3`",
             "v0.4.0 套件則保留於下方，僅供歷史驗證參考。",
             (
                 "目前已驗證的 Release 是 `v0.4.0`",
@@ -2942,18 +2942,18 @@ def test_installation_guides_preserve_quick_update_verified_and_source_paths():
         for stale_claim in stale_claims:
             assert stale_claim not in normalized
         current = _markdown_section(text, current_heading, historical_heading)
-        assert 'releaseVersion = "0.11.2"' in current
-        assert 'release_version="0.11.2"' in current
+        assert 'releaseVersion = "0.11.3"' in current
+        assert 'release_version="0.11.3"' in current
         assert "clin-nav-$releaseVersion.zip" in current
         assert "clin-nav-$releaseVersion.manifest.json" in current
         assert "clin-nav-$release_version.zip" in current
         assert "clin-nav-$release_version.manifest.json" in current
         assert (
-            "495e2b959a2831b32b677edcbff8c395e49526cec3e21871976d945019ef09ad"
+            "361201544ad425bb3f1c07cbb79ed4fe5cbb5223d65e857446d1af0fa1a0d917"
             in current
         )
         assert (
-            "660d0735efdac5d0786ebfd553926a12a79d7e2403f530944c7dc42faec2c3e5"
+            "0e42bbe17af223815a8ecafd3895455867f2ac7f8c3d414d3d15320e389b6278"
             in current
         )
         assert "archive_sha256" in current

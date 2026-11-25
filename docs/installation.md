@@ -3,7 +3,7 @@
 [繁體中文](installation.zh-TW.md)
 
 The recommended path is a project-local installation with `npx skills add`.
-The current verified Release is `v0.11.2`.
+The current verified Release is `v0.11.3`.
 Its exact `clin-nav` artifact verification and installation path is below.
 The immutable v0.6.0 Release remains available as a historical version.
 The v0.4.0 ZIP material is a historical verification reference, not an installation path.
@@ -13,8 +13,8 @@ Only when developing or auditing this repository, use the source-checkout path.
 
 Source-checkout tools target [`0.11.3`](releases/0.11.3.md). Use the matching
 source version when installing a versioned ZIP with the strict installer.
-For the verified `v0.11.2` assets, use the procedure below. The
-[publication record](verification/2026-11-22-v0.11.2-publication.md) gives the
+For the verified `v0.11.3` assets, use the procedure below. The
+[publication record](verification/2026-11-25-v0.11.3-publication.md) gives the
 downloaded artifact hashes and verification details.
 
 The instruction-only installed Skill does not require Python. It consists of
@@ -169,20 +169,20 @@ npx skills update clin-nav --project --yes
 Confirm discovery again with `/skills`. If the displayed behavior is stale,
 follow the stage-specific recovery below instead of reinstalling blindly.
 
-## Current verified v0.11.2 Release artifact verification
+## Current verified v0.11.3 Release artifact verification
 
 These checks identify the verified published bytes, not platform-enforced
-Release immutability. On 2026-11-22, GitHub's API reported `immutable: false`
+Release immutability. On 2026-11-25, GitHub's API reported `immutable: false`
 for this Release. The publisher refuses an existing Release, and this process
 does not move published tags or replace their assets; that policy is not a
 platform lock.
 
-The current verified Release is `v0.11.2`. Its exact published assets
-are `clin-nav-0.11.2.zip` and `clin-nav-0.11.2.manifest.json`. The commands below
+The current verified Release is `v0.11.3`. Its exact published assets
+are `clin-nav-0.11.3.zip` and `clin-nav-0.11.3.manifest.json`. The commands below
 download both assets from that same Release, verify the manifest
 against its published SHA-256, and then verify the ZIP against both its
 published SHA-256 and the manifest's `archive_sha256` before installation.
-These values are bound to the reproducible v0.11.2 artifacts and the successful
+These values are bound to the reproducible v0.11.3 artifacts and the successful
 Linux/Windows package comparison for the tagged source.
 
 Earlier releases, including [v0.9.0](https://github.com/mtchuang1981/clin-data-nav/releases/tag/v0.9.0), remain available with unchanged assets. The
@@ -191,11 +191,11 @@ v0.4.0 bundle remains below as a historical verification reference only.
 PowerShell:
 
 ```powershell
-$releaseVersion = "0.11.2"
+$releaseVersion = "0.11.3"
 $archiveName = "clin-nav-$releaseVersion.zip"
 $manifestName = "clin-nav-$releaseVersion.manifest.json"
-$expectedArchiveSha256 = "495e2b959a2831b32b677edcbff8c395e49526cec3e21871976d945019ef09ad"
-$expectedManifestSha256 = "660d0735efdac5d0786ebfd553926a12a79d7e2403f530944c7dc42faec2c3e5"
+$expectedArchiveSha256 = "361201544ad425bb3f1c07cbb79ed4fe5cbb5223d65e857446d1af0fa1a0d917"
+$expectedManifestSha256 = "0e42bbe17af223815a8ecafd3895455867f2ac7f8c3d414d3d15320e389b6278"
 $releaseBase = "https://github.com/mtchuang1981/clin-data-nav/releases/download/v$releaseVersion"
 Invoke-WebRequest "$releaseBase/$archiveName" -OutFile $archiveName
 Invoke-WebRequest "$releaseBase/$manifestName" -OutFile $manifestName
@@ -210,7 +210,7 @@ if ($actualArchiveSha256 -ne $expectedArchiveSha256) { throw "Archive SHA-256 mi
 
 $skillsRoot = Join-Path (Get-Location) ".agents/skills"
 $skillDirectory = Join-Path $skillsRoot "clin-nav"
-$stagingDirectory = Join-Path $skillsRoot ".clin-nav-v0.11.2-staged"
+$stagingDirectory = Join-Path $skillsRoot ".clin-nav-v0.11.3-staged"
 if (Test-Path $skillDirectory) { throw "Installation already exists" }
 if (Test-Path $stagingDirectory) { throw "Staging directory already exists" }
 New-Item -ItemType Directory -Path $skillsRoot -Force | Out-Null
@@ -223,11 +223,11 @@ Move-Item -LiteralPath $stagingDirectory -Destination $skillDirectory
 POSIX shell:
 
 ```bash
-release_version="0.11.2"
+release_version="0.11.3"
 archive_name="clin-nav-$release_version.zip"
 manifest_name="clin-nav-$release_version.manifest.json"
-expected_archive_sha256="495e2b959a2831b32b677edcbff8c395e49526cec3e21871976d945019ef09ad"
-expected_manifest_sha256="660d0735efdac5d0786ebfd553926a12a79d7e2403f530944c7dc42faec2c3e5"
+expected_archive_sha256="361201544ad425bb3f1c07cbb79ed4fe5cbb5223d65e857446d1af0fa1a0d917"
+expected_manifest_sha256="0e42bbe17af223815a8ecafd3895455867f2ac7f8c3d414d3d15320e389b6278"
 release_base="https://github.com/mtchuang1981/clin-data-nav/releases/download/v$release_version"
 curl -fL "$release_base/$archive_name" -o "$archive_name"
 curl -fL "$release_base/$manifest_name" -o "$manifest_name"
@@ -248,7 +248,7 @@ test "$actual_archive_sha256" = "$expected_archive_sha256" || { echo "Archive SH
 
 skills_root="$PWD/.agents/skills"
 skill_directory="$skills_root/clin-nav"
-staging_directory="$skills_root/.clin-nav-v0.11.2-staged"
+staging_directory="$skills_root/.clin-nav-v0.11.3-staged"
 test ! -e "$skill_directory" || { echo "Installation already exists" >&2; exit 1; }
 test ! -e "$staging_directory" || { echo "Staging directory already exists" >&2; exit 1; }
 mkdir -p "$skills_root"

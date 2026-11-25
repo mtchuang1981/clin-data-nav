@@ -9,14 +9,14 @@ It does not supply private schemas or claim validated clinical conclusions.
 
 ## Install in a project
 
-Verified public release: [v0.11.2](https://github.com/mtchuang1981/clin-data-nav/releases/tag/v0.11.2).
-See the [release notes](docs/releases/0.11.2.md) and
-[download verification record](docs/verification/2026-11-22-v0.11.2-publication.md).
+Verified public release: [v0.11.3](https://github.com/mtchuang1981/clin-data-nav/releases/tag/v0.11.3).
+See the [release notes](docs/releases/0.11.3.md) and
+[download verification record](docs/verification/2026-11-25-v0.11.3-publication.md).
 
 | Release asset | SHA-256 |
 | --- | --- |
-| `clin-nav-0.11.2.zip` | `495e2b959a2831b32b677edcbff8c395e49526cec3e21871976d945019ef09ad` |
-| `clin-nav-0.11.2.manifest.json` | `660d0735efdac5d0786ebfd553926a12a79d7e2403f530944c7dc42faec2c3e5` |
+| [`clin-nav-0.11.3.zip`](https://github.com/mtchuang1981/clin-data-nav/releases/download/v0.11.3/clin-nav-0.11.3.zip) | `361201544ad425bb3f1c07cbb79ed4fe5cbb5223d65e857446d1af0fa1a0d917` |
+| [`clin-nav-0.11.3.manifest.json`](https://github.com/mtchuang1981/clin-data-nav/releases/download/v0.11.3/clin-nav-0.11.3.manifest.json) | `0e42bbe17af223815a8ecafd3895455867f2ac7f8c3d414d3d15320e389b6278` |
 
 ```bash
 npx skills add mtchuang1981/clin-data-nav
