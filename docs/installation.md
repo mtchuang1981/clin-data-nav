@@ -11,7 +11,7 @@ Only when developing or auditing this repository, use the source-checkout path.
 
 ## Runtime boundary
 
-Source-checkout tools target [`0.11.2`](releases/0.11.2.md). Use the matching
+Source-checkout tools target [`0.11.3`](releases/0.11.3.md). Use the matching
 source version when installing a versioned ZIP with the strict installer.
 For the verified `v0.11.2` assets, use the procedure below. The
 [publication record](verification/2026-11-22-v0.11.2-publication.md) gives the

@@ -244,9 +244,9 @@ def test_candidate_packager_output_passes_release_artifact_verification(tmp_path
     )
 
     manifest = json.loads(package.manifest.read_text(encoding="utf-8"))
-    assert package.archive.name == "clin-nav-0.11.2.zip"
-    assert package.manifest.name == "clin-nav-0.11.2.manifest.json"
-    assert manifest["version"] == "0.11.2"
+    assert package.archive.name == "clin-nav-0.11.3.zip"
+    assert package.manifest.name == "clin-nav-0.11.3.manifest.json"
+    assert manifest["version"] == "0.11.3"
     assert manifest["archive"] == package.archive.name
     verify_release_artifacts(package.archive, package.manifest)
 
