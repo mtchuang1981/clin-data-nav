@@ -35,12 +35,12 @@ cases:
     prompt: >-
       Review a synthetic legacy SAS implementation for a clinical-trial TEAE
       derivation and propose evidence-backed optimization steps. Show how
-      Lex Jansen implementation literature would be searched and reviewed,
+      SAS LEX.ICON implementation literature would be searched and reviewed,
       preserve source and code provenance, address reuse terms, and state what
       happens when network access or target-environment validation is missing.
     output_depth: evidence navigation
     required:
-      - 'site:lexjansen\.com'
+      - 'site:saslexicon\.org'
       - '(?:specific|full|candidate) paper'
       - "title"
       - "authors?"
@@ -57,7 +57,7 @@ cases:
       - '(?:performance validation|target-environment (?:measurement|benchmark|validation)|runtime measurements?)'
     forbidden:
       - "Lex Jansen is an official standard"
-      - '(?is)\bLex\s+Jansen\b\s+(?:is|serves\s+as|acts\s+as)\s+(?!not\b)(?:an?\s+)?(?:official|authoritative|governing)\s+(?:standard|authority|standards\s+body)\b'
+      - '(?is)\b(?:Lex\s+Jansen|SAS\s+LEX\.ICON)\b\s+(?:is|serves\s+as|acts\s+as)\s+(?!not\b)(?:an?\s+)?(?:official|authoritative|governing)\s+(?:standard|authority|standards\s+body)\b'
       - "Copy the historical SAS code without checking its license\\."
       - '(?is)(?<!not )\b(?:copy|paste|reuse)\b[\s\S]{0,120}\bwithout\b[\s\S]{0,80}\b(?:checking|recording|confirming)\b[\s\S]{0,80}\b(?:provenance|license|permission|reuse\s+terms)\b'
       - '(?is)\b(?:code|program|change|implementation|approach|candidate|optimization|version|method|technique)\b[\s\S]{0,80}\b(?:is|was|will\s+be|runs?|becomes?)\b[\s\S]{0,40}\b(?:faster|optimized|best-performing)\b[\s\S]{0,80}\bwithout\b[\s\S]{0,80}\b(?:measurement|benchmark|performance\s+validation)\b'

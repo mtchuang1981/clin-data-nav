@@ -118,18 +118,18 @@ Use the primary authority for each claim:
 |---|---|
 | CDISC/regulatory definition | CDISC, FDA, or governed terminology |
 | Statistical method | Protocol, SAP, or peer-reviewed methods literature |
-| Implementation practice | PHUSE, Lex Jansen, or official software documentation |
+| Implementation practice | PHUSE, SAS LEX.ICON, or official software documentation |
 | Institutional physical schema | Approved versioned Adapter and live metadata |
 | TMUCRD background | Public sources in `references/tmucrd-public-profile.md` |
 
-Treat Lex Jansen as an index of implementation literature, not a standards
+Treat SAS LEX.ICON as an index of implementation literature, not a standards
 body or validation authority. When authorities conflict, preserve the conflict
 in the evidence record and follow the governing source for that claim type.
 
 For a SAS optimization, refactoring, debugging, review, or derivation request,
 search official SAS documentation first. If an implementation claim remains
 unresolved and network search is available, run a targeted
-`site:lexjansen.com` query. Review the specific paper, not only an index entry or snippet.
+`site:saslexicon.org` query. Review the specific paper, not only an index entry or snippet.
 Record paper-level provenance and reuse terms before
 discussing code. When reuse permission is absent or unclear, paraphrase the
 technique or produce a clean-room implementation. Require target-environment
@@ -321,7 +321,7 @@ Load only the directly relevant one-hop reference:
   maturity label, validation gaps, and execution gate.
 - **Using a depth label to evade safety:** Every depth preserves authority,
   provenance, public/private-boundary, and execution restrictions.
-- **Treating practice as authority:** Label PHUSE or Lex Jansen material as
+- **Treating practice as authority:** Label PHUSE or SAS LEX.ICON material as
   implementation evidence and defer governing definitions to official sources.
 - **Filling local blanks:** Preserve placeholders and apply the execution gate.
 - **Trusting historical documentation as current:** Require approved live

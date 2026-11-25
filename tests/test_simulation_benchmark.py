@@ -214,7 +214,7 @@ REQUIRED_RESPONSE_MARKERS = {
     ),
     "teae-sas-spec": ("protocol", "SAP", "official standard", "code maturity"),
     "sas-optimization-lexjansen": (
-        "site:lexjansen.com",
+        "site:saslexicon.org",
         "specific paper",
         "title",
         "author",

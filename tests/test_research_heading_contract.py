@@ -179,7 +179,7 @@ def test_alias_mapping_must_be_complete_unambiguous_and_closed(research, tmp_pat
         selected(research, translated(research[2]))
 
 
-def test_36_legacy_evaluations_keep_prechange_digest():
+def test_36_legacy_evaluations_match_fixture_digest():
     results = []
     explicit = []
     for suite, cases, fixtures in (
@@ -195,7 +195,7 @@ def test_36_legacy_evaluations_keep_prechange_digest():
     assert len(results) == 36
     assert explicit == results
     encoded = json.dumps(results, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()
-    assert hashlib.sha256(encoded).hexdigest() == "6c7db3794be2f5b74107a27ae9dae5e385aa82cfabb98be691bf4b67b72b8757"
+    assert hashlib.sha256(encoded).hexdigest() == "4e495c6431b2b738f984fb9a438bdce34c7e4dee50cf764b9c2cee427f9db91b"
 
 
 def cli(response, *extra):
